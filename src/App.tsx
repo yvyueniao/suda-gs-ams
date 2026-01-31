@@ -1,35 +1,31 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route } from "react-router-dom";
+import AppLayout from "./app/layout/AppLayout";
 
-function App() {
-  const [count, setCount] = useState(0)
+// pages
+import HomePage from "./pages/home/HomePage";
+import EnrollPage from "./pages/enroll/EnrollPage";
+import ActivityAdminPage from "./pages/activity-admin/ActivityAdminPage";
+import FeedbackCenterPage from "./pages/feedback-center/FeedbackCenterPage";
+import FeedbackAdminPage from "./pages/feedback-admin/FeedbackAdminPage";
+import ProfilePage from "./pages/profile/ProfilePage";
+import RbacPage from "./pages/rbac/RbacPage";
+import OrgPage from "./pages/org/OrgPage";
+import AuditPage from "./pages/audit/AuditPage";
 
+export default function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/enroll" element={<EnrollPage />} />
+        <Route path="/activity-admin" element={<ActivityAdminPage />} />
+        <Route path="/feedback-center" element={<FeedbackCenterPage />} />
+        <Route path="/feedback-admin" element={<FeedbackAdminPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/rbac" element={<RbacPage />} />
+        <Route path="/org" element={<OrgPage />} />
+        <Route path="/audit" element={<AuditPage />} />
+      </Route>
+    </Routes>
+  );
 }
-
-export default App
