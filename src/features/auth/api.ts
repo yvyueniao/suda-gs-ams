@@ -11,7 +11,7 @@ export async function login(payload: LoginPayload): Promise<User> {
   await new Promise((resolve) => setTimeout(resolve, 800));
 
   // 写死的账号密码（后期删）
-  if (account === "admin" && password === "123456") {
+  if (account === "20254227033" && password === "@feifei1207") {
     return {
       id: "u001",
       name: "管理员",

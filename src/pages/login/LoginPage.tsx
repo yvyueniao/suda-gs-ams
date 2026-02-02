@@ -14,7 +14,7 @@ export default function LoginPage() {
       // 保存会话
       setUser(user);
       message.success("登录成功");
-      navigate("/", { replace: true });
+      navigate("/enroll", { replace: true });
     } catch (err: any) {
       if (err?.message) {
         message.error(err.message);
