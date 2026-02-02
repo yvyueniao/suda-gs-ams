@@ -1,15 +1,12 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { getUser } from "../../shared/session/session";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { getToken } from "../../shared/session/token";
 
-/**
- * 登录态守卫
- * 未登录用户会被重定向到 /login
- */
 export default function RequireAuth() {
-  const user = getUser();
+  const token = getToken();
+  const location = useLocation();
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (!token) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return <Outlet />;

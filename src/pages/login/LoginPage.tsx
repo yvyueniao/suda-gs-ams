@@ -1,24 +1,51 @@
+import { useState } from "react";
 import { Card, Form, Input, Button, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../features/auth/api";
+import { encryptPassword } from "../../features/auth/crypto";
+import { setToken } from "../../shared/session/token";
 import { setUser } from "../../shared/session/session";
+import { ApiError } from "../../shared/http/error";
 
 export default function LoginPage() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    if (submitting) return;
+
     try {
       const values = await form.validateFields();
-      const user = await login(values);
-      // 保存会话
-      setUser(user);
+
+      setSubmitting(true);
+
+      // ✅ 按接口文档：password 需要加密后发送（先占位，等后端规则）
+      const payload = {
+        username: values.username as string,
+        password: encryptPassword(values.password as string),
+      };
+
+      const resp = await login(payload);
+
+      setToken(resp.token);
+      setUser(resp.user);
+
       message.success("登录成功");
+
+      // 你说的前端地址
       navigate("/enroll", { replace: true });
     } catch (err: any) {
-      if (err?.message) {
+      // antd 表单校验失败：不 toast，Form.Item 会显示错误
+      if (err?.errorFields) return;
+
+      if (err instanceof ApiError) {
         message.error(err.message);
+      } else {
+        message.error("登录失败，请重试");
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -45,26 +72,24 @@ export default function LoginPage() {
 
         <Form form={form} layout="vertical">
           <Form.Item
-            name="account"
+            name="username"
             label="账号"
             rules={[
               { required: true, message: "请输入账号" },
               { pattern: /^\d{11}$/, message: "账号必须为 11 位数字" },
             ]}
           >
-            <Input placeholder="请输入账号" />
+            <Input
+              placeholder="请输入 11 位账号"
+              maxLength={11}
+              inputMode="numeric"
+            />
           </Form.Item>
 
           <Form.Item
             name="password"
             label="密码"
-            rules={[
-              { required: true, message: "请输入密码" },
-              {
-                pattern: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/,
-                message: "密码至少 8 位，且必须包含字母、数字和特殊字符",
-              },
-            ]}
+            rules={[{ required: true, message: "请输入密码" }]}
           >
             <Input.Password placeholder="请输入密码" />
           </Form.Item>
@@ -72,6 +97,7 @@ export default function LoginPage() {
           <Button
             type="primary"
             block
+            loading={submitting}
             onClick={handleSubmit}
             style={{ marginTop: 8 }}
           >
