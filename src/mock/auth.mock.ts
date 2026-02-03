@@ -173,21 +173,91 @@ export function setupAuthMock(middlewares: Connect.Server) {
               key: "apply",
               label: "活动/讲座报名",
               children: [
-                { key: "apply_list", label: "活动/讲座列表", children: [] },
+                {
+                  key: "apply_list",
+                  label: "活动/讲座列表",
+                },
               ],
             },
+
             {
               key: "feedback",
               label: "反馈中心",
               children: [
-                { key: "my_feedback", label: "我的反馈", children: [] },
+                {
+                  key: "my_feedback",
+                  label: "我的反馈",
+                },
               ],
             },
+
             {
               key: "profile",
               label: "个人中心",
               children: [
-                { key: "profile_info", label: "我的信息", children: [] },
+                {
+                  key: "profile_info",
+                  label: "我的信息",
+                },
+              ],
+            },
+
+            {
+              key: "activity_manage",
+              label: "活动/讲座管理",
+              children: [
+                {
+                  key: "activity_manage_list",
+                  label: "活动/讲座列表",
+                },
+              ],
+            },
+
+            {
+              key: "feedback_handle",
+              label: "反馈处理",
+              children: [
+                {
+                  key: "feedback_handle_list",
+                  label: "反馈列表",
+                },
+              ],
+            },
+
+            {
+              key: "user_permission",
+              label: "用户与权限",
+              children: [
+                {
+                  key: "user_manage",
+                  label: "用户管理",
+                },
+                {
+                  key: "admin_manage",
+                  label: "管理员管理",
+                },
+              ],
+            },
+
+            {
+              key: "org",
+              label: "组织架构",
+              children: [
+                {
+                  key: "dept_manage",
+                  label: "部门管理",
+                },
+              ],
+            },
+
+            {
+              key: "system",
+              label: "系统管理",
+              children: [
+                {
+                  key: "operation_log",
+                  label: "操作日志",
+                },
               ],
             },
           ],

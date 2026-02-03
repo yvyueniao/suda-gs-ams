@@ -12,7 +12,9 @@ import ActivityAdminPage from "./pages/activity-admin/ActivityAdminPage";
 import FeedbackCenterPage from "./pages/feedback-center/FeedbackCenterPage";
 import FeedbackAdminPage from "./pages/feedback-admin/FeedbackAdminPage";
 import ProfilePage from "./pages/profile/ProfilePage";
-import RbacPage from "./pages/rbac/RbacPage";
+import UserManagePage from "./pages/rbac/UserManagePage";
+import AdminManagePage from "./pages/rbac/AdminManagePage";
+
 import OrgPage from "./pages/org/OrgPage";
 import AuditPage from "./pages/system/AuditPage";
 
@@ -35,7 +37,11 @@ export default function App() {
           <Route path="/feedback-center" element={<FeedbackCenterPage />} />
           <Route path="/feedback-admin" element={<FeedbackAdminPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/rbac" element={<RbacPage />} />
+          {/* RBAC：默认进用户管理 */}
+          <Route path="/rbac" element={<Navigate to="/rbac/users" replace />} />
+          <Route path="/rbac/users" element={<UserManagePage />} />
+          <Route path="/rbac/admins" element={<AdminManagePage />} />
+
           <Route path="/org" element={<OrgPage />} />
           <Route path="/audit" element={<AuditPage />} />
 

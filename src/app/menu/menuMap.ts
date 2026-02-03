@@ -18,13 +18,21 @@ export const MENU_KEY_TO_PATH: Record<string, string> = {
   profile: "/profile",
   profile_info: "/profile",
 
-  // ⚠️ 下面这些目前【不在 menuList 返回中】
-  // 如果将来后端加菜单，只需要在这里补映射即可
   activity_admin: "/activity-admin",
+  activity_manage_list: "/activity-admin",
+
   feedback_admin: "/feedback-admin",
-  rbac: "/rbac",
+  feedback_handle_list: "/feedback-admin",
+
+  ruser_permission: "/rbac/users",
+  user_manage: "/rbac/users",
+  admin_manage: "/rbac/admins",
+
   org: "/org",
+  dept_manage: "/org",
+
   audit: "/audit",
+  operation_log: "/audit",
 };
 
 /**
@@ -35,16 +43,15 @@ export const MENU_KEY_TO_PATH: Record<string, string> = {
  * - 保证刷新 / 手输 URL 时，左侧菜单能正确高亮
  */
 export function pathToMenuKey(pathname: string): string {
-  if (pathname.startsWith("/enroll")) return "apply";
-  if (pathname.startsWith("/feedback-center")) return "feedback";
-  if (pathname.startsWith("/feedback-admin")) return "feedback";
-  if (pathname.startsWith("/profile")) return "profile";
-
-  // 这些目前没有后端菜单对应，可不高亮
-  if (pathname.startsWith("/activity-admin")) return "";
-  if (pathname.startsWith("/rbac")) return "";
-  if (pathname.startsWith("/org")) return "";
-  if (pathname.startsWith("/audit")) return "";
+  if (pathname.startsWith("/enroll")) return "apply_list";
+  if (pathname.startsWith("/feedback-center")) return "my_feedback";
+  if (pathname.startsWith("/feedback-admin")) return "feedback_handle_list";
+  if (pathname.startsWith("/profile")) return "profile_info";
+  if (pathname.startsWith("/activity-admin")) return "activity_manage_list";
+  if (pathname.startsWith("/rbac")) return "user_permission";
+  if (pathname.startsWith("/org")) return "dept_manage";
+  if (pathname.startsWith("/rbac")) return "rbac";
+  if (pathname.startsWith("/audit")) return "operation_log";
 
   return "";
 }
