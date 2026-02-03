@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { Layout, Menu, Typography, Dropdown, Modal, Spin, message } from "antd";
+import { useMemo } from "react";
+import { Layout, Menu, Typography, Dropdown, Spin, message } from "antd";
 import type { MenuProps } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-import { getMenuList, getUserInfo } from "../../features/auth/api";
-import type { MenuNode, User } from "../../features/auth/types";
-import { ApiError } from "../../shared/http/error";
-import { clearToken } from "../../shared/session/token";
-import { getUser, setUser, clearUser } from "../../shared/session/session";
-
+import type { MenuNode } from "../../features/auth/types";
 import { MENU_KEY_TO_PATH, pathToMenuKey } from "../menu/menuMap";
+import { useAppBootstrap } from "../hooks/useAppBootstrap";
+import { useLogout } from "../../features/auth/hooks/useLogout";
 
 const { Header, Sider, Content } = Layout;
 
@@ -26,7 +23,7 @@ function roleLabel(role: number) {
 
 function buildAntdMenuItems(nodes: MenuNode[]): MenuProps["items"] {
   return nodes.map((n) => ({
-    key: n.key, // ✅ 用后端 key，当作 Menu 的 key
+    key: n.key,
     label: n.label,
     children: n.children?.length ? buildAntdMenuItems(n.children) : undefined,
   }));
@@ -36,62 +33,25 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ 优先用本地缓存的 user，避免一进来空白闪一下
-  const [user, setUserState] = useState<User | null>(() => getUser());
-  const [menuTree, setMenuTree] = useState<MenuNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ 初始化逻辑解耦：user/menu/loading/error 全部从 hook 来
+  const { user, menuTree, loading } = useAppBootstrap();
 
-  // 1) 初始化：拉用户信息 + 菜单
-  useEffect(() => {
-    let alive = true;
-
-    async function init() {
-      try {
-        setLoading(true);
-
-        // ✅ /user/info：拿真实用户信息（后端可能刷新 token）
-        const info = await getUserInfo();
-        if (!alive) return;
-
-        setUser(info.user);
-        setUserState(info.user);
-
-        // ✅ /menuList：拿真实菜单（树结构）
-        const menus = await getMenuList();
-        if (!alive) return;
-
-        setMenuTree(menus);
-      } catch (err) {
-        // token 失效等情况，RequireAuth 会兜底跳转
-        if (err instanceof ApiError) {
-          message.error(err.message);
-        } else {
-          message.error("初始化失败，请稍后重试");
-        }
-      } finally {
-        if (!alive) return;
-        setLoading(false);
-      }
-    }
-
-    init();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // ✅ 退出逻辑解耦
+  const { logout } = useLogout();
 
   const menuItems = useMemo(() => buildAntdMenuItems(menuTree), [menuTree]);
 
-  // 2) 菜单高亮：pathname -> 后端 menu key
+  // 菜单高亮：pathname -> 后端 menu key
   const selectedKeys = useMemo(() => {
     const key = pathToMenuKey(location.pathname);
     return key ? [key] : [];
   }, [location.pathname]);
 
-  // 3) 点击菜单：后端 key -> 前端路由 path
+  // 点击菜单：后端 key -> 前端路由 path
   const onMenuClick: MenuProps["onClick"] = (e) => {
     const key = String(e.key);
     const path = MENU_KEY_TO_PATH[key];
+
     if (!path) {
       message.warning("该菜单未配置路由映射");
       return;
@@ -99,40 +59,22 @@ export default function AppLayout() {
     navigate(path);
   };
 
-  // 4) 右上角下拉：个人中心 / 退出
+  // 右上角下拉：个人中心 / 退出
   const dropdownItems: MenuProps["items"] = [
     { key: "profile", label: "个人中心" },
     { type: "divider" },
     { key: "logout", label: "退出" },
   ];
 
-  const doLogout = () => {
-    Modal.confirm({
-      title: "确认退出登录？",
-      content: "退出后需要重新登录才能使用系统功能。",
-      okText: "退出",
-      cancelText: "取消",
-      okButtonProps: { danger: true },
-      onOk: () => {
-        clearToken();
-        clearUser();
-        message.success("已退出登录");
-        navigate("/login", { replace: true });
-      },
-    });
-  };
-
   const onDropdownClick: MenuProps["onClick"] = ({ key }) => {
     if (key === "profile") navigate("/profile");
-    if (key === "logout") doLogout();
+    if (key === "logout") logout(true); // ✅ 需要确认弹窗
   };
 
-  // ✅ 初始化时给 loading，避免菜单空白闪烁
   if (loading) return <Spin fullscreen />;
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      {/* ===== Header ===== */}
       <Header
         style={{
           display: "flex",
@@ -144,7 +86,6 @@ export default function AppLayout() {
           苏大计算机学院研究生会活动管理系统
         </Typography.Title>
 
-        {/* Header 右侧：真实用户信息 + 下拉 */}
         <Dropdown
           menu={{ items: dropdownItems, onClick: onDropdownClick }}
           trigger={["click"]}
@@ -156,7 +97,6 @@ export default function AppLayout() {
       </Header>
 
       <Layout>
-        {/* ===== Sider ===== */}
         <Sider width={220} theme="light">
           <Menu
             mode="inline"
@@ -167,7 +107,6 @@ export default function AppLayout() {
           />
         </Sider>
 
-        {/* ===== Content ===== */}
         <Content style={{ padding: 16 }}>
           <Outlet />
         </Content>

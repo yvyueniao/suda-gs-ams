@@ -1,25 +1,13 @@
 import { useState } from "react";
 import { Card, Form, Input, Button, Typography, message } from "antd";
-import { useNavigate, useLocation } from "react-router-dom";
 
-import { login } from "../../features/auth/api";
-import { encryptPassword } from "../../features/auth/crypto";
-import { setToken } from "../../shared/session/token";
-import { setUser } from "../../shared/session/session";
-import { ApiError } from "../../shared/http/error";
+import { useLogin } from "../../features/auth/hooks/useLogin";
 
 export default function LoginPage() {
   const [form] = Form.useForm();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
 
-  /**
-   * 如果是被 RequireAuth 重定向过来的
-   * location.state.from 会记录用户原本想访问的路径
-   * 否则默认跳转到 /enroll
-   */
-  const from = (location.state as any)?.from || "/enroll";
+  const { doLogin } = useLogin();
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -28,31 +16,14 @@ export default function LoginPage() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      // 按接口文档：password 需要加密后发送
-      const payload = {
-        username: values.username as string,
-        password: encryptPassword(values.password as string),
-      };
-
-      const resp = await login(payload);
-
-      // 保存登录态
-      setToken(resp.token);
-      setUser(resp.user);
-
-      message.success("登录成功");
-
-      // ✅ 核心改动：回跳到用户原本要去的页面
-      navigate(from, { replace: true });
+      // ✅ 页面只负责拿到用户输入，再交给 useLogin 处理
+      await doLogin(values.username as string, values.password as string);
     } catch (err: any) {
       // antd 表单校验失败：不 toast，Form.Item 会展示错误
       if (err?.errorFields) return;
 
-      if (err instanceof ApiError) {
-        message.error(err.message);
-      } else {
-        message.error("登录失败，请重试");
-      }
+      // doLogin 内部已经 message.error 过了
+      // 这里不需要重复提示
     } finally {
       setSubmitting(false);
     }
