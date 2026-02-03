@@ -2,29 +2,27 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 
-// ✅ 你的 mock 注册函数（你之前要创建的文件）
-import { setupAuthMock } from "./src/mock/auth.mock";
+import { setupMock } from "./src/mock"; // ✅ 注意：默认会解析到 src/mock/index.ts
 
 function mockPlugin(enabled: boolean): Plugin {
   return {
     name: "suda-mock-server",
-    apply: "serve", // ✅ 只在 dev server 生效
+    apply: "serve",
     configureServer(server) {
       if (!enabled) return;
 
-      // 注册 mock 路由
-      setupAuthMock(server.middlewares);
+      // ✅ 统一从 mock/index.ts 注册
+      setupMock(server.middlewares);
 
-      // 方便你在终端确认当前模式
-      console.log("\n[mock] enabled: auth mock routes registered\n");
+      console.log(
+        "\n[mock] enabled: mock routes registered via src/mock/index.ts\n",
+      );
     },
   };
 }
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-
-  // ✅ 环境变量控制：true => mock；false => proxy
   const USE_MOCK = env.VITE_USE_MOCK === "true";
 
   return {
@@ -32,8 +30,6 @@ export default defineConfig(({ command, mode }) => {
     base: command === "build" ? "/suda-gs-ams/" : "/",
 
     server: {
-      // ✅ mock 模式：不要 proxy（否则请求会被转发走，mock 接不到）
-      // ✅ real 模式：启用 proxy，转发到真实后端
       proxy: USE_MOCK
         ? undefined
         : {
