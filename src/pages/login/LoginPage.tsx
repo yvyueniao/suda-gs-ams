@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, Form, Input, Button, Typography, message } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+
 import { login } from "../../features/auth/api";
 import { encryptPassword } from "../../features/auth/crypto";
 import { setToken } from "../../shared/session/token";
@@ -10,17 +11,24 @@ import { ApiError } from "../../shared/http/error";
 export default function LoginPage() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const location = useLocation();
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * 如果是被 RequireAuth 重定向过来的
+   * location.state.from 会记录用户原本想访问的路径
+   * 否则默认跳转到 /enroll
+   */
+  const from = (location.state as any)?.from || "/enroll";
 
   const handleSubmit = async () => {
     if (submitting) return;
 
     try {
       const values = await form.validateFields();
-
       setSubmitting(true);
 
-      // ✅ 按接口文档：password 需要加密后发送（先占位，等后端规则）
+      // 按接口文档：password 需要加密后发送
       const payload = {
         username: values.username as string,
         password: encryptPassword(values.password as string),
@@ -28,15 +36,16 @@ export default function LoginPage() {
 
       const resp = await login(payload);
 
+      // 保存登录态
       setToken(resp.token);
       setUser(resp.user);
 
       message.success("登录成功");
 
-      // 你说的前端地址
-      navigate("/enroll", { replace: true });
+      // ✅ 核心改动：回跳到用户原本要去的页面
+      navigate(from, { replace: true });
     } catch (err: any) {
-      // antd 表单校验失败：不 toast，Form.Item 会显示错误
+      // antd 表单校验失败：不 toast，Form.Item 会展示错误
       if (err?.errorFields) return;
 
       if (err instanceof ApiError) {

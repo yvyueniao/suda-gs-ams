@@ -1,4 +1,4 @@
-import type { User } from "../../features/auth/model";
+import type { User } from "../../features/auth/types";
 
 const USER_KEY = "suda-gs-ams:user";
 
@@ -16,6 +16,10 @@ export function setUser(user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-export function clearSession(): void {
+/**
+ * 只清除用户信息（不包含 token）
+ * token 由 token.ts 负责
+ */
+export function clearUser(): void {
   localStorage.removeItem(USER_KEY);
 }
