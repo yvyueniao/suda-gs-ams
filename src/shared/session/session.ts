@@ -16,10 +16,6 @@ export function setUser(user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-/**
- * 只清除用户信息（不包含 token）
- * token 由 token.ts 负责
- */
 export function clearUser(): void {
   localStorage.removeItem(USER_KEY);
 }

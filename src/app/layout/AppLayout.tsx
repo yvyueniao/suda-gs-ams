@@ -1,6 +1,12 @@
+// src/app/layout/AppLayout.tsx
 import { useMemo } from "react";
-import { Layout, Menu, Typography, Dropdown, Spin, message } from "antd";
+import { Layout, Typography, Dropdown, Spin, message, Button } from "antd";
 import type { MenuProps } from "antd";
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  MenuOutlined,
+} from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import type { MenuNode } from "../../features/auth/types";
@@ -8,7 +14,13 @@ import { MENU_KEY_TO_PATH, pathToMenuKey } from "../menu/menuMap";
 import { useAppBootstrap } from "../hooks/useAppBootstrap";
 import { useLogout } from "../../features/auth/hooks/useLogout";
 
-const { Header, Sider, Content } = Layout;
+import AppNav from "./AppNav";
+import { useLayoutNav } from "../hooks/useLayoutNav";
+
+// ✅ 新增：菜单 key -> icon 的映射
+import { getMenuIcon } from "../menu/menuIconMap";
+
+const { Header, Content } = Layout;
 
 function roleLabel(role: number) {
   const map: Record<number, string> = {
@@ -24,6 +36,7 @@ function roleLabel(role: number) {
 function buildAntdMenuItems(nodes: MenuNode[]): MenuProps["items"] {
   return nodes.map((n) => ({
     key: n.key,
+    icon: getMenuIcon(n.key), // ✅ 给每一项加图标（没配置会走 fallback）
     label: n.label,
     children: n.children?.length ? buildAntdMenuItems(n.children) : undefined,
   }));
@@ -38,6 +51,16 @@ export default function AppLayout() {
 
   // ✅ 退出逻辑解耦
   const { logout } = useLogout();
+
+  // ✅ 导航交互状态解耦：是否移动端、折叠、抽屉开关
+  const {
+    isMobile,
+    collapsed,
+    drawerOpen,
+    closeDrawer,
+    toggleNav,
+    afterNavigate,
+  } = useLayoutNav({ mobileBreakpoint: "md", defaultCollapsed: false });
 
   const menuItems = useMemo(() => buildAntdMenuItems(menuTree), [menuTree]);
 
@@ -56,7 +79,11 @@ export default function AppLayout() {
       message.warning("该菜单未配置路由映射");
       return;
     }
+
     navigate(path);
+
+    // ✅ 移动端点完菜单自动收起抽屉
+    afterNavigate();
   };
 
   // 右上角下拉：个人中心 / 退出
@@ -68,10 +95,18 @@ export default function AppLayout() {
 
   const onDropdownClick: MenuProps["onClick"] = ({ key }) => {
     if (key === "profile") navigate("/profile");
-    if (key === "logout") logout(true); // ✅ 需要确认弹窗
+    if (key === "logout") logout(true);
   };
 
   if (loading) return <Spin fullscreen />;
+
+  const navBtnIcon = isMobile ? (
+    <MenuOutlined />
+  ) : collapsed ? (
+    <MenuUnfoldOutlined />
+  ) : (
+    <MenuFoldOutlined />
+  );
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -80,34 +115,62 @@ export default function AppLayout() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 12,
         }}
       >
-        <Typography.Title level={4} style={{ color: "#fff", margin: 0 }}>
-          苏大计算机学院研究生会活动管理系统
-        </Typography.Title>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Button
+            type="text"
+            aria-label="menu"
+            onClick={toggleNav}
+            icon={navBtnIcon}
+            style={{ color: "#fff" }}
+          />
+          <Typography.Title
+            level={4}
+            style={{
+              color: "#fff",
+              margin: 0,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: isMobile ? 180 : 520,
+            }}
+          >
+            苏大计算机学院研究生会活动管理系统
+          </Typography.Title>
+        </div>
 
         <Dropdown
           menu={{ items: dropdownItems, onClick: onDropdownClick }}
           trigger={["click"]}
         >
-          <Typography.Text style={{ color: "#fff", cursor: "pointer" }}>
+          <Typography.Text
+            style={{
+              color: "#fff",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
             {user?.name ?? "未登录"}（{user ? roleLabel(user.role) : "-"}）
           </Typography.Text>
         </Dropdown>
       </Header>
 
       <Layout>
-        <Sider width={220} theme="light">
-          <Menu
-            mode="inline"
-            selectedKeys={selectedKeys}
-            items={menuItems}
-            onClick={onMenuClick}
-            style={{ height: "100%" }}
-          />
-        </Sider>
+        <AppNav
+          isMobile={isMobile}
+          collapsed={collapsed}
+          menuItems={menuItems}
+          selectedKeys={selectedKeys}
+          onMenuClick={onMenuClick}
+          drawerOpen={drawerOpen}
+          onCloseDrawer={closeDrawer}
+          siderWidth={220}
+          drawerWidth={260}
+        />
 
-        <Content style={{ padding: 16 }}>
+        <Content style={{ padding: isMobile ? 12 : 16 }}>
           <Outlet />
         </Content>
       </Layout>

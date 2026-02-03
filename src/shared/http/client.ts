@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance } from "axios";
 import type { ApiResponse } from "./types";
 import { ApiError } from "./error";
 import { getToken, clearToken } from "../session/token";
-
+import { clearUser } from "../session/session";
 // ✅ 开发期走同源代理 /api
 const BASE_URL = "/api";
 
@@ -82,6 +82,7 @@ function createHttpClient(): AxiosInstance {
       // 401：token 无效/过期
       if (status === 401) {
         clearToken();
+        clearUser();
 
         // 可选：触发全局“去登录”
         try {

@@ -14,12 +14,12 @@ import { setToken } from "../../shared/session/token";
  *   - 有效：放行
  *   - 无效/过期：去 /login（并携带 from 回跳地址）
  *
- * 额外增强：
- * - 可选：校验通过后拉一次 /user/info，初始化用户信息（并可能刷新 token）
+ * 设计原则：
+ * - 是否“真登录”最终以 401 为准（http 层已 clearToken）
+ * - 这里不依赖 token 变化，避免 refresh token 导致重复校验
  */
 export default function RequireAuth() {
   const location = useLocation();
-  const token = getToken();
 
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
@@ -28,7 +28,10 @@ export default function RequireAuth() {
     let alive = true;
 
     async function run() {
-      // 1) 本地无 token：直接判未登录
+      // ✅ 每次校验时重新读取 token（不要作为 effect 依赖）
+      const token = getToken();
+
+      // 1) 本地无 token：直接未登录
       if (!token) {
         if (!alive) return;
         setAuthed(false);
@@ -37,19 +40,23 @@ export default function RequireAuth() {
       }
 
       try {
-        // 2) 先用 /token 校验 token 是否有效（轻量）
+        // 2) 校验 token 是否有效
         await verifyToken();
 
-        // 3) 可选增强：拉取 /user/info（初始化用户信息 + 可能刷新 token）
-        //    如果你不想每次进入都拉，可把这段放到 AppLayout 初始化里
+        // 3) 拉用户信息（可能刷新 token）
         const info = await getUserInfo();
         setUser(info.user);
         if (info.token) setToken(info.token);
 
         if (!alive) return;
         setAuthed(true);
-      } catch (e) {
-        // axios 响应拦截器里你已经在 401 时 clearToken() 了
+      } catch (e: any) {
+        /**
+         * ⚠️ 注意：
+         * - 401 / UNAUTHORIZED：http 层已经 clearToken + clearUser
+         * - 这里只负责把 authed 设为 false
+         * - 网络错误 / 500 是否要踢登录，由你以后决定（现在先统一 false）
+         */
         if (!alive) return;
         setAuthed(false);
       } finally {
@@ -63,19 +70,19 @@ export default function RequireAuth() {
     return () => {
       alive = false;
     };
-  }, [token]);
+  }, []); // ✅ 不依赖 token，避免 refresh token 导致重复执行
 
-  // 校验中：给个全屏 loading，避免页面闪一下又被踢回登录
+  // 校验中：全屏 loading，防止页面闪一下
   if (checking) {
     return <Spin fullscreen />;
   }
 
-  // 未通过：跳登录 + 记录原路径（登录成功后回跳）
+  // 未通过：跳登录 + 记录回跳地址
   if (!authed) {
     const from = location.pathname + location.search;
     return <Navigate to="/login" replace state={{ from }} />;
   }
 
-  // 通过：渲染子路由
+  // 已登录：放行子路由
   return <Outlet />;
 }
