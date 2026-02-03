@@ -141,7 +141,7 @@ export default function AppLayout() {
         }}
       >
         <Typography.Title level={4} style={{ color: "#fff", margin: 0 }}>
-          SUDA GS AMS
+          苏大计算机学院研究生会活动管理系统
         </Typography.Title>
 
         {/* Header 右侧：真实用户信息 + 下拉 */}
