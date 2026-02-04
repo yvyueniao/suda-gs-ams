@@ -1,50 +1,34 @@
-# React + TypeScript + Vite
+本项目（苏州大学计算机学院研究生会活动管理系统前端）以“真实后台系统工程化落地”为目标，整体采用 分层清晰、职责隔离 的架构设计：将代码划分为 应用层（app）/ 页面层（pages）/ 业务领域层（features）/ 基础设施层（shared），实现“页面只管展示、Hook 负责编排、领域层承接业务、shared 统一基础能力”的组织方式，便于持续扩展与多人协作。
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+在权限体系上，项目完成了可上线级别的权限闭环：
 
-Currently, two official plugins are available:
+菜单级权限：由后端按角色返回可见菜单树（menuList），前端只负责渲染，避免菜单规则散落在前端；
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+页面级权限：基于 React Router 实现 RequireAuth / RequireRole / OnlyGuest / RootRedirect 等路由守卫，覆盖“未登录跳转、已登录禁入登录页、根路径智能分流、无权限跳 403”，并配套 routeAccess.ts 将权限规则集中管理，防止魔法数组与逻辑分散；
 
-## Expanding the ESLint configuration
+会话与登录态管理：token/user 统一落库与清理（shared/session），并在拦截器与守卫中形成兜底链路，确保“手输 URL/刷新/过期 token”等场景仍然行为一致。
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+在网络层与错误治理上，项目实现了统一请求封装与统一错误处理：
 
-- Configure the top-level `parserOptions` property like this:
+基于 axios 封装 http client + request<T>，实现 统一 baseURL、超时、请求头配置；
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+请求拦截自动注入 token（按后端约定写入 Authorization）；
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+响应拦截统一解析后端“统一壳（code/msg/data）”，将业务失败转为 ApiError，并对 401/403/4xx/5xx/超时/断网 分类处理；
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+支持 setOnUnauthorized 这种解耦式回调，避免在 http 层直接耦合路由，实现“401 自动清会话 + 全局触发去登录”的可插拔机制。
+这使得业务页面与 hooks 层只需要处理“成功数据/异常对象”，不再重复写状态码判断与提示逻辑。
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+在 App 启动编排上，项目通过 useAppBootstrap 完成 应用初始化流程标准化：启动时统一拉取 userInfo + menuList，维护 loading/error 状态，并遵循“401/403 不额外 toast、交给守卫跳转更干净”的交互策略；Layout 仅负责渲染与交互，业务编排集中在 hook，保证 UI 层保持轻量、逻辑可复用。
+
+在导航系统设计上，项目实现了菜单与路由解耦：通过 menuMap.ts 完成 “后端 menuKey → 前端 path” 映射与 “pathname → menuKey” 高亮映射，配合 menuIconMap.tsx 完成图标映射，实现“后端菜单结构可变、前端路由可控、刷新仍可正确高亮”的稳定导航体验。
+
+在开发效率与可测试性上，项目内置本地 Mock 后端 + 故障注入体系：
+
+mock 模块按领域拆分（mock/modules/auth.mock.ts），与真实接口结构一致；
+
+core/faults 支持 延迟、随机失败、空态 等故障注入（可通过环境变量控制），用于系统性验证 loading/空态/错误态/重试体验；
+
+通过 .env 与 vite.config.ts 支持 mock 与真实后端的切换，保证“前端可独立开发，接入后端时成本低”。
+
+总体而言，该项目不仅实现了功能页面，更落地了后台系统常见的工程能力：路由守卫与权限闭环、统一请求与错误治理、会话管理、App 启动编排、菜单-路由解耦、Mock 与故障注入、环境切换，保证结构稳定、逻辑集中、可维护、可扩展，后续可按业务域持续迭代而无需推翻重构。
