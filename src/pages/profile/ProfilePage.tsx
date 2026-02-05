@@ -12,11 +12,13 @@ import { UserOutlined } from "@ant-design/icons";
 import type { MyActivityItem, UserInfo } from "../../features/profile/types";
 import { getMyActivities, getUserInfo } from "../../features/profile/api";
 
-import { TableToolbar } from "../../shared/components/table/TableToolbar";
-import { SmartTable } from "../../shared/components/table/SmartTable";
-import { useTableQuery } from "../../shared/components/table/useTableQuery";
-import { useTableData } from "../../shared/components/table/useTableData";
-import type { TableQuery } from "../../shared/components/table/types";
+import {
+  TableToolbar,
+  SmartTable,
+  useTableQuery,
+  useTableData,
+  type TableQuery,
+} from "../../shared/components/table";
 
 const AVATAR_URL = "/avatar-default.png";
 
@@ -142,7 +144,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ padding: 12, maxWidth: 1800, margin: "0 auto" }}>
       <Card style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           <Avatar size={96} src={AVATAR_URL} icon={<UserOutlined />} />
