@@ -4,6 +4,7 @@
  * - 时间列：支持排序（前端排序）
  * - 状态列：支持筛选（前端筛选）
  * - ✅ 当前页：批量选择 + 全选（Table 自带能力，受控 selectedRowKeys）
+ * - ✅ 操作列：固定在最右侧（避免看不到）
  *
  * ✅ 修复点：
  * - 筛选“点确定没反应”的根因：你把 statusFilter 作为 filteredValue 受控了，
@@ -21,6 +22,8 @@ import {
   Spin,
   Tag,
   message,
+  Space,
+  Popconfirm,
 } from "antd";
 import type { DescriptionsProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -146,6 +149,7 @@ export default function ProfilePage() {
         exportName: "organizer",
       },
       { key: "status", title: "状态", width: 110, exportName: "status" },
+      // ✅ 操作列一般不导出，也不放进 presets
     ],
     [],
   );
@@ -161,10 +165,8 @@ export default function ProfilePage() {
   const [statusFilter, setStatusFilter] = useState<StatusKey[] | null>(null);
 
   /** ================= ✅ 当前页选择（批量选择 + 全选） ================= */
-  // 说明：这里我们只做“当前页”的勾选，翻页就清空，避免误以为跨页都选中了。
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // 翻页/改页大小/搜索/筛选变化时，清空选择（当前页选择的合理默认行为）
   useEffect(() => {
     setSelectedRowKeys([]);
   }, [query.page, query.pageSize, query.keyword, statusFilter]);
@@ -173,7 +175,7 @@ export default function ProfilePage() {
     return {
       selectedRowKeys,
       onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
-      preserveSelectedRowKeys: false, // 当前页即可
+      preserveSelectedRowKeys: false,
     };
   }, [selectedRowKeys]);
 
@@ -218,7 +220,24 @@ export default function ProfilePage() {
     }
   }, [applyStatusFilterToRows, columnPresets, exportAll, visibleKeys]);
 
-  /** ================= antd columns（真正渲染用） ================= */
+  /** ================= 操作列事件（占位） ================= */
+  const handleDetail = useCallback((row: MyActivityItem) => {
+    console.log("detail:", row);
+    message.info(`查看详情：${row.title}`);
+  }, []);
+
+  const handleEdit = useCallback((row: MyActivityItem) => {
+    console.log("edit:", row);
+    message.info(`修改：${row.title}`);
+  }, []);
+
+  const handleDelete = useCallback(async (row: MyActivityItem) => {
+    console.log("delete:", row);
+    message.success(`已删除（示例）：${row.title}`);
+    // TODO: 对接真实删除接口后：await api.delete(row.id); reload();
+  }, []);
+
+  /** ================= antd columns ================= */
   const rawColumns: ColumnsType<MyActivityItem> = useMemo(
     () => [
       {
@@ -234,8 +253,6 @@ export default function ProfilePage() {
           </div>
         ),
       },
-
-      // ✅ 时间列：支持排序（前端排序）
       {
         title: "时间",
         dataIndex: "timeRange",
@@ -246,9 +263,7 @@ export default function ProfilePage() {
           parseTimeRangeStartMs(b.timeRange),
         sortDirections: ["ascend", "descend"],
       },
-
       { title: "地点", dataIndex: "location", key: "location", width: 200 },
-
       {
         title: "主办方",
         dataIndex: "organizer",
@@ -257,20 +272,52 @@ export default function ProfilePage() {
         render: (v: string) => <span style={{ color: "#666" }}>{v}</span>,
       },
 
-      // ✅ 状态列：支持筛选（受控 + 前端过滤）
+      // ✅ 关键改动：状态列不再 fixed，把“最右固定位置”留给操作列
       {
         title: "状态",
         dataIndex: "status",
         key: "status",
         width: 110,
-        fixed: "right",
         filters: STATUS_OPTIONS.map((x) => ({ text: x.label, value: x.value })),
         filteredValue: statusFilter ?? null,
         onFilter: (value, record) => record.status === value,
         render: (v: string) => <Tag>{statusLabel(v)}</Tag>,
       },
+
+      // ✅ 操作列固定在最右侧
+      {
+        title: "操作",
+        key: "actions",
+        width: 220,
+        fixed: "right",
+        render: (_, record) => (
+          <Space size={8}>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => handleDetail(record)}
+            >
+              详情
+            </Button>
+            <Button type="link" size="small" onClick={() => handleEdit(record)}>
+              修改
+            </Button>
+            <Popconfirm
+              title="确认删除？"
+              description="删除后不可恢复"
+              okText="删除"
+              cancelText="取消"
+              onConfirm={() => void handleDelete(record)}
+            >
+              <Button type="link" size="small" danger>
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
+        ),
+      },
     ],
-    [statusFilter],
+    [handleDelete, handleDetail, handleEdit, statusFilter],
   );
 
   const columns = useMemo(
@@ -351,9 +398,8 @@ export default function ProfilePage() {
           onReset={() => {
             reset();
             setStatusFilter(null);
-            setSelectedRowKeys([]); // ✅ 重置时也清空选择
+            setSelectedRowKeys([]);
           }}
-          // ✅ 展示“已选 X 条 + 清空”
           selectedCount={selectedRowKeys.length}
           onClearSelection={() => setSelectedRowKeys([])}
           right={
@@ -388,7 +434,9 @@ export default function ProfilePage() {
           loading={listLoading}
           error={listError}
           emptyText="暂无报名记录"
-          rowSelection={rowSelection} // ✅ 当前页批量选择/全选（Table 自带全选）
+          rowSelection={rowSelection}
+          // ✅ 关键：强制横向滚动，确保右侧 fixed 的操作列永远能看到
+          scroll={{ x: 1100 }}
           onQueryChange={(next) => {
             const nextPage =
               typeof next.page === "number" ? next.page : query.page;
@@ -400,15 +448,13 @@ export default function ProfilePage() {
             if (nextPage === query.page && nextPageSize === query.pageSize)
               return;
             setPage(nextPage, nextPageSize);
-            setSelectedRowKeys([]); // ✅ 翻页时清空（当前页选择）
+            setSelectedRowKeys([]);
           }}
-          // ✅ 关键：同步筛选值（让 filteredValue 真正更新，从而触发筛选）
           onFiltersChange={(filters) => {
             const next = readStatusKeysFromFilters(filters?.status);
             setStatusFilter(next);
-            setSelectedRowKeys([]); // ✅ 筛选变化清空选择
+            setSelectedRowKeys([]);
 
-            // ✅ 体验更好：筛选后回到第一页（可选，但建议）
             if (next) setPage(1, query.pageSize);
           }}
         />

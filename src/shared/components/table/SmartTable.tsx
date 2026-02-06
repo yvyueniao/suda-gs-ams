@@ -51,6 +51,9 @@ export type SmartTableProps<
 
   /** 透传给 antd Table 的 tableLayout（默认 auto；开启拖拽时建议 fixed） */
   tableLayout?: TableProps<T>["tableLayout"];
+
+  /** ✅ 新增：透传 antd Table 的 scroll（用于固定列/横向滚动） */
+  scroll?: TableProps<T>["scroll"];
 };
 
 function getErrorMessage(e: unknown) {
@@ -112,6 +115,9 @@ export function SmartTable<
     enableColumnResize = false,
     minColumnWidth = 80,
     tableLayout,
+
+    // ✅ 新增：外部可控 scroll
+    scroll,
   } = props;
 
   const mergedPagination: TablePaginationConfig = {
@@ -155,6 +161,14 @@ export function SmartTable<
     return enableColumnResize ? "fixed" : "auto";
   }, [enableColumnResize, tableLayout]);
 
+  // ✅ 默认 scroll：保证有横向滚动能力，配合 fixed="right" 才稳定
+  const resolvedScroll = useMemo<TableProps<T>["scroll"]>(() => {
+    // 外部传了就用外部（例如 { x: 1100 }）
+    if (scroll) return scroll;
+    // 否则默认 max-content（列多就自动横向滚动）
+    return { x: "max-content" };
+  }, [scroll]);
+
   return (
     <div className={className} style={style}>
       {error ? (
@@ -174,7 +188,7 @@ export function SmartTable<
         rowSelection={rowSelection}
         pagination={mergedPagination}
         onChange={handleChange}
-        scroll={{ x: "max-content" }}
+        scroll={resolvedScroll}
         locale={{ emptyText }}
       />
     </div>

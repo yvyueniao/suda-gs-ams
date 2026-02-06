@@ -14,6 +14,11 @@
  * - 默认隐藏来自 presets.hidden
  * - 持久化优先级：persisted > presets 默认
  * - “列顺序/宽度”先支持最小可用：宽度从 persisted 读取，顺序先按 presets 顺序（后续可扩展）
+ *
+ * ✅ 修复：
+ * - 之前 applyPresetsToAntdColumns 会“无差别按 visibleKeys 过滤所有 string key 列”，
+ *   导致不在 presets 体系里的列（例如操作列 key="actions"）永远被过滤掉。
+ * - 现在只过滤“在 presets 里的列”；不在 presets 的列永远保留（常见：操作列/序号列等）。
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -23,11 +28,7 @@ import type {
   PersistedTableColumnState,
   PersistedColumnState,
 } from "./columnPersist";
-import {
-  createDefaultColumnState,
-  loadColumnState,
-  saveColumnState,
-} from "./columnPersist";
+import { loadColumnState, saveColumnState } from "./columnPersist";
 
 export type UseColumnPrefsOptions = {
   /**
@@ -49,8 +50,8 @@ export type UseColumnPrefsResult<T extends object> = {
 
   /**
    * 将 presets 应用到 antd columns
-   * - 会根据 visibleKeys 过滤
-   * - 会根据 persisted width 赋值（若 antd column 未显式写 width）
+   * - 会根据 visibleKeys 过滤（只过滤 presets 里存在的列）
+   * - 会根据 persisted width 赋值（若 antd column 未显式写 width；仅对 presets 列生效）
    */
   applyPresetsToAntdColumns: (columns: ColumnsType<T>) => ColumnsType<T>;
 };
@@ -174,21 +175,36 @@ export function useColumnPrefs<T extends object>(
 
   const applyPresetsToAntdColumns = useCallback(
     (columns: ColumnsType<T>): ColumnsType<T> => {
-      // 1) 按 visibleKeys 过滤（用 column.key 作为主键；没有 key 则尝试 dataIndex）
+      /**
+       * ✅ 关键修复点：
+       * - 只过滤 “presets 体系内的列”
+       * - 不在 presets 里的列（例如 actions 操作列）永远保留
+       */
       const visibleSet = new Set(visibleKeys);
+      const presetKeySet = new Set(allKeys);
 
+      // 1) 过滤：仅对 presets 列生效
       const filtered = (columns ?? []).filter((col: any) => {
         const k: unknown = col?.key ?? col?.dataIndex;
-        if (typeof k === "string") return visibleSet.has(k);
-        // dataIndex 可能是 string[]，这里不强做映射，避免误伤
-        return true;
+
+        // dataIndex 可能是 string[]/number 等：不强做映射，直接保留，避免误伤
+        if (typeof k !== "string") return true;
+
+        // ✅ 不在 presets 中：认为是“额外列”（常见：操作列/序号列），永远保留
+        if (!presetKeySet.has(k)) return true;
+
+        // ✅ 在 presets 中：才受 visibleKeys 控制
+        return visibleSet.has(k);
       });
 
-      // 2) 把 persisted width 应用到列（只在 col.width 未显式指定时）
+      // 2) 应用 persisted width：仅对 presets 列生效（避免给 actions 等额外列乱套宽度）
       const withWidth = filtered.map((col: any) => {
         const k: unknown = col?.key ?? col?.dataIndex;
         const keyStr = typeof k === "string" ? k : undefined;
         if (!keyStr) return col;
+
+        // ✅ 只给 presets 列应用宽度
+        if (!presetKeySet.has(keyStr)) return col;
 
         const persisted = persistedMap.get(keyStr);
         if (!persisted?.width) return col;
@@ -199,7 +215,7 @@ export function useColumnPrefs<T extends object>(
 
       return withWidth as ColumnsType<T>;
     },
-    [persistedMap, visibleKeys],
+    [allKeys, persistedMap, visibleKeys],
   );
 
   return {
