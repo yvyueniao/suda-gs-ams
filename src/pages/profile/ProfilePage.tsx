@@ -3,6 +3,7 @@
  * ProfilePage（表格版 · 接入：列设置(隐藏列) + 拖拽列宽持久化 + 导出（全量/跨页/继承筛选搜索））
  * - 时间列：支持排序（前端排序）
  * - 状态列：支持筛选（前端筛选）
+ * - ✅ 当前页：批量选择 + 全选（Table 自带能力，受控 selectedRowKeys）
  *
  * ✅ 修复点：
  * - 筛选“点确定没反应”的根因：你把 statusFilter 作为 filteredValue 受控了，
@@ -158,6 +159,23 @@ export default function ProfilePage() {
 
   /** ================= 状态筛选（受控 filters） ================= */
   const [statusFilter, setStatusFilter] = useState<StatusKey[] | null>(null);
+
+  /** ================= ✅ 当前页选择（批量选择 + 全选） ================= */
+  // 说明：这里我们只做“当前页”的勾选，翻页就清空，避免误以为跨页都选中了。
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // 翻页/改页大小/搜索/筛选变化时，清空选择（当前页选择的合理默认行为）
+  useEffect(() => {
+    setSelectedRowKeys([]);
+  }, [query.page, query.pageSize, query.keyword, statusFilter]);
+
+  const rowSelection = useMemo(() => {
+    return {
+      selectedRowKeys,
+      onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+      preserveSelectedRowKeys: false, // 当前页即可
+    };
+  }, [selectedRowKeys]);
 
   /** ================= 导出（前端跨页拉全量 + CSV 下载） ================= */
   const { exportAll, exporting } = useTableExport<MyActivityItem>(
@@ -333,7 +351,11 @@ export default function ProfilePage() {
           onReset={() => {
             reset();
             setStatusFilter(null);
+            setSelectedRowKeys([]); // ✅ 重置时也清空选择
           }}
+          // ✅ 展示“已选 X 条 + 清空”
+          selectedCount={selectedRowKeys.length}
+          onClearSelection={() => setSelectedRowKeys([])}
           right={
             <>
               <Button
@@ -366,6 +388,7 @@ export default function ProfilePage() {
           loading={listLoading}
           error={listError}
           emptyText="暂无报名记录"
+          rowSelection={rowSelection} // ✅ 当前页批量选择/全选（Table 自带全选）
           onQueryChange={(next) => {
             const nextPage =
               typeof next.page === "number" ? next.page : query.page;
@@ -377,11 +400,13 @@ export default function ProfilePage() {
             if (nextPage === query.page && nextPageSize === query.pageSize)
               return;
             setPage(nextPage, nextPageSize);
+            setSelectedRowKeys([]); // ✅ 翻页时清空（当前页选择）
           }}
           // ✅ 关键：同步筛选值（让 filteredValue 真正更新，从而触发筛选）
           onFiltersChange={(filters) => {
             const next = readStatusKeysFromFilters(filters?.status);
             setStatusFilter(next);
+            setSelectedRowKeys([]); // ✅ 筛选变化清空选择
 
             // ✅ 体验更好：筛选后回到第一页（可选，但建议）
             if (next) setPage(1, query.pageSize);
