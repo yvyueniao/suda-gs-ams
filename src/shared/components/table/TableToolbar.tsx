@@ -45,6 +45,15 @@ export type TableToolbarProps = {
   /** 是否显示搜索框 */
   showSearch?: boolean;
 
+  /** 搜索框占位文案 */
+  searchPlaceholder?: string;
+
+  /** 是否禁用搜索框 */
+  searchDisabled?: boolean;
+
+  /** 搜索框宽度（默认 200） */
+  searchWidth?: number;
+
   /** className / style 透传 */
   className?: string;
   style?: React.CSSProperties;
@@ -59,6 +68,9 @@ export function TableToolbar(props: TableToolbarProps) {
     left,
     right,
     showSearch = false,
+    searchPlaceholder = "请输入关键词",
+    searchDisabled = false,
+    searchWidth = 200,
     className,
     style,
   } = props;
@@ -86,14 +98,15 @@ export function TableToolbar(props: TableToolbarProps) {
         {showSearch && (
           <Input
             allowClear
-            placeholder="请输入关键词"
+            disabled={searchDisabled}
+            placeholder={searchPlaceholder}
             prefix={<SearchOutlined />}
             value={keyword}
             onChange={(e) => onKeywordChange?.(e.target.value)}
             onPressEnter={(e) =>
               onKeywordChange?.((e.target as HTMLInputElement).value)
             }
-            style={{ width: 200 }}
+            style={{ width: searchWidth }}
           />
         )}
 

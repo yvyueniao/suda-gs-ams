@@ -7,9 +7,19 @@
  * - 这里导出：
  *   1) 通用类型（types.ts）
  *   2) 常量（constants.ts）
- *   3) hooks（useTableQuery / useTableData / useColumnPrefs / useResizableColumns）
- *   4) 组件（SmartTable / TableToolbar / ColumnSettings）
- *   5) 列持久化工具（columnPersist）
+ *   3) hooks
+ *      - useTableQuery
+ *      - useTableData
+ *      - useColumnPrefs
+ *      - useResizableColumns
+ *      - useTableExport        ✅ 新增
+ *   4) 组件
+ *      - SmartTable
+ *      - TableToolbar
+ *      - ColumnSettings
+ *   5) 工具
+ *      - 列持久化（columnPersist）
+ *      - 导出工具（exportCsv） ✅ 新增
  *
  * 注意：
  * - 本模块不绑定后端字段名（records / pageNum / code 等都不应出现在 table 目录）
@@ -52,20 +62,26 @@ export { useTableData } from "./useTableData";
 export { useColumnPrefs } from "./useColumnPrefs";
 export { useResizableColumns } from "./useResizableColumns";
 
+// ✅ 导出相关 hook
+export { useTableExport } from "./useTableExport";
+
 // ====================
 // components
 // ====================
 export { SmartTable } from "./SmartTable";
 export { TableToolbar } from "./TableToolbar";
-
-// ✅ 新增：列设置组件导出（你需要保证文件存在：./ColumnSettings）
 export { ColumnSettings } from "./ColumnSettings";
 
 // ====================
-// utils (column persistence)
+// utils
 // ====================
+
+// 列持久化
 export {
   loadColumnState,
   saveColumnState,
   getColumnPersistKey,
 } from "./columnPersist";
+
+// ✅ 导出工具（CSV）
+export { exportCsv } from "./exportCsv";

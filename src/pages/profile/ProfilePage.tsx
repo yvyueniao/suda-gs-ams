@@ -1,13 +1,30 @@
 // src/pages/profile/ProfilePage.tsx
 /**
- * ProfilePage（表格版 · 接入：列设置(隐藏列) + 拖拽列宽持久化）
+ * ProfilePage（表格版 · 接入：列设置(隐藏列) + 拖拽列宽持久化 + 导出（全量/跨页/继承筛选搜索））
+ * - 时间列：支持排序（前端排序）
+ * - 状态列：支持筛选（前端筛选）
+ *
+ * ✅ 修复点：
+ * - 筛选“点确定没反应”的根因：你把 statusFilter 作为 filteredValue 受控了，
+ *   但 SmartTable 之前没有把 Table 的 filters 变化抛出来更新 statusFilter。
+ * - 现在通过 SmartTable.onFiltersChange 把 filters.status 同步到 statusFilter。
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Avatar, Card, Descriptions, Empty, Spin, Tag } from "antd";
+import {
+  Avatar,
+  Button,
+  Card,
+  Descriptions,
+  Empty,
+  Spin,
+  Tag,
+  message,
+} from "antd";
 import type { DescriptionsProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { UserOutlined } from "@ant-design/icons";
+import { DownloadOutlined, UserOutlined } from "@ant-design/icons";
+import type { FilterValue } from "antd/es/table/interface";
 
 import type { MyActivityItem, UserInfo } from "../../features/profile/types";
 import { getMyActivities, getUserInfo } from "../../features/profile/api";
@@ -18,14 +35,56 @@ import {
   useTableQuery,
   useTableData,
   useColumnPrefs,
+  useTableExport,
+  exportCsv,
   type TableQuery,
   type TableColumnPreset,
-  // ✅ 建议你把 ColumnSettings 也从 table/index 导出（更干净）
   ColumnSettings,
 } from "../../shared/components/table";
 
 const AVATAR_URL = "/avatar-default.png";
 const TABLE_BIZ_KEY = "profile.myActivities";
+
+type StatusKey = "pending" | "signed" | "attended" | "cancelled";
+const STATUS_OPTIONS: { value: StatusKey; label: string }[] = [
+  { value: "pending", label: "未开始" },
+  { value: "signed", label: "已报名" },
+  { value: "attended", label: "已完成" },
+  { value: "cancelled", label: "已取消" },
+];
+
+function isStatusKey(x: any): x is StatusKey {
+  return STATUS_OPTIONS.some((s) => s.value === x);
+}
+
+function readStatusKeysFromFilters(v: FilterValue | null | undefined) {
+  if (!v) return null;
+  const arr = Array.isArray(v) ? v : [v];
+  const next = arr.filter(isStatusKey);
+  return next.length ? next : null;
+}
+
+// 尽量从 timeRange 里“猜”一个可排序的时间戳（你后端如果有 startTime 字段，建议直接用它）
+function parseTimeRangeStartMs(timeRange: string | undefined): number {
+  if (!timeRange) return 0;
+
+  const m = String(timeRange).match(
+    /\d{4}[-/]\d{1,2}[-/]\d{1,2}[^0-9]?\d{0,2}:?\d{0,2}/,
+  );
+  if (m?.[0]) {
+    const s = m[0].replace(/\//g, "-");
+    const t = Date.parse(s);
+    if (!Number.isNaN(t)) return t;
+  }
+
+  const d = String(timeRange).match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/);
+  if (d?.[0]) {
+    const t = Date.parse(d[0].replace(/\//g, "-"));
+    if (!Number.isNaN(t)) return t;
+  }
+
+  return 0;
+}
 
 export default function ProfilePage() {
   /** ================= 用户信息（真实接口） ================= */
@@ -56,6 +115,7 @@ export default function ProfilePage() {
     initial: { page: 1, pageSize: 10, keyword: "" },
   });
 
+  // ✅ fetcher 必须 useCallback，保证引用稳定（导出也复用它）
   const fetchMyActivities = useCallback(async (q: TableQuery<any>) => {
     return getMyActivities({
       page: q.page,
@@ -72,7 +132,7 @@ export default function ProfilePage() {
     reload,
   } = useTableData<MyActivityItem>(query, fetchMyActivities);
 
-  /** ================= 列预设（用于列设置/隐藏列） ================= */
+  /** ================= 列预设（用于列设置/隐藏列/导出列） ================= */
   const columnPresets: TableColumnPreset<MyActivityItem>[] = useMemo(
     () => [
       { key: "title", title: "标题", exportName: "title" },
@@ -96,6 +156,50 @@ export default function ProfilePage() {
     applyPresetsToAntdColumns,
   } = useColumnPrefs<MyActivityItem>(TABLE_BIZ_KEY, columnPresets);
 
+  /** ================= 状态筛选（受控 filters） ================= */
+  const [statusFilter, setStatusFilter] = useState<StatusKey[] | null>(null);
+
+  /** ================= 导出（前端跨页拉全量 + CSV 下载） ================= */
+  const { exportAll, exporting } = useTableExport<MyActivityItem>(
+    query,
+    fetchMyActivities,
+    {
+      pageSize: 500,
+      maxRows: 20000,
+    },
+  );
+
+  const applyStatusFilterToRows = useCallback(
+    (rows: MyActivityItem[]) => {
+      if (!statusFilter || statusFilter.length === 0) return rows;
+      const set = new Set(statusFilter);
+      return rows.filter((r) => set.has(r.status as any));
+    },
+    [statusFilter],
+  );
+
+  const handleExport = useCallback(async () => {
+    try {
+      const rowsAll = await exportAll();
+      const rows = applyStatusFilterToRows(rowsAll);
+
+      exportCsv({
+        filename: "我的活动.csv",
+        rows,
+        presets: columnPresets,
+        visibleKeys,
+        mapRow: (row) => ({
+          ...row,
+          status: statusLabel(row.status),
+        }),
+      });
+
+      message.success(`已导出 ${rows.length} 条`);
+    } catch {
+      message.error("导出失败，请稍后重试");
+    }
+  }, [applyStatusFilterToRows, columnPresets, exportAll, visibleKeys]);
+
   /** ================= antd columns（真正渲染用） ================= */
   const rawColumns: ColumnsType<MyActivityItem> = useMemo(
     () => [
@@ -112,8 +216,21 @@ export default function ProfilePage() {
           </div>
         ),
       },
-      { title: "时间", dataIndex: "timeRange", key: "timeRange", width: 180 },
+
+      // ✅ 时间列：支持排序（前端排序）
+      {
+        title: "时间",
+        dataIndex: "timeRange",
+        key: "timeRange",
+        width: 180,
+        sorter: (a, b) =>
+          parseTimeRangeStartMs(a.timeRange) -
+          parseTimeRangeStartMs(b.timeRange),
+        sortDirections: ["ascend", "descend"],
+      },
+
       { title: "地点", dataIndex: "location", key: "location", width: 200 },
+
       {
         title: "主办方",
         dataIndex: "organizer",
@@ -121,16 +238,21 @@ export default function ProfilePage() {
         width: 180,
         render: (v: string) => <span style={{ color: "#666" }}>{v}</span>,
       },
+
+      // ✅ 状态列：支持筛选（受控 + 前端过滤）
       {
         title: "状态",
         dataIndex: "status",
         key: "status",
         width: 110,
         fixed: "right",
+        filters: STATUS_OPTIONS.map((x) => ({ text: x.label, value: x.value })),
+        filteredValue: statusFilter ?? null,
+        onFilter: (value, record) => record.status === value,
         render: (v: string) => <Tag>{statusLabel(v)}</Tag>,
       },
     ],
-    [],
+    [statusFilter],
   );
 
   const columns = useMemo(
@@ -208,14 +330,27 @@ export default function ProfilePage() {
           keyword={query.keyword}
           onKeywordChange={(kw) => setKeyword(kw ?? "")}
           onRefresh={reload}
-          onReset={reset}
+          onReset={() => {
+            reset();
+            setStatusFilter(null);
+          }}
           right={
-            <ColumnSettings<MyActivityItem>
-              presets={columnPresets}
-              visibleKeys={visibleKeys}
-              onChange={setVisibleKeys}
-              onReset={resetToDefault}
-            />
+            <>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleExport}
+                loading={exporting}
+              >
+                导出
+              </Button>
+
+              <ColumnSettings<MyActivityItem>
+                presets={columnPresets}
+                visibleKeys={visibleKeys}
+                onChange={setVisibleKeys}
+                onReset={resetToDefault}
+              />
+            </>
           }
         />
 
@@ -242,6 +377,14 @@ export default function ProfilePage() {
             if (nextPage === query.page && nextPageSize === query.pageSize)
               return;
             setPage(nextPage, nextPageSize);
+          }}
+          // ✅ 关键：同步筛选值（让 filteredValue 真正更新，从而触发筛选）
+          onFiltersChange={(filters) => {
+            const next = readStatusKeysFromFilters(filters?.status);
+            setStatusFilter(next);
+
+            // ✅ 体验更好：筛选后回到第一页（可选，但建议）
+            if (next) setPage(1, query.pageSize);
           }}
         />
       </Card>
