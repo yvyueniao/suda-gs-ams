@@ -1,6 +1,6 @@
 // src/pages/profile/ProfilePage.tsx
 /**
- * ProfilePage（表格版 · 修复无限请求：稳定 fetcher 引用）
+ * ProfilePage（表格版 · 接入：列设置(隐藏列) + 拖拽列宽持久化）
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,10 +17,15 @@ import {
   SmartTable,
   useTableQuery,
   useTableData,
+  useColumnPrefs,
   type TableQuery,
+  type TableColumnPreset,
+  // ✅ 建议你把 ColumnSettings 也从 table/index 导出（更干净）
+  ColumnSettings,
 } from "../../shared/components/table";
 
 const AVATAR_URL = "/avatar-default.png";
+const TABLE_BIZ_KEY = "profile.myActivities";
 
 export default function ProfilePage() {
   /** ================= 用户信息（真实接口） ================= */
@@ -51,17 +56,13 @@ export default function ProfilePage() {
     initial: { page: 1, pageSize: 10, keyword: "" },
   });
 
-  // ✅ 关键修复：fetcher 必须 useCallback，保证引用稳定
-  const fetchMyActivities = useCallback(
-    async (q: TableQuery<any>) => {
-      return getMyActivities({
-        page: q.page,
-        pageSize: q.pageSize,
-        keyword: q.keyword,
-      });
-    },
-    [], // getMyActivities 是 module function，稳定；这里保持空依赖
-  );
+  const fetchMyActivities = useCallback(async (q: TableQuery<any>) => {
+    return getMyActivities({
+      page: q.page,
+      pageSize: q.pageSize,
+      keyword: q.keyword,
+    });
+  }, []);
 
   const {
     list: activities,
@@ -71,25 +72,32 @@ export default function ProfilePage() {
     reload,
   } = useTableData<MyActivityItem>(query, fetchMyActivities);
 
-  /** ============== 描述信息（基础信息卡） ============== */
-  const infoItems: DescriptionsProps["items"] = useMemo(() => {
-    if (!user) return [];
-    return [
-      { label: "姓名", children: user.name },
-      { label: "学号", children: user.username },
-      { label: "邮箱", children: user.email },
-      { label: "专业", children: user.major },
-      { label: "年级", children: user.grade },
-      { label: "部门", children: user.department ?? "—" },
-      { label: "创建时间", children: user.createTime },
-      { label: "上次登录", children: user.lastLoginTime },
-    ];
-  }, [user]);
+  /** ================= 列预设（用于列设置/隐藏列） ================= */
+  const columnPresets: TableColumnPreset<MyActivityItem>[] = useMemo(
+    () => [
+      { key: "title", title: "标题", exportName: "title" },
+      { key: "timeRange", title: "时间", width: 180, exportName: "timeRange" },
+      { key: "location", title: "地点", width: 200, exportName: "location" },
+      {
+        key: "organizer",
+        title: "主办方",
+        width: 180,
+        exportName: "organizer",
+      },
+      { key: "status", title: "状态", width: 110, exportName: "status" },
+    ],
+    [],
+  );
 
-  const serviceScore = user?.serviceScore ?? 0;
-  const lectureCount = user?.lectureNum ?? 0;
+  const {
+    visibleKeys,
+    setVisibleKeys,
+    resetToDefault,
+    applyPresetsToAntdColumns,
+  } = useColumnPrefs<MyActivityItem>(TABLE_BIZ_KEY, columnPresets);
 
-  const columns: ColumnsType<MyActivityItem> = useMemo(
+  /** ================= antd columns（真正渲染用） ================= */
+  const rawColumns: ColumnsType<MyActivityItem> = useMemo(
     () => [
       {
         title: "标题",
@@ -124,6 +132,29 @@ export default function ProfilePage() {
     ],
     [],
   );
+
+  const columns = useMemo(
+    () => applyPresetsToAntdColumns(rawColumns),
+    [applyPresetsToAntdColumns, rawColumns],
+  );
+
+  /** ============== 描述信息（基础信息卡） ============== */
+  const infoItems: DescriptionsProps["items"] = useMemo(() => {
+    if (!user) return [];
+    return [
+      { label: "姓名", children: user.name },
+      { label: "学号", children: user.username },
+      { label: "邮箱", children: user.email },
+      { label: "专业", children: user.major },
+      { label: "年级", children: user.grade },
+      { label: "部门", children: user.department ?? "—" },
+      { label: "创建时间", children: user.createTime },
+      { label: "上次登录", children: user.lastLoginTime },
+    ];
+  }, [user]);
+
+  const serviceScore = user?.serviceScore ?? 0;
+  const lectureCount = user?.lectureNum ?? 0;
 
   if (userLoading) {
     return (
@@ -178,9 +209,20 @@ export default function ProfilePage() {
           onKeywordChange={(kw) => setKeyword(kw ?? "")}
           onRefresh={reload}
           onReset={reset}
+          right={
+            <ColumnSettings<MyActivityItem>
+              presets={columnPresets}
+              visibleKeys={visibleKeys}
+              onChange={setVisibleKeys}
+              onReset={resetToDefault}
+            />
+          }
         />
 
         <SmartTable<MyActivityItem>
+          bizKey={TABLE_BIZ_KEY}
+          enableColumnResize
+          minColumnWidth={80}
           columns={columns}
           dataSource={activities}
           rowKey="id"
@@ -197,10 +239,8 @@ export default function ProfilePage() {
                 ? next.pageSize
                 : query.pageSize;
 
-            // ✅ 值没变就不 setPage（避免无意义更新）
             if (nextPage === query.page && nextPageSize === query.pageSize)
               return;
-
             setPage(nextPage, nextPageSize);
           }}
         />

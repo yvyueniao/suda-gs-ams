@@ -1,62 +1,65 @@
 // src/shared/components/table/columnPersist.ts
 /**
- * Column Persistence (skeleton)
+ * Column Persistence
  *
- * 目的：
- * - 让表格的“列显示/隐藏、列顺序、列宽”等用户偏好可持久化（localStorage）
- * - 与后端无关：这是纯前端体验能力
+ * 目标：
+ * - 持久化表格的列偏好（隐藏 / 宽度 / 顺序）
+ * - 仅负责 localStorage 读写与状态结构，不关心 UI / antd
  *
- * 当前阶段（先搭骨架）：
- * - 定义列状态结构与 key 规则
- * - 提供 load/save 的函数签名与最小实现（可直接用）
- *
- * 说明：
- * - bizKey 建议用“页面唯一标识”（例如 route path 或 menuKey），保证不同页面互不干扰
- * - 这里不和 antd columns 强绑定，保持通用
+ * 设计原则：
+ * - bizKey 作为表格唯一标识（route / menuKey / 页面自定义）
+ * - persisted > 默认配置
+ * - 宽度 / 顺序 / 隐藏 解耦存储
  */
 
 import { TABLE_COLUMN_PERSIST_PREFIX } from "./constants";
 
 /** 单列的可持久化状态 */
 export type PersistedColumnState = {
+  /** 列唯一 key（必须稳定） */
   key: string;
 
-  /** 是否隐藏（true=隐藏） */
+  /** 是否隐藏（true = 隐藏） */
   hidden?: boolean;
 
-  /** 宽度（可选） */
+  /** 列宽（px） */
   width?: number;
 
-  /** 排序序号（可选，用于列顺序持久化） */
+  /** 排序序号（越小越靠前） */
   order?: number;
 };
 
 /** 整个表格的列状态 */
 export type PersistedTableColumnState = {
+  /** 配置版本（列结构变更时 bump） */
   version: number;
+
+  /** 最近更新时间 */
   updatedAt: number;
+
+  /** 列状态集合 */
   columns: PersistedColumnState[];
 };
 
 /**
- * 生成列持久化 key
+ * 生成 localStorage key
  * @example
- * getColumnPersistKey("rbac_user_list") -> "table-columns:rbac_user_list"
+ * table-columns:profile.myActivities
  */
 export function getColumnPersistKey(bizKey: string) {
   return `${TABLE_COLUMN_PERSIST_PREFIX}:${bizKey}`;
 }
 
 /**
- * 读取列状态
- * - 如果解析失败，返回 null（表示没有持久化或数据损坏）
+ * 读取列状态（安全）
  */
 export function loadColumnState(
   bizKey: string,
 ): PersistedTableColumnState | null {
   try {
-    const key = getColumnPersistKey(bizKey);
-    const raw = localStorage.getItem(key);
+    if (typeof window === "undefined") return null;
+
+    const raw = localStorage.getItem(getColumnPersistKey(bizKey));
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as PersistedTableColumnState;
@@ -71,27 +74,119 @@ export function loadColumnState(
 
 /**
  * 保存列状态
- * - 写入 localStorage
- * - 你后续如果想做“多端同步/后端保存偏好”，也可以把这里替换成请求
  */
 export function saveColumnState(
   bizKey: string,
   state: PersistedTableColumnState,
 ) {
-  const key = getColumnPersistKey(bizKey);
-  localStorage.setItem(key, JSON.stringify(state));
+  if (typeof window === "undefined") return;
+  localStorage.setItem(getColumnPersistKey(bizKey), JSON.stringify(state));
 }
 
+/* ------------------------------------------------------------------ */
+/* ------------------------- 工具函数区 ------------------------------ */
+/* ------------------------------------------------------------------ */
+
 /**
- * 便捷方法：按 columns 数组生成默认 state
- * - 目前只是工具函数占位，后续做列设置 UI 时会用到
+ * 创建“全量默认列状态”
+ * - 所有列默认显示
+ * - order 按传入顺序
  */
 export function createDefaultColumnState(
   keys: string[],
+  version = 1,
 ): PersistedTableColumnState {
   return {
-    version: 1,
+    version,
     updatedAt: Date.now(),
-    columns: keys.map((k, idx) => ({ key: k, hidden: false, order: idx })),
+    columns: keys.map((k, idx) => ({
+      key: k,
+      hidden: false,
+      order: idx,
+    })),
   };
+}
+
+/**
+ * 从 state 中提取：key -> PersistedColumnState 映射
+ */
+export function mapColumnState(
+  state: PersistedTableColumnState | null,
+): Map<string, PersistedColumnState> {
+  const map = new Map<string, PersistedColumnState>();
+  if (!state?.columns) return map;
+
+  for (const c of state.columns) {
+    map.set(c.key, c);
+  }
+  return map;
+}
+
+/**
+ * 更新 / 插入单列宽度
+ * - 保留 hidden / order
+ */
+export function upsertColumnWidth(
+  prev: PersistedTableColumnState | null,
+  colKey: string,
+  width: number,
+): PersistedTableColumnState {
+  const base: PersistedTableColumnState =
+    prev ??
+    ({
+      version: 1,
+      updatedAt: Date.now(),
+      columns: [],
+    } as PersistedTableColumnState);
+
+  const columns = Array.isArray(base.columns) ? [...base.columns] : [];
+  const idx = columns.findIndex((c) => c.key === colKey);
+
+  if (idx >= 0) {
+    columns[idx] = {
+      ...columns[idx],
+      width,
+    };
+  } else {
+    columns.push({ key: colKey, width });
+  }
+
+  return {
+    ...base,
+    updatedAt: Date.now(),
+    columns,
+  };
+}
+
+/**
+ * 从 state 中提取宽度映射
+ * @returns Map<colKey, width>
+ */
+export function extractColumnWidthMap(
+  state: PersistedTableColumnState | null,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!state?.columns) return map;
+
+  for (const c of state.columns) {
+    if (typeof c.width === "number" && c.width > 0) {
+      map.set(c.key, c.width);
+    }
+  }
+  return map;
+}
+
+/**
+ * 从 state 中提取“隐藏列 key 集合”
+ */
+export function extractHiddenKeySet(
+  state: PersistedTableColumnState | null,
+): Set<string> {
+  const set = new Set<string>();
+  if (!state?.columns) return set;
+
+  for (const c of state.columns) {
+    if (c.hidden) set.add(c.key);
+  }
+  return set;
 }
