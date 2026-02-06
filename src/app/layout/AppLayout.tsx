@@ -20,7 +20,7 @@ import { useLayoutNav } from "../hooks/useLayoutNav";
 // ✅ 新增：菜单 key -> icon 的映射
 import { getMenuIcon } from "../menu/menuIconMap";
 
-const { Header, Content } = Layout;
+const { Header, Content, Footer } = Layout;
 
 function roleLabel(role: number) {
   const map: Record<number, string> = {
@@ -174,6 +174,21 @@ export default function AppLayout() {
           <Outlet />
         </Content>
       </Layout>
+
+      {/* ✅ 通用页脚（全局固定在底部，不遮挡内容） */}
+      <Footer
+        style={{
+          textAlign: "center",
+          fontSize: 12,
+          color: "rgba(0,0,0,0.45)",
+          padding: "12px 16px",
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+          background: "#fff",
+        }}
+      >
+        © {new Date().getFullYear()} 苏州大学计算机科学与技术学院 ·
+        研究生会活动管理系统
+      </Footer>
     </Layout>
   );
 }
