@@ -2,23 +2,20 @@
 /**
  * useColumnPrefs
  *
- * 职责：
- * - 将“列预设（TableColumnPreset） + 持久化状态（localStorage）”合成最终可用的列配置
- * - 提供：
- *   1) visibleKeys（当前可见列 key 列表）
- *   2) applyPresetsToAntdColumns：把 preset + 可见/宽度应用到 antd columns
- *   3) setVisibleKeys / resetToDefault：更新并持久化
+ * ✅ 新增能力：
+ * - orderedKeys：列顺序（仅针对 presets 体系内的列）
+ * - setOrderedKeys：更新列顺序并持久化 order
  *
- * 设计说明：
- * - 不强依赖业务（bizKey 用 route/menuKey 等唯一标识）
- * - 默认隐藏来自 presets.hidden
- * - 持久化优先级：persisted > presets 默认
- * - “列顺序/宽度”先支持最小可用：宽度从 persisted 读取，顺序先按 presets 顺序（后续可扩展）
+ * ✅ 小体验修复：
+ * - 每次 safeSave 后触发内部 tick，让 persistedMap 重新读取一次
  *
- * ✅ 修复：
- * - 之前 applyPresetsToAntdColumns 会“无差别按 visibleKeys 过滤所有 string key 列”，
- *   导致不在 presets 体系里的列（例如操作列 key="actions"）永远被过滤掉。
- * - 现在只过滤“在 presets 里的列”；不在 presets 的列永远保留（常见：操作列/序号列等）。
+ * ✅ 修复（列宽拖拽不生效）：
+ * - persisted.width 必须覆盖 rawColumns 的默认 width
+ * - 否则 rawColumns 每列都有 width:number，会永远压过 persisted，导致“看起来不能拖”
+ *
+ * 约定：
+ * - visibleKeys：只表示“哪些 presets 列可见”
+ * - orderedKeys：表示“presets 列的全量顺序（含隐藏列）”
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -31,27 +28,26 @@ import type {
 import { loadColumnState, saveColumnState } from "./columnPersist";
 
 export type UseColumnPrefsOptions = {
-  /**
-   * 持久化版本号：
-   * - 当你改了列 key/结构，想让旧配置失效时 bump
-   */
   version?: number;
 };
 
 export type UseColumnPrefsResult<T extends object> = {
-  /** 当前可见列 keys（用于 ColumnSettings / 业务层过滤等） */
   visibleKeys: string[];
-
-  /** 直接设置可见列（会写入 localStorage） */
   setVisibleKeys: (keys: string[]) => void;
 
-  /** 恢复默认（回到 presets.hidden 的默认规则） */
+  /** ✅ 新增：列顺序（presets 全量 keys 的顺序，含隐藏列） */
+  orderedKeys: string[];
+  /** ✅ 新增：设置列顺序（会写入 localStorage.order） */
+  setOrderedKeys: (keys: string[]) => void;
+
   resetToDefault: () => void;
 
   /**
    * 将 presets 应用到 antd columns
-   * - 会根据 visibleKeys 过滤（只过滤 presets 里存在的列）
-   * - 会根据 persisted width 赋值（若 antd column 未显式写 width；仅对 presets 列生效）
+   * - 只过滤 presets 体系内的列
+   * - 只对 presets 列应用 persisted width
+   * - presets 列按 orderedKeys 排序（含隐藏列，但渲染前会过滤）
+   * - 不在 presets 的列（如 actions）保留，并尽量维持其在原 columns 中的位置
    */
   applyPresetsToAntdColumns: (columns: ColumnsType<T>) => ColumnsType<T>;
 };
@@ -80,14 +76,49 @@ function buildDefaultVisibleKeys<T extends object>(
   return presets.filter((p) => !p.hidden).map((p) => p.key);
 }
 
+function pickAllKeys<T extends object>(presets: TableColumnPreset<T>[]) {
+  return presets.map((p) => p.key);
+}
+
 function toMapByKey(cols?: PersistedColumnState[]) {
   const m = new Map<string, PersistedColumnState>();
   (cols ?? []).forEach((c) => m.set(c.key, c));
   return m;
 }
 
-function pickAllKeys<T extends object>(presets: TableColumnPreset<T>[]) {
-  return presets.map((p) => p.key);
+/** ✅ 从 persisted.columns 提取顺序（按 order 排；缺失则置为 Infinity） */
+function buildOrderedKeysFromPersisted(
+  allKeys: string[],
+  persisted: PersistedTableColumnState | null,
+) {
+  if (!persisted?.columns?.length) return allKeys;
+
+  const map = toMapByKey(persisted.columns);
+  const keys = [...allKeys];
+
+  keys.sort((a, b) => {
+    const oa = map.get(a)?.order;
+    const ob = map.get(b)?.order;
+    const na = typeof oa === "number" ? oa : Number.POSITIVE_INFINITY;
+    const nb = typeof ob === "number" ? ob : Number.POSITIVE_INFINITY;
+    if (na !== nb) return na - nb;
+
+    // 若都没 order（或相等），按 presets 原顺序稳定排序
+    return allKeys.indexOf(a) - allKeys.indexOf(b);
+  });
+
+  return keys;
+}
+
+function uniqKeepOrder(arr: string[]) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const k of arr) {
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
 }
 
 export function useColumnPrefs<T extends object>(
@@ -103,124 +134,185 @@ export function useColumnPrefs<T extends object>(
     [presets],
   );
 
-  // 初始化：优先从 persisted 读，否则用 defaultVisibleKeys
+  /**
+   * ✅ tick：每次写入后 +1，触发“重新读取 persisted”
+   * 这样 applyPresetsToAntdColumns 里用到的 persistedMap（width/order/hidden）会立刻刷新
+   */
+  const [persistTick, setPersistTick] = useState(0);
+
+  // ✅ 读取 persisted：依赖 bizKey + tick
+  const persisted = useMemo(() => {
+    return safeLoad(bizKey);
+  }, [bizKey, persistTick]);
+
+  const persistedMap = useMemo(() => {
+    if (!persisted || persisted.version !== version) {
+      return new Map<string, PersistedColumnState>();
+    }
+    return toMapByKey(persisted.columns);
+  }, [persisted, version]);
+
+  /** ✅ 1) 初始化顺序：persisted.order > presets 顺序 */
+  const [orderedKeys, setOrderedKeysState] = useState<string[]>(() => {
+    const p = safeLoad(bizKey);
+    if (!p || p.version !== version) return allKeys;
+    return buildOrderedKeysFromPersisted(allKeys, p);
+  });
+
+  /** ✅ 2) 初始化可见：persisted.hidden > presets.hidden */
   const [visibleKeys, setVisibleKeysState] = useState<string[]>(() => {
-    const persisted = safeLoad(bizKey);
-    if (!persisted || persisted.version !== version) return defaultVisibleKeys;
+    const p = safeLoad(bizKey);
+    if (!p || p.version !== version) return defaultVisibleKeys;
 
     const hidden = new Set<string>();
-    persisted.columns.forEach((c) => {
+    (p.columns ?? []).forEach((c) => {
       if (c.hidden) hidden.add(c.key);
     });
 
-    // 只保留当前 presets 存在的 key
     return allKeys.filter((k) => !hidden.has(k));
   });
 
-  // 取一份“当前持久化列状态”映射（用于宽度等信息）
-  const persistedMap = useMemo(() => {
-    const persisted = safeLoad(bizKey);
-    if (!persisted || persisted.version !== version)
-      return new Map<string, PersistedColumnState>();
-    return toMapByKey(persisted.columns);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bizKey, version]); // 注意：这里不会随 visibleKeys 自动更新（足够用；后续可加事件触发刷新）
+  /** 将（orderedKeys + visibleKeys + width）写入 persisted */
+  const persistState = useCallback(
+    (nextOrderedKeys: string[], nextVisibleKeys: string[]) => {
+      const orderIndex = new Map<string, number>();
+      nextOrderedKeys.forEach((k, idx) => orderIndex.set(k, idx));
 
-  const persistVisibleKeys = useCallback(
-    (nextVisibleKeys: string[]) => {
-      // 保存成 “hidden”为主的结构：没在 visibleKeys 里就是 hidden
       const nextState: PersistedTableColumnState = {
         version,
         updatedAt: Date.now(),
-        columns: allKeys.map((k, idx) => ({
+        columns: allKeys.map((k) => ({
           key: k,
           hidden: !nextVisibleKeys.includes(k),
-          order: idx, // 先占位：目前按 presets 顺序
-          // width：不在这里写（宽度由 resize 逻辑写入）
-          width: persistedMap.get(k)?.width,
+          order: orderIndex.get(k) ?? allKeys.indexOf(k),
+          width: persistedMap.get(k)?.width, // 宽度由 resize 写入，这里只保留
         })),
       };
 
       safeSave(bizKey, nextState);
+
+      // ✅ 写入后立刻触发一次刷新（体验修复）
+      setPersistTick((x) => x + 1);
     },
     [allKeys, bizKey, persistedMap, version],
   );
 
   const setVisibleKeys = useCallback(
     (keys: string[]) => {
-      // 只保留当前存在的 keys（防止外部传入非法 key）
       const next = keys.filter((k) => allKeys.includes(k));
       setVisibleKeysState(next);
-      persistVisibleKeys(next);
+      persistState(orderedKeys, next);
     },
-    [allKeys, persistVisibleKeys],
+    [allKeys, orderedKeys, persistState],
+  );
+
+  /** ✅ 新增：设置顺序（只影响 order，不改可见） */
+  const setOrderedKeys = useCallback(
+    (keys: string[]) => {
+      const cleaned = uniqKeepOrder(keys.filter((k) => allKeys.includes(k)));
+      const rest = allKeys.filter((k) => !cleaned.includes(k));
+      const nextOrder = [...cleaned, ...rest];
+
+      setOrderedKeysState(nextOrder);
+      persistState(nextOrder, visibleKeys);
+    },
+    [allKeys, persistState, visibleKeys],
   );
 
   const resetToDefault = useCallback(() => {
+    setOrderedKeysState(allKeys);
     setVisibleKeysState(defaultVisibleKeys);
-
-    // 恢复默认：直接覆盖 persisted（同时保留已存在的 width）
-    const state: PersistedTableColumnState = {
-      version,
-      updatedAt: Date.now(),
-      columns: allKeys.map((k, idx) => ({
-        key: k,
-        hidden: !defaultVisibleKeys.includes(k),
-        order: idx,
-        width: persistedMap.get(k)?.width,
-      })),
-    };
-    safeSave(bizKey, state);
-  }, [allKeys, bizKey, defaultVisibleKeys, persistedMap, version]);
+    persistState(allKeys, defaultVisibleKeys);
+  }, [allKeys, defaultVisibleKeys, persistState]);
 
   const applyPresetsToAntdColumns = useCallback(
     (columns: ColumnsType<T>): ColumnsType<T> => {
-      /**
-       * ✅ 关键修复点：
-       * - 只过滤 “presets 体系内的列”
-       * - 不在 presets 里的列（例如 actions 操作列）永远保留
-       */
       const visibleSet = new Set(visibleKeys);
       const presetKeySet = new Set(allKeys);
 
-      // 1) 过滤：仅对 presets 列生效
-      const filtered = (columns ?? []).filter((col: any) => {
+      // orderedKeys -> index
+      const orderIndex = new Map<string, number>();
+      orderedKeys.forEach((k, idx) => orderIndex.set(k, idx));
+
+      const inputCols = (columns ?? []) as any[];
+
+      // 没有任何 presets 列就不处理
+      const hasPreset = inputCols.some((col) => {
         const k: unknown = col?.key ?? col?.dataIndex;
-
-        // dataIndex 可能是 string[]/number 等：不强做映射，直接保留，避免误伤
-        if (typeof k !== "string") return true;
-
-        // ✅ 不在 presets 中：认为是“额外列”（常见：操作列/序号列），永远保留
-        if (!presetKeySet.has(k)) return true;
-
-        // ✅ 在 presets 中：才受 visibleKeys 控制
-        return visibleSet.has(k);
+        return typeof k === "string" && presetKeySet.has(k);
       });
+      if (!hasPreset) return columns;
 
-      // 2) 应用 persisted width：仅对 presets 列生效（避免给 actions 等额外列乱套宽度）
-      const withWidth = filtered.map((col: any) => {
+      // 预先算好“处理后的 presets 列”：width + visible + order
+      const presetCols = inputCols
+        .filter((col) => {
+          const k: unknown = col?.key ?? col?.dataIndex;
+          return typeof k === "string" && presetKeySet.has(k);
+        })
+        .map((col) => {
+          const k: string = (col.key ?? col.dataIndex) as any;
+
+          // ✅ 修复：只要 persisted 有 width，就覆盖默认 width（拖拽后的 width 必须生效）
+          const p = persistedMap.get(k);
+          if (
+            typeof p?.width === "number" &&
+            Number.isFinite(p.width) &&
+            p.width > 0
+          ) {
+            return { ...col, width: p.width };
+          }
+
+          return col;
+        })
+        .filter((col) => {
+          const k: unknown = col?.key ?? col?.dataIndex;
+          if (typeof k !== "string") return true;
+          return visibleSet.has(k);
+        })
+        .sort((a, b) => {
+          const ka = (a.key ?? a.dataIndex) as string;
+          const kb = (b.key ?? b.dataIndex) as string;
+          return (orderIndex.get(ka) ?? 1e9) - (orderIndex.get(kb) ?? 1e9);
+        });
+
+      /**
+       * ✅ 拼回去：保持 extra 列（actions 等）在原 columns 中的位置
+       * - 遍历 inputCols
+       * - 遇到第一个 presets 列的位置，插入“整段 presetCols”，跳过所有 presets 列
+       */
+      const out: any[] = [];
+      let inserted = false;
+
+      for (let i = 0; i < inputCols.length; i++) {
+        const col = inputCols[i];
         const k: unknown = col?.key ?? col?.dataIndex;
-        const keyStr = typeof k === "string" ? k : undefined;
-        if (!keyStr) return col;
+        const isPreset = typeof k === "string" && presetKeySet.has(k);
 
-        // ✅ 只给 presets 列应用宽度
-        if (!presetKeySet.has(keyStr)) return col;
+        if (isPreset) {
+          if (!inserted) {
+            out.push(...presetCols);
+            inserted = true;
+          }
+          continue; // 跳过原来的 presets 列
+        }
 
-        const persisted = persistedMap.get(keyStr);
-        if (!persisted?.width) return col;
-        if (typeof col.width === "number") return col;
+        out.push(col); // extra 列原样保留
+      }
 
-        return { ...col, width: persisted.width };
-      });
+      if (!inserted) out.push(...presetCols);
 
-      return withWidth as ColumnsType<T>;
+      return out as ColumnsType<T>;
     },
-    [allKeys, persistedMap, visibleKeys],
+    [allKeys, orderedKeys, persistedMap, visibleKeys],
   );
 
   return {
     visibleKeys,
     setVisibleKeys,
+
+    orderedKeys,
+    setOrderedKeys,
+
     resetToDefault,
     applyPresetsToAntdColumns,
   };

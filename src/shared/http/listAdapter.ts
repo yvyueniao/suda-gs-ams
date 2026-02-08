@@ -1,91 +1,108 @@
 // src/shared/http/listAdapter.ts
 /**
- * List Adapter (skeleton)
+ * List Adapter (client-side)
  *
- * 角色定位：
- * - 这是“前端统一表格模型 ↔ 后端不确定协议”的唯一适配层
- * - 任何后端字段名差异、返回壳差异，都只允许出现在这里
+ * 当前后端约定（suda_union）：
+ * - 后端只返回“全量数据”
+ * - 分页/筛选/搜索/排序：全部在前端 Table 体系中完成
  *
- * 当前阶段（先搭骨架）：
- * - 只定义输入/输出类型与函数签名
- * - 不写死任何后端字段名（pageNum/records/code 等）
- * - 具体映射规则等后端接口确定后再补
- *
- * 设计原则：
- * - table 组件域只认 TableQuery / ListResult
- * - http 层负责把“后端世界”翻译成“前端世界”
+ * 因此：
+ * - toServerListParams：默认返回 {}（不向后端传分页/筛选字段，避免误导）
+ * - fromServerListResponse：把后端返回统一成 { list, total }，其中 total = list.length
  */
 
+import type { ApiResponse, ListResult } from "./types";
 import type { TableQuery } from "../components/table/types";
-import type { ListResult } from "./types";
+import { ApiError } from "./error";
+
+function isPlainObject(x: unknown): x is Record<string, any> {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+
+function isApiResponse(x: unknown): x is ApiResponse<unknown> {
+  return (
+    isPlainObject(x) &&
+    typeof x.code === "number" &&
+    typeof x.msg === "string" &&
+    "data" in x
+  );
+}
 
 /**
- * 将前端 TableQuery 转换为“后端请求参数”
+ * 后端不做分页/筛选：默认不传任何 TableQuery 参数
  *
- * 注意：
- * - params 的字段名此处故意用 unknown Record
- * - 具体字段（page/pageSize/current/size/...）等后端定了再实现
+ * 如果未来有“必须传”的后端参数（例如 type=0/1 区分活动/讲座），
+ * 建议在业务 api.ts 自己显式传，而不是从 TableQuery 隐式映射。
  */
 export function toServerListParams<
   F extends Record<string, any> = Record<string, any>,
->(query: TableQuery<F>): Record<string, unknown> {
-  // TODO:
-  // 在这里根据后端约定做字段映射，例如：
-  // return {
-  //   pageNum: query.page,
-  //   pageSize: query.pageSize,
-  //   keyword: query.keyword,
-  //   ...query.filters,
-  //   sortField: query.sorter?.field,
-  //   sortOrder: query.sorter?.order,
-  // };
-
-  void query;
-
+>(_query: TableQuery<F>): Record<string, unknown> {
   return {};
 }
 
 /**
- * 将“后端列表响应”转换为前端统一的 ListResult
+ * 将后端响应转换为前端统一的 ListResult
  *
- * 注意：
- * - 后端响应壳可能是：
- *   { list, total }
- *   { records, total }
- *   { data: { rows, total } }
- *   ApiResponse<{ list, total }>
- * - 这些差异全部在这里消化
+ * 兼容形式：
+ * 1) T[]                       -> { list: T[], total: list.length }
+ * 2) ApiResponse<T[]>          -> 解包后走 (1)
+ * 3) { data: T[] } / { list }  -> 防御性兼容（如果后端偶尔多包一层）
  */
 export function fromServerListResponse<T>(response: unknown): ListResult<T> {
-  // TODO:
-  // 在这里解析 response，抽取 list / total
-  // 示例（伪代码）：
-  // const data = unwrapApiResponse(response);
-  // return {
-  //   list: data.list ?? data.records ?? [],
-  //   total: data.total ?? 0,
-  // };
+  // 防御：如果意外传进来的是完整 ApiResponse
+  if (isApiResponse(response)) {
+    if (response.code !== 200) {
+      throw new ApiError(
+        response.msg || "请求失败",
+        "BIZ_ERROR",
+        undefined,
+        response.code,
+      );
+    }
+    return fromServerListResponse<T>(response.data);
+  }
 
-  void response;
+  // 1) 直接数组：你们接口文档里大多数列表就是这种
+  if (Array.isArray(response)) {
+    return { list: response as T[], total: response.length };
+  }
 
-  return {
-    list: [],
-    total: 0,
-  };
+  // 3) 防御性：偶尔多包一层
+  if (isPlainObject(response)) {
+    const maybeData = (response as any).data;
+    if (Array.isArray(maybeData)) {
+      return { list: maybeData as T[], total: maybeData.length };
+    }
+
+    const maybeList =
+      (response as any).list ??
+      (response as any).records ??
+      (response as any).rows;
+    if (Array.isArray(maybeList)) {
+      return { list: maybeList as T[], total: maybeList.length };
+    }
+  }
+
+  return { list: [], total: 0 };
 }
 
 /**
  * 可选工具：从统一后端壳中解包 data
- * - 如果你们后端是 ApiResponse<T>（code/msg/data）
- * - 可以在这里集中处理
+ *
+ * 注意：你们的 request<T>() 已经做了“拆壳 + code!=200 抛错”，
+ * 所以一般用不到；这里只做兜底工具。
  */
 export function unwrapApiResponse<T = unknown>(resp: unknown): T {
-  // TODO:
-  // if (isApiResponse(resp)) {
-  //   if (resp.code !== 0) throw new ApiError(resp.code, resp.msg);
-  //   return resp.data as T;
-  // }
-  // return resp as T;
-
+  if (isApiResponse(resp)) {
+    if (resp.code !== 200) {
+      throw new ApiError(
+        resp.msg || "请求失败",
+        "BIZ_ERROR",
+        undefined,
+        resp.code,
+      );
+    }
+    return resp.data as T;
+  }
   return resp as T;
 }

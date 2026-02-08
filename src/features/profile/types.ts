@@ -1,71 +1,139 @@
 // src/features/profile/types.ts
 /**
- * Profile Domain Types
+ * Profile domain types
  *
- * 说明：
- * - 本文件只描述「个人中心」领域的数据模型
- * - 不包含任何 UI/表格实现细节
- * - 字段命名尽量与后端语义一致，但保持前端可读性
+ * 当前采用方案 C：
+ * - 列表：/activity/userApplications（报名记录）
+ * - 详情：/activity/searchById（活动详情，点击“详情”再查）
+ *
+ * Profile 域只描述：
+ * - 用户信息
+ * - 我的“报名记录”
+ * - 以及「个人中心页面真正需要用到的最小活动详情视图」
  */
 
-/**
- * 用户基础信息（来自 /user/info）
- * - 对齐后端返回的 user 字段
- */
+// =======================
+// 用户相关
+// =======================
+
+// 角色：0 管理员 / 1 主席 / 2 部长 / 3 干事 / 4 普通学生
+export type UserRole = 0 | 1 | 2 | 3 | 4;
+
+/** /user/info 返回的用户信息（data.user） */
 export type UserInfo = {
   id: number;
-  username: string; // 学号 / 账号
-  name: string; // 姓名
-  invalid: boolean; // 是否无效账户
-  role: number; // 0 管理员 / 1 主席 / 2 部长 / 3 干事 / 4 普通学生
-  menuPermission: any; // 当前阶段不用，保持透传
+  username: string;
+  name: string;
+  invalid: boolean;
+  role: UserRole;
+
   email: string;
   major: string;
   grade: string;
-  createTime: string; // 创建时间
-  lastLoginTime: string; // 上次登录时间
 
-  /** 个人中心扩展字段 */
-  serviceScore: number; // 社会服务分
-  lectureNum: number; // 学术讲座次数
-  department: string | null; // 所属部门
+  createTime: string;
+  lastLoginTime: string;
+
+  // —— 个人中心扩展字段 ——
+  serviceScore?: number;
+  lectureNum?: number;
+  department?: string | null;
+  menuPermission?: unknown;
 };
 
+/** /user/info 的 data 结构 */
+export type UserInfoData = {
+  user: UserInfo;
+  token: string;
+};
+
+// =======================
+// 我的活动（报名记录）
+// =======================
+
 /**
- * 个人中心中「我的活动 / 讲座」列表项
- * - 当前由 mock 接口返回
- * - 后端正式接口出来后，字段可在 adapter 层做映射
+ * 报名状态：
+ * 0 报名成功
+ * 1 候补中
+ * 2 候补成功
+ * 3 候补失败
+ */
+export type ApplicationState = 0 | 1 | 2 | 3;
+
+/**
+ * 活动类型：
+ * 0 活动
+ * 1 讲座
+ */
+export type ActivityType = 0 | 1;
+
+/**
+ * /activity/userApplications 返回的单条报名记录
+ *
+ * ⚠️ 这里只是“关系表”，不是活动本体
  */
 export type MyActivityItem = {
+  activityId: number;
+  username: string;
+
+  state: ApplicationState;
+  time: string;
+
+  attachment: string | null;
+  checkIn: boolean;
+  getScore: boolean;
+  type: ActivityType;
+  score: number;
+};
+
+// =======================
+// 个人中心使用的「活动详情视图」
+// =======================
+
+/**
+ * 这是「个人中心详情弹窗」真正需要的字段集合
+ * 来自 /activity/searchById
+ *
+ * ⚠️ 注意：
+ * - 这是 *Profile Page* 使用的视图模型
+ * - 不等同于完整 Activity 实体（避免 profile 侵入 activity 域）
+ */
+export type ProfileActivityDetail = {
   id: number;
+  name: string;
+  description: string;
 
-  /** 标题 */
-  title: string;
-
-  /** 类型：活动 / 讲座 */
-  category: "activity" | "lecture";
-
-  /**
-   * 当前状态
-   * - pending   ：未开始
-   * - signed    ：已报名
-   * - attended  ：已完成 / 已参加
-   * - cancelled ：已取消
-   */
-  status: "pending" | "signed" | "attended" | "cancelled";
-
-  /** 活动 / 讲座时间段（展示用） */
-  timeRange: string;
-
-  /** 地点 */
+  department: string;
   location: string;
 
-  /** 主办方 */
-  organizer: string;
+  signStartTime: string;
+  signEndTime: string;
+  activityStime: string;
+  activityEtime: string;
 
-  /** 本次获得的社会服务分（讲座一般为 0） */
-  serviceScoreGain: number;
+  type: ActivityType;
+  state: number; // 0~4（直接透传后端）
 
-  /** 报名/创建时间 */
-  createdAt: string;
+  score: number;
+  registeredNum: number;
+  candidateNum: number;
+  candidateSuccNum: number;
+  candidateFailNum: number;
+};
+
+// =======================
+// 预留：未来分页 / 聚合接口
+// =======================
+
+export type MyActivitiesQuery = {
+  page: number;
+  pageSize: number;
+  keyword?: string;
+  type?: ActivityType | "all";
+  state?: ApplicationState | "all";
+};
+
+export type MyActivitiesListResult = {
+  list: MyActivityItem[];
+  total: number;
 };

@@ -1,48 +1,105 @@
 // src/features/profile/api.ts
 /**
- * Profile API
+ * Profile domain API
  *
- * 注意：shared/http/client.ts 的 request<T>() 会自动把“统一壳”解包为 data
- * 所以这里的泛型 T 应该写 data 的类型，而不是 ApiResponse<T>
+ * 当前采用方案 C：
+ * - 列表：/activity/userApplications（报名记录）
+ * - 详情：/activity/searchById（点“详情”再拉）
+ *
+ * 设计原则（与你当前 http/client.ts 完全对齐）：
+ * 1. api 层只负责“描述接口”
+ * 2. 统一使用 request<T>() —— 永远只返回 data
+ * 3. 业务 code != 200 的情况，已经在 http 层统一 throw ApiError
+ * 4. api / hook / page 层不再感知 ApiResponse/code
  */
 
 import { request } from "../../shared/http/client";
-import type { ListResult } from "../../shared/http/types";
-import type { UserInfo, MyActivityItem } from "./types";
+import type {
+  MyActivityItem,
+  UserInfoData,
+  ProfileActivityDetail,
+} from "./types";
 
-/**
- * 获取当前登录用户的个人信息
- * POST /user/info
- * 返回 data: { user: UserInfo; token: string }
+/* =========================
+ * 用户信息
+ * ========================= */
+
+/** 获取当前用户信息（POST /user/info）
+ * 返回：
+ * {
+ *   user: UserInfo;
+ *   token: string;
+ * }
  */
-export async function getUserInfo(): Promise<UserInfo> {
-  const data = await request<{ user: UserInfo; token: string }>({
+export function getUserInfo() {
+  return request<UserInfoData>({
     url: "/user/info",
     method: "POST",
+    data: {},
   });
-
-  return data.user;
 }
+
+/* =========================
+ * 我的活动（报名记录）
+ * ========================= */
+
+/** 获取“我报名/候补过的活动/讲座”
+ * POST /activity/userApplications
+ *
+ * 返回：
+ * MyActivityItem[]
+ */
+export function getMyActivities() {
+  return request<MyActivityItem[]>({
+    url: "/activity/userApplications",
+    method: "POST",
+    data: {},
+  });
+}
+
+/* =========================
+ * 活动详情（方案 C 核心）
+ * ========================= */
+
+/** 按 activityId 获取活动/讲座详情
+ * POST /activity/searchById
+ *
+ * 返回：
+ * {
+ *   activity: ProfileActivityDetail
+ * }
+ */
+export function getActivityDetailById(activityId: number) {
+  return request<{ activity: ProfileActivityDetail }>({
+    url: "/activity/searchById",
+    method: "POST",
+    data: { id: activityId },
+  });
+}
+
+/* =========================
+ * 预留扩展（未启用）
+ * ========================= */
 
 /**
- * 查询「我的活动 / 讲座」列表
- * POST /profile/myActivities（当前 mock）
- * 返回 data: { list: MyActivityItem[]; total: number }
+ * 如果后端未来把“我的活动”升级成分页接口，例如：
+ * POST /activity/userApplicationsPaged
+ *
+ * 你只需要：
+ * 1. 打开下面代码
+ * 2. 在 types.ts 中使用 MyActivitiesQuery / MyActivitiesListResult
+ * 3. ProfilePage 中切换到 SmartTable + useTableData
  */
-export async function getMyActivities(params?: {
-  page?: number;
-  pageSize?: number;
-  keyword?: string;
-}): Promise<ListResult<MyActivityItem>> {
-  const data = await request<ListResult<MyActivityItem>>({
-    url: "/profile/myActivities",
-    method: "POST",
-    data: {
-      page: params?.page ?? 1,
-      pageSize: params?.pageSize ?? 10,
-      keyword: params?.keyword ?? "",
-    },
-  });
 
-  return data;
-}
+// import type {
+//   MyActivitiesQuery,
+//   MyActivitiesListResult,
+// } from "./types";
+
+// export function getMyActivitiesPaged(query: MyActivitiesQuery) {
+//   return request<MyActivitiesListResult>({
+//     url: "/activity/userApplicationsPaged",
+//     method: "POST",
+//     data: query,
+//   });
+// }

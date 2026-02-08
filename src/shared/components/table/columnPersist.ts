@@ -159,6 +159,49 @@ export function upsertColumnWidth(
 }
 
 /**
+ * ✅ 新增：批量写入列顺序（order）
+ * - orderedKeys 按顺序给出“全量 keys”（建议包含隐藏列）
+ * - 会更新已有列的 order；不存在则插入（保留 hidden/width）
+ *
+ * @example
+ * const next = upsertColumnOrders(prevState, ["title","status","date"]);
+ */
+export function upsertColumnOrders(
+  prev: PersistedTableColumnState | null,
+  orderedKeys: string[],
+  version = 1,
+): PersistedTableColumnState {
+  const base: PersistedTableColumnState =
+    prev ??
+    ({
+      version,
+      updatedAt: Date.now(),
+      columns: [],
+    } as PersistedTableColumnState);
+
+  const columns = Array.isArray(base.columns) ? [...base.columns] : [];
+
+  const index = new Map<string, number>();
+  columns.forEach((c, i) => index.set(c.key, i));
+
+  orderedKeys.forEach((key, order) => {
+    const idx = index.get(key);
+    if (typeof idx === "number") {
+      columns[idx] = { ...columns[idx], order };
+    } else {
+      columns.push({ key, order });
+    }
+  });
+
+  return {
+    ...base,
+    version: base.version ?? version,
+    updatedAt: Date.now(),
+    columns,
+  };
+}
+
+/**
  * 从 state 中提取宽度映射
  * @returns Map<colKey, width>
  */
@@ -189,4 +232,22 @@ export function extractHiddenKeySet(
     if (c.hidden) set.add(c.key);
   }
   return set;
+}
+
+/**
+ * ✅（可选）提取 order 映射：key -> order
+ * - 方便 useColumnPrefs 读取并排序
+ */
+export function extractColumnOrderMap(
+  state: PersistedTableColumnState | null,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!state?.columns) return map;
+
+  for (const c of state.columns) {
+    if (typeof c.order === "number" && Number.isFinite(c.order)) {
+      map.set(c.key, c.order);
+    }
+  }
+  return map;
 }

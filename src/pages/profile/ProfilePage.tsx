@@ -1,15 +1,18 @@
 // src/pages/profile/ProfilePage.tsx
 /**
- * ProfilePage（表格版 · 接入：列设置(隐藏列) + 拖拽列宽持久化 + 导出（全量/跨页/继承筛选搜索））
- * - 时间列：支持排序（前端排序）
- * - 状态列：支持筛选（前端筛选）
- * - ✅ 当前页：批量选择 + 全选（Table 自带能力，受控 selectedRowKeys）
- * - ✅ 操作列：固定在最右侧（避免看不到）
+ * ProfilePage（通用表格框架版 · 最新版）
  *
- * ✅ 修复点：
- * - 筛选“点确定没反应”的根因：你把 statusFilter 作为 filteredValue 受控了，
- *   但 SmartTable 之前没有把 Table 的 filters 变化抛出来更新 statusFilter。
- * - 现在通过 SmartTable.onFiltersChange 把 filters.status 同步到 statusFilter。
+ * ✅ 适配你们当前后端特点：
+ * - 后端只返回全量：分页/筛选/搜索/排序全部在前端完成
+ * - 因此：不使用 useTableExport（它面向“后端分页接口”），导出直接基于“筛选后的全量”
+ *
+ * ✅ 表格框架接入点：
+ * - useTableQuery：统一 query（page/pageSize/keyword/sorter）
+ * - useTableData：请求态组织（loading/error/list/total/reload）
+ * - SmartTable：受控分页 + sorter 透出 + filtersChange 透出 + 列宽拖拽
+ * - useColumnPrefs + ColumnSettings：列显示偏好 + 持久化
+ * - exportCsv：导出（BOM/转义/按 visibleKeys）
+ * - ActionCell：操作列（更多/confirm/danger）
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,19 +22,34 @@ import {
   Card,
   Descriptions,
   Empty,
+  Modal,
+  Space,
   Spin,
   Tag,
   message,
-  Space,
-  Popconfirm,
 } from "antd";
 import type { DescriptionsProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { DownloadOutlined, UserOutlined } from "@ant-design/icons";
 import type { FilterValue } from "antd/es/table/interface";
+import {
+  DownloadOutlined,
+  ReloadOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 
-import type { MyActivityItem, UserInfo } from "../../features/profile/types";
-import { getMyActivities, getUserInfo } from "../../features/profile/api";
+import type {
+  ActivityType,
+  ApplicationState,
+  MyActivityItem,
+  ProfileActivityDetail,
+  UserInfo,
+} from "../../features/profile/types";
+import {
+  getActivityDetailById,
+  getMyActivities,
+  getUserInfo,
+} from "../../features/profile/api";
+import { setToken } from "../../shared/session/token";
 
 import {
   TableToolbar,
@@ -39,59 +57,130 @@ import {
   useTableQuery,
   useTableData,
   useColumnPrefs,
-  useTableExport,
   exportCsv,
+  ColumnSettings,
+  ActionCell,
   type TableQuery,
   type TableColumnPreset,
-  ColumnSettings,
+  type TableSorter,
 } from "../../shared/components/table";
 
 const AVATAR_URL = "/avatar-default.png";
 const TABLE_BIZ_KEY = "profile.myActivities";
 
-type StatusKey = "pending" | "signed" | "attended" | "cancelled";
-const STATUS_OPTIONS: { value: StatusKey; label: string }[] = [
-  { value: "pending", label: "未开始" },
-  { value: "signed", label: "已报名" },
-  { value: "attended", label: "已完成" },
-  { value: "cancelled", label: "已取消" },
-];
-
-function isStatusKey(x: any): x is StatusKey {
-  return STATUS_OPTIONS.some((s) => s.value === x);
+/** ======= label helpers ======= */
+function typeLabel(t: ActivityType) {
+  return t === 0 ? "活动" : "讲座";
 }
 
-function readStatusKeysFromFilters(v: FilterValue | null | undefined) {
+function appStateLabel(s: ApplicationState) {
+  const map: Record<ApplicationState, string> = {
+    0: "报名成功",
+    1: "候补中",
+    2: "候补成功",
+    3: "候补失败",
+  };
+  return map[s];
+}
+
+function appStateTagColor(s: ApplicationState) {
+  const map: Record<ApplicationState, string> = {
+    0: "green",
+    1: "gold",
+    2: "blue",
+    3: "red",
+  };
+  return map[s];
+}
+
+function boolLabel(v: boolean, yes = "是", no = "否") {
+  return v ? yes : no;
+}
+
+function parseTimeMs(timeStr: string | undefined) {
+  if (!timeStr) return 0;
+  const iso = String(timeStr).replace(" ", "T");
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/** ======= filters options ======= */
+const APP_STATE_OPTIONS: { value: ApplicationState; label: string }[] = [
+  { value: 0, label: "报名成功" },
+  { value: 1, label: "候补中" },
+  { value: 2, label: "候补成功" },
+  { value: 3, label: "候补失败" },
+];
+
+const TYPE_OPTIONS: { value: ActivityType; label: string }[] = [
+  { value: 0, label: "活动" },
+  { value: 1, label: "讲座" },
+];
+
+function readNumberKeysFromFilters(
+  v: FilterValue | null | undefined,
+  allowed: number[],
+) {
   if (!v) return null;
   const arr = Array.isArray(v) ? v : [v];
-  const next = arr.filter(isStatusKey);
+  const set = new Set(allowed);
+  const next = arr
+    .map((x) => Number(x))
+    .filter((n) => Number.isFinite(n) && set.has(n));
   return next.length ? next : null;
 }
 
-// 尽量从 timeRange 里“猜”一个可排序的时间戳（你后端如果有 startTime 字段，建议直接用它）
-function parseTimeRangeStartMs(timeRange: string | undefined): number {
-  if (!timeRange) return 0;
+/** ======= detail state label ======= */
+function activityStateLabel(state: number) {
+  const map: Record<number, string> = {
+    0: "未开始",
+    1: "报名中",
+    2: "报名结束",
+    3: "进行中",
+    4: "已结束",
+  };
+  return map[state] ?? String(state);
+}
 
-  const m = String(timeRange).match(
-    /\d{4}[-/]\d{1,2}[-/]\d{1,2}[^0-9]?\d{0,2}:?\d{0,2}/,
-  );
-  if (m?.[0]) {
-    const s = m[0].replace(/\//g, "-");
-    const t = Date.parse(s);
-    if (!Number.isNaN(t)) return t;
-  }
+/** ======= local sort (front-end) ======= */
+function applySorter(rows: MyActivityItem[], sorter?: TableSorter) {
+  if (!sorter?.field || !sorter.order) return rows;
 
-  const d = String(timeRange).match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/);
-  if (d?.[0]) {
-    const t = Date.parse(d[0].replace(/\//g, "-"));
-    if (!Number.isNaN(t)) return t;
-  }
+  const field = sorter.field;
+  const dir = sorter.order === "ascend" ? 1 : -1;
 
-  return 0;
+  const next = [...rows].sort((a: any, b: any) => {
+    const av = a?.[field];
+    const bv = b?.[field];
+
+    // time 字段特殊处理（你们是字符串时间）
+    if (field === "time") {
+      const at = parseTimeMs(String(av ?? ""));
+      const bt = parseTimeMs(String(bv ?? ""));
+      return (at - bt) * dir;
+    }
+
+    // number
+    if (typeof av === "number" && typeof bv === "number") {
+      return (av - bv) * dir;
+    }
+
+    // boolean
+    if (typeof av === "boolean" && typeof bv === "boolean") {
+      return (Number(av) - Number(bv)) * dir;
+    }
+
+    // string fallback
+    const as = String(av ?? "");
+    const bs = String(bv ?? "");
+    return as.localeCompare(bs) * dir;
+  });
+
+  return next;
 }
 
 export default function ProfilePage() {
-  /** ================= 用户信息（真实接口） ================= */
+  /** ================= 用户信息 ================= */
   const [user, setUser] = useState<UserInfo | null>(null);
   const [userLoading, setUserLoading] = useState(false);
   const [userError, setUserError] = useState<unknown>(null);
@@ -100,8 +189,9 @@ export default function ProfilePage() {
     setUserLoading(true);
     setUserError(null);
     try {
-      const u = await getUserInfo();
-      setUser(u);
+      const data = await getUserInfo(); // { user, token }
+      setUser(data.user);
+      if (data.token) setToken(data.token);
     } catch (e) {
       setUserError(e);
       setUser(null);
@@ -114,210 +204,304 @@ export default function ProfilePage() {
     void loadUser();
   }, [loadUser]);
 
-  /** ================= 我的活动/讲座列表（通用表格） ================= */
-  const { query, setPage, setKeyword, reset } = useTableQuery({
+  /** ================= Query ================= */
+  const { query, setPage, setKeyword, setSorter, reset } = useTableQuery({
     initial: { page: 1, pageSize: 10, keyword: "" },
   });
 
-  // ✅ fetcher 必须 useCallback，保证引用稳定（导出也复用它）
-  const fetchMyActivities = useCallback(async (q: TableQuery<any>) => {
-    return getMyActivities({
-      page: q.page,
-      pageSize: q.pageSize,
-      keyword: q.keyword,
-    });
-  }, []);
+  /** ================= Filters：状态/类型（受控） ================= */
+  const [stateFilter, setStateFilter] = useState<ApplicationState[] | null>(
+    null,
+  );
+  const [typeFilter, setTypeFilter] = useState<ActivityType[] | null>(null);
+
+  /** ================= 选择（批量选择） ================= */
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  useEffect(() => {
+    setSelectedRowKeys([]);
+  }, [
+    query.page,
+    query.pageSize,
+    query.keyword,
+    query.sorter,
+    stateFilter,
+    typeFilter,
+  ]);
+
+  const rowSelection = useMemo(
+    () => ({
+      selectedRowKeys,
+      onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+      preserveSelectedRowKeys: false,
+    }),
+    [selectedRowKeys],
+  );
+
+  /** ================= 前端过滤（keyword + filters） ================= */
+  const applyFilters = useCallback(
+    (rows: MyActivityItem[], keyword: string) => {
+      let next = rows;
+
+      const kw = (keyword ?? "").trim();
+      if (kw) {
+        next = next.filter((r) => {
+          const idHit = String(r.activityId).includes(kw);
+          const userHit = String(r.username ?? "").includes(kw);
+          return idHit || userHit;
+        });
+      }
+
+      if (typeFilter?.length) {
+        const set = new Set(typeFilter);
+        next = next.filter((r) => set.has(r.type));
+      }
+
+      if (stateFilter?.length) {
+        const set = new Set(stateFilter);
+        next = next.filter((r) => set.has(r.state));
+      }
+
+      return next;
+    },
+    [stateFilter, typeFilter],
+  );
+
+  /** ================= fetcher：后端全量 → 前端处理 → 返回当前页 ================= */
+  const fetchMyActivities = useCallback(
+    async (q: TableQuery<any>) => {
+      const rowsAll = await getMyActivities(); // MyActivityItem[]
+      const base = Array.isArray(rowsAll) ? rowsAll : [];
+
+      // 1) keyword + filters
+      const filtered = applyFilters(base, q.keyword ?? "");
+
+      // 2) sorter（基于“筛选后的全量”排序，再分页）
+      const sorted = applySorter(filtered, q.sorter);
+
+      // 3) paging
+      const total = sorted.length;
+      const start = (q.page - 1) * q.pageSize;
+      const list = sorted.slice(start, start + q.pageSize);
+
+      return { list, total };
+    },
+    [applyFilters],
+  );
 
   const {
     list: activities,
     total,
     loading: listLoading,
     error: listError,
-    reload,
+    reload: reloadList,
   } = useTableData<MyActivityItem>(query, fetchMyActivities);
 
-  /** ================= 列预设（用于列设置/隐藏列/导出列） ================= */
+  const reloadAll = useCallback(() => {
+    void loadUser();
+    reloadList();
+  }, [loadUser, reloadList]);
+
+  /** ================= 列预设（✅ key 必须和 columns.key 完全一致） ================= */
   const columnPresets: TableColumnPreset<MyActivityItem>[] = useMemo(
     () => [
-      { key: "title", title: "标题", exportName: "title" },
-      { key: "timeRange", title: "时间", width: 180, exportName: "timeRange" },
-      { key: "location", title: "地点", width: 200, exportName: "location" },
       {
-        key: "organizer",
-        title: "主办方",
-        width: 180,
-        exportName: "organizer",
+        key: "activityId",
+        title: "活动ID",
+        width: 110,
+        exportName: "activityId",
       },
-      { key: "status", title: "状态", width: 110, exportName: "status" },
-      // ✅ 操作列一般不导出，也不放进 presets
+      { key: "type", title: "类型", width: 90, exportName: "type" },
+      { key: "state", title: "报名状态", width: 120, exportName: "state" },
+      { key: "time", title: "申请时间", width: 180, exportName: "time" },
+      { key: "checkIn", title: "是否签到", width: 110, exportName: "checkIn" },
+      {
+        key: "getScore",
+        title: "是否加分",
+        width: 110,
+        exportName: "getScore",
+      },
+      { key: "score", title: "分数", width: 90, exportName: "score" },
     ],
     [],
   );
 
+  // ✅ 关键改动：接入 orderedKeys / setOrderedKeys
   const {
     visibleKeys,
     setVisibleKeys,
+    orderedKeys,
+    setOrderedKeys,
     resetToDefault,
     applyPresetsToAntdColumns,
   } = useColumnPrefs<MyActivityItem>(TABLE_BIZ_KEY, columnPresets);
 
-  /** ================= 状态筛选（受控 filters） ================= */
-  const [statusFilter, setStatusFilter] = useState<StatusKey[] | null>(null);
-
-  /** ================= ✅ 当前页选择（批量选择 + 全选） ================= */
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-
-  useEffect(() => {
-    setSelectedRowKeys([]);
-  }, [query.page, query.pageSize, query.keyword, statusFilter]);
-
-  const rowSelection = useMemo(() => {
-    return {
-      selectedRowKeys,
-      onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
-      preserveSelectedRowKeys: false,
-    };
-  }, [selectedRowKeys]);
-
-  /** ================= 导出（前端跨页拉全量 + CSV 下载） ================= */
-  const { exportAll, exporting } = useTableExport<MyActivityItem>(
-    query,
-    fetchMyActivities,
-    {
-      pageSize: 500,
-      maxRows: 20000,
-    },
-  );
-
-  const applyStatusFilterToRows = useCallback(
-    (rows: MyActivityItem[]) => {
-      if (!statusFilter || statusFilter.length === 0) return rows;
-      const set = new Set(statusFilter);
-      return rows.filter((r) => set.has(r.status as any));
-    },
-    [statusFilter],
-  );
+  /** ================= 导出（基于“筛选后的全量”，不走 useTableExport） ================= */
+  const [exporting, setExporting] = useState(false);
 
   const handleExport = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+
     try {
-      const rowsAll = await exportAll();
-      const rows = applyStatusFilterToRows(rowsAll);
+      const rowsAll = await getMyActivities();
+      const base = Array.isArray(rowsAll) ? rowsAll : [];
+
+      const filtered = applyFilters(base, query.keyword ?? "");
+      const sorted = applySorter(filtered, query.sorter);
 
       exportCsv({
-        filename: "我的活动.csv",
-        rows,
+        filename: "我的报名记录.csv",
+        rows: sorted,
         presets: columnPresets,
         visibleKeys,
         mapRow: (row) => ({
           ...row,
-          status: statusLabel(row.status),
+          type: typeLabel(row.type) as any,
+          state: appStateLabel(row.state) as any,
+          checkIn: boolLabel(row.checkIn) as any,
+          getScore: boolLabel(row.getScore, "可加分", "不加分") as any,
         }),
       });
 
-      message.success(`已导出 ${rows.length} 条`);
+      message.success(`已导出 ${sorted.length} 条`);
     } catch {
       message.error("导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
     }
-  }, [applyStatusFilterToRows, columnPresets, exportAll, visibleKeys]);
+  }, [
+    applyFilters,
+    columnPresets,
+    exporting,
+    query.keyword,
+    query.sorter,
+    visibleKeys,
+  ]);
 
-  /** ================= 操作列事件（占位） ================= */
-  const handleDetail = useCallback((row: MyActivityItem) => {
-    console.log("detail:", row);
-    message.info(`查看详情：${row.title}`);
+  /** ================= 详情弹窗 ================= */
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detail, setDetail] = useState<ProfileActivityDetail | null>(null);
+
+  const openDetail = useCallback(async (row: MyActivityItem) => {
+    setDetailOpen(true);
+    setDetail(null);
+    setDetailLoading(true);
+    try {
+      const resp = await getActivityDetailById(row.activityId);
+      setDetail(resp.activity ?? null);
+    } catch {
+      setDetail(null);
+      message.error("获取详情失败");
+    } finally {
+      setDetailLoading(false);
+    }
   }, []);
 
-  const handleEdit = useCallback((row: MyActivityItem) => {
-    console.log("edit:", row);
-    message.info(`修改：${row.title}`);
+  const closeDetail = useCallback(() => {
+    setDetailOpen(false);
+    setDetail(null);
   }, []);
 
   const handleDelete = useCallback(async (row: MyActivityItem) => {
-    console.log("delete:", row);
-    message.success(`已删除（示例）：${row.title}`);
-    // TODO: 对接真实删除接口后：await api.delete(row.id); reload();
+    message.info(`示例：删除报名记录（activityId=${row.activityId}）`);
   }, []);
 
-  /** ================= antd columns ================= */
+  /** ================= raw columns（✅ 每列补齐 key；filters 不用 onFilter，避免二次过滤） ================= */
   const rawColumns: ColumnsType<MyActivityItem> = useMemo(
     () => [
       {
-        title: "标题",
-        dataIndex: "title",
-        key: "title",
-        render: (v: string, record) => (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span>{v}</span>
-            <Tag color={record.category === "lecture" ? "blue" : "green"}>
-              {record.category === "lecture" ? "讲座" : "活动"}
-            </Tag>
-          </div>
+        title: "活动ID",
+        dataIndex: "activityId",
+        key: "activityId",
+        width: 110,
+      },
+      {
+        title: "类型",
+        dataIndex: "type",
+        key: "type",
+        width: 90,
+        filters: TYPE_OPTIONS.map((x) => ({ text: x.label, value: x.value })),
+        filteredValue: typeFilter ?? null,
+        render: (v: ActivityType) => <Tag>{typeLabel(v)}</Tag>,
+      },
+      {
+        title: "报名状态",
+        dataIndex: "state",
+        key: "state",
+        width: 120,
+        filters: APP_STATE_OPTIONS.map((x) => ({
+          text: x.label,
+          value: x.value,
+        })),
+        filteredValue: stateFilter ?? null,
+        render: (v: ApplicationState) => (
+          <Tag color={appStateTagColor(v)}>{appStateLabel(v)}</Tag>
         ),
       },
       {
-        title: "时间",
-        dataIndex: "timeRange",
-        key: "timeRange",
+        title: "申请时间",
+        dataIndex: "time",
+        key: "time",
         width: 180,
-        sorter: (a, b) =>
-          parseTimeRangeStartMs(a.timeRange) -
-          parseTimeRangeStartMs(b.timeRange),
+        sorter: true, // ✅ 交给 query.sorter + fetcher 做“全量排序”
         sortDirections: ["ascend", "descend"],
       },
-      { title: "地点", dataIndex: "location", key: "location", width: 200 },
       {
-        title: "主办方",
-        dataIndex: "organizer",
-        key: "organizer",
-        width: 180,
-        render: (v: string) => <span style={{ color: "#666" }}>{v}</span>,
-      },
-
-      // ✅ 关键改动：状态列不再 fixed，把“最右固定位置”留给操作列
-      {
-        title: "状态",
-        dataIndex: "status",
-        key: "status",
+        title: "是否签到",
+        dataIndex: "checkIn",
+        key: "checkIn",
         width: 110,
-        filters: STATUS_OPTIONS.map((x) => ({ text: x.label, value: x.value })),
-        filteredValue: statusFilter ?? null,
-        onFilter: (value, record) => record.status === value,
-        render: (v: string) => <Tag>{statusLabel(v)}</Tag>,
+        render: (v: boolean) =>
+          v ? <Tag color="green">是</Tag> : <Tag>否</Tag>,
       },
-
-      // ✅ 操作列固定在最右侧
+      {
+        title: "是否加分",
+        dataIndex: "getScore",
+        key: "getScore",
+        width: 110,
+        render: (v: boolean) =>
+          v ? <Tag color="green">可加分</Tag> : <Tag>不加分</Tag>,
+      },
+      {
+        title: "分数",
+        dataIndex: "score",
+        key: "score",
+        width: 90,
+        sorter: true,
+        sortDirections: ["ascend", "descend"],
+      },
       {
         title: "操作",
         key: "actions",
-        width: 220,
+        width: 200,
         fixed: "right",
-        render: (_, record) => (
-          <Space size={8}>
-            <Button
-              type="link"
-              size="small"
-              onClick={() => handleDetail(record)}
-            >
-              详情
-            </Button>
-            <Button type="link" size="small" onClick={() => handleEdit(record)}>
-              修改
-            </Button>
-            <Popconfirm
-              title="确认删除？"
-              description="删除后不可恢复"
-              okText="删除"
-              cancelText="取消"
-              onConfirm={() => void handleDelete(record)}
-            >
-              <Button type="link" size="small" danger>
-                删除
-              </Button>
-            </Popconfirm>
-          </Space>
+        render: (_: unknown, record: MyActivityItem) => (
+          <ActionCell
+            record={record}
+            maxVisible={2}
+            actions={[
+              {
+                key: "detail",
+                label: "详情",
+                onClick: () => void openDetail(record),
+              },
+              {
+                key: "delete",
+                label: "删除",
+                danger: true,
+                confirm: {
+                  title: "确认删除？",
+                  description: "（示例）当前接口未提供删除报名记录",
+                },
+                onClick: () => void handleDelete(record),
+              },
+            ]}
+          />
         ),
       },
     ],
-    [handleDelete, handleDetail, handleEdit, statusFilter],
+    [openDetail, handleDelete, stateFilter, typeFilter],
   );
 
   const columns = useMemo(
@@ -325,7 +509,7 @@ export default function ProfilePage() {
     [applyPresetsToAntdColumns, rawColumns],
   );
 
-  /** ============== 描述信息（基础信息卡） ============== */
+  /** ============== 描述信息 ============== */
   const infoItems: DescriptionsProps["items"] = useMemo(() => {
     if (!user) return [];
     return [
@@ -357,6 +541,11 @@ export default function ProfilePage() {
         <Empty
           description={userError ? "加载用户信息失败" : "未获取到用户信息"}
         />
+        <div style={{ marginTop: 12, textAlign: "center" }}>
+          <Button icon={<ReloadOutlined />} onClick={() => void loadUser()}>
+            重试
+          </Button>
+        </div>
       </div>
     );
   }
@@ -372,6 +561,10 @@ export default function ProfilePage() {
               {user.major} · {user.grade}
             </div>
           </div>
+
+          <Button icon={<ReloadOutlined />} onClick={reloadAll}>
+            刷新
+          </Button>
         </div>
 
         <Descriptions style={{ marginTop: 24 }} column={2} items={infoItems} />
@@ -389,33 +582,41 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      <Card title="我的活动 / 讲座">
+      <Card title="我的活动 / 讲座报名记录">
         <TableToolbar
           showSearch
           keyword={query.keyword}
+          // ✅ 后端全量：推荐 change 模式 + debounce，本地过滤体验更像真实后台
+          searchMode="change"
+          debounceMs={300}
           onKeywordChange={(kw) => setKeyword(kw ?? "")}
-          onRefresh={reload}
+          onRefresh={reloadList}
           onReset={() => {
             reset();
-            setStatusFilter(null);
+            setStateFilter(null);
+            setTypeFilter(null);
             setSelectedRowKeys([]);
           }}
           selectedCount={selectedRowKeys.length}
           onClearSelection={() => setSelectedRowKeys([])}
+          loading={listLoading || exporting}
           right={
             <>
               <Button
                 icon={<DownloadOutlined />}
-                onClick={handleExport}
+                onClick={() => void handleExport()}
                 loading={exporting}
               >
                 导出
               </Button>
 
+              {/* ✅ 关键改动：把顺序受控值/回调传进去 */}
               <ColumnSettings<MyActivityItem>
                 presets={columnPresets}
                 visibleKeys={visibleKeys}
                 onChange={setVisibleKeys}
+                orderedKeys={orderedKeys}
+                onOrderChange={setOrderedKeys}
                 onReset={resetToDefault}
               />
             </>
@@ -428,52 +629,129 @@ export default function ProfilePage() {
           minColumnWidth={80}
           columns={columns}
           dataSource={activities}
-          rowKey="id"
+          rowKey="activityId"
           query={query}
           total={total}
           loading={listLoading}
           error={listError}
           emptyText="暂无报名记录"
           rowSelection={rowSelection}
-          // ✅ 关键：强制横向滚动，确保右侧 fixed 的操作列永远能看到
+          // ✅ fixed/resize 体验需要横向滚动
           scroll={{ x: 1100 }}
           onQueryChange={(next) => {
+            // page/pageSize
             const nextPage =
               typeof next.page === "number" ? next.page : query.page;
             const nextPageSize =
               typeof next.pageSize === "number"
                 ? next.pageSize
                 : query.pageSize;
+            if (nextPage !== query.page || nextPageSize !== query.pageSize) {
+              setPage(nextPage, nextPageSize);
+              setSelectedRowKeys([]);
+            }
 
-            if (nextPage === query.page && nextPageSize === query.pageSize)
-              return;
-            setPage(nextPage, nextPageSize);
-            setSelectedRowKeys([]);
+            // sorter（全量排序在 fetcher 做）
+            if ("sorter" in next) {
+              setSorter(next.sorter);
+              setSelectedRowKeys([]);
+            }
           }}
           onFiltersChange={(filters) => {
-            const next = readStatusKeysFromFilters(filters?.status);
-            setStatusFilter(next);
+            const nextState = readNumberKeysFromFilters(
+              filters?.state,
+              APP_STATE_OPTIONS.map((x) => x.value),
+            ) as ApplicationState[] | null;
+
+            const nextType = readNumberKeysFromFilters(
+              filters?.type,
+              TYPE_OPTIONS.map((x) => x.value),
+            ) as ActivityType[] | null;
+
+            setStateFilter(nextState);
+            setTypeFilter(nextType);
             setSelectedRowKeys([]);
 
-            if (next) setPage(1, query.pageSize);
+            // ✅ 过滤变化回第一页
+            setPage(1, query.pageSize);
           }}
         />
       </Card>
+
+      <Modal
+        title="活动/讲座详情"
+        open={detailOpen}
+        onCancel={closeDetail}
+        footer={
+          <Button type="primary" onClick={closeDetail}>
+            关闭
+          </Button>
+        }
+        width={760}
+      >
+        {detailLoading ? (
+          <div style={{ padding: 24, textAlign: "center" }}>
+            <Spin />
+          </div>
+        ) : detail ? (
+          <Descriptions bordered size="small" column={2}>
+            <Descriptions.Item label="ID">{detail.id}</Descriptions.Item>
+            <Descriptions.Item label="类型">
+              {typeLabel(detail.type)}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="名称" span={2}>
+              {detail.name}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="部门">
+              {detail.department}
+            </Descriptions.Item>
+            <Descriptions.Item label="地点">
+              {detail.location}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="报名开始">
+              {detail.signStartTime}
+            </Descriptions.Item>
+            <Descriptions.Item label="报名截止">
+              {detail.signEndTime}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="开始时间">
+              {detail.activityStime}
+            </Descriptions.Item>
+            <Descriptions.Item label="结束时间">
+              {detail.activityEtime}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="状态">
+              {activityStateLabel(detail.state)}
+            </Descriptions.Item>
+            <Descriptions.Item label="分数">{detail.score}</Descriptions.Item>
+
+            <Descriptions.Item label="已报名人数">
+              {detail.registeredNum}
+            </Descriptions.Item>
+            <Descriptions.Item label="候补人数">
+              {detail.candidateNum}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="候补成功">
+              {detail.candidateSuccNum}
+            </Descriptions.Item>
+            <Descriptions.Item label="候补失败">
+              {detail.candidateFailNum}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="简介" span={2}>
+              <div style={{ whiteSpace: "pre-wrap" }}>{detail.description}</div>
+            </Descriptions.Item>
+          </Descriptions>
+        ) : (
+          <Empty description="未获取到详情" />
+        )}
+      </Modal>
     </div>
   );
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case "pending":
-      return "未开始";
-    case "signed":
-      return "已报名";
-    case "attended":
-      return "已完成";
-    case "cancelled":
-      return "已取消";
-    default:
-      return status;
-  }
 }
