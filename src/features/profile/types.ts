@@ -1,139 +1,188 @@
 // src/features/profile/types.ts
 /**
- * Profile domain types
- *
- * 当前采用方案 C：
- * - 列表：/activity/userApplications（报名记录）
- * - 详情：/activity/searchById（活动详情，点击“详情”再查）
- *
- * Profile 域只描述：
- * - 用户信息
- * - 我的“报名记录”
- * - 以及「个人中心页面真正需要用到的最小活动详情视图」
+ * Profile Domain Types
+ * 用于：个人中心页面（ProfilePage）
  */
 
-// =======================
-// 用户相关
-// =======================
+/* ===========================
+ * 通用：操作类接口返回
+ * =========================== */
 
-// 角色：0 管理员 / 1 主席 / 2 部长 / 3 干事 / 4 普通学生
-export type UserRole = 0 | 1 | 2 | 3 | 4;
+/**
+ * 后端很多“操作类接口”data 可能是：
+ * - string（如：成功修改1条数据）
+ * - null（如：部分 update 接口会返回 null）
+ * 用统一类型避免业务层误以为永远有文案
+ */
+export type OperationResult = string | null;
 
-/** /user/info 返回的用户信息（data.user） */
-export type UserInfo = {
+/* ===========================
+ * 用户信息
+ * =========================== */
+
+/** 用户角色 */
+export type UserRole =
+  | 0 // 管理员
+  | 1 // 主席
+  | 2 // 部长
+  | 3 // 干事
+  | 4; // 普通学生
+
+/** 个人中心用户信息（/user/info -> data.user） */
+export interface UserInfo {
   id: number;
   username: string;
   name: string;
+
+  /**
+   * 后端字段：invalid
+   * 注意：接口文档对其语义存在歧义（“是否有效账户 / 是否无效”两种写法都出现过）
+   * 前端此处先保持原字段名与类型，UI 侧如需展示请自行做 isValid/label 映射
+   */
   invalid: boolean;
+
   role: UserRole;
 
   email: string;
   major: string;
   grade: string;
+  department: string | null;
+
+  serviceScore: number; // 社会服务分
+  lectureNum: number; // 学术讲座次数
 
   createTime: string;
   lastLoginTime: string;
+}
 
-  // —— 个人中心扩展字段 ——
-  serviceScore?: number;
-  lectureNum?: number;
-  department?: string | null;
-  menuPermission?: unknown;
-};
+/* ===========================
+ * 我的活动（列表）
+ * =========================== */
 
-/** /user/info 的 data 结构 */
-export type UserInfoData = {
-  user: UserInfo;
-  token: string;
-};
+/** 活动类型 */
+export type ActivityType =
+  | 0 // 活动
+  | 1; // 讲座
 
-// =======================
-// 我的活动（报名记录）
-// =======================
+/** 报名状态（/activity/userApplications） */
+export type ApplicationState =
+  | 0 // 报名成功
+  | 1 // 候补中
+  | 2 // 候补成功
+  | 3; // 候补失败
 
-/**
- * 报名状态：
- * 0 报名成功
- * 1 候补中
- * 2 候补成功
- * 3 候补失败
- */
-export type ApplicationState = 0 | 1 | 2 | 3;
-
-/**
- * 活动类型：
- * 0 活动
- * 1 讲座
- */
-export type ActivityType = 0 | 1;
-
-/**
- * /activity/userApplications 返回的单条报名记录
- *
- * ⚠️ 这里只是“关系表”，不是活动本体
- */
-export type MyActivityItem = {
+/** 个人中心 - 我的活动列表项（/activity/userApplications） */
+export interface MyActivityItem {
   activityId: number;
+  activityName: string;
+
   username: string;
+  type: ActivityType;
 
   state: ApplicationState;
-  time: string;
+  score: number;
+
+  time: string; // 申请时间（后端字符串：yyyy-MM-dd HH:mm:ss）
 
   attachment: string | null;
+
   checkIn: boolean;
+
+  /** ✅ 兼容：后端/Mock 可能缺字段，做成可选更稳 */
+  checkOut?: boolean;
+
   getScore: boolean;
-  type: ActivityType;
-  score: number;
+}
+
+/* ===========================
+ * 我的活动（表格筛选 filters）
+ * =========================== */
+
+/** “我的活动”表格筛选条件（前端本地过滤使用） */
+export type MyActivityFilters = {
+  type?: ActivityType;
+  state?: ApplicationState;
+  checkIn?: boolean;
+  checkOut?: boolean;
+  getScore?: boolean;
 };
 
-// =======================
-// 个人中心使用的「活动详情视图」
-// =======================
+/* ===========================
+ * 活动详情（详情弹窗）
+ * =========================== */
 
-/**
- * 这是「个人中心详情弹窗」真正需要的字段集合
- * 来自 /activity/searchById
- *
- * ⚠️ 注意：
- * - 这是 *Profile Page* 使用的视图模型
- * - 不等同于完整 Activity 实体（避免 profile 侵入 activity 域）
- */
-export type ProfileActivityDetail = {
+/** 活动状态（/activity/searchById） */
+export type ActivityState =
+  | 0 // 未开始
+  | 1 // 报名中
+  | 2 // 报名结束
+  | 3 // 进行中
+  | 4; // 已结束
+
+/** 活动详情（/activity/searchById -> data.activity） */
+export interface ActivityDetail {
   id: number;
   name: string;
   description: string;
 
   department: string;
-  location: string;
+  time: string;
 
   signStartTime: string;
   signEndTime: string;
+
+  fullNum: number;
+  score: number;
+  location: string;
+
   activityStime: string;
   activityEtime: string;
 
   type: ActivityType;
-  state: number; // 0~4（直接透传后端）
+  state: ActivityState;
 
-  score: number;
   registeredNum: number;
   candidateNum: number;
   candidateSuccNum: number;
   candidateFailNum: number;
+}
+
+/* ===========================
+ * 枚举文案映射（UI 使用）
+ * =========================== */
+
+export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
+  0: "活动",
+  1: "讲座",
 };
 
-// =======================
-// 预留：未来分页 / 聚合接口
-// =======================
-
-export type MyActivitiesQuery = {
-  page: number;
-  pageSize: number;
-  keyword?: string;
-  type?: ActivityType | "all";
-  state?: ApplicationState | "all";
+export const APPLICATION_STATE_LABEL: Record<ApplicationState, string> = {
+  0: "报名成功",
+  1: "候补中",
+  2: "候补成功",
+  3: "候补失败",
 };
 
-export type MyActivitiesListResult = {
-  list: MyActivityItem[];
-  total: number;
+export const ACTIVITY_STATE_LABEL: Record<ActivityState, string> = {
+  0: "未开始",
+  1: "报名中",
+  2: "报名结束",
+  3: "进行中",
+  4: "已结束",
 };
+
+/* ===========================
+ * 账户设置（表单提交）
+ * =========================== */
+
+/** 修改邮箱（/user/updateEmail） */
+export interface UpdateEmailPayload {
+  email: string;
+}
+
+/** 修改密码（/user/modifyPassword） */
+export interface ModifyPasswordPayload {
+  oldPassword: string;
+  newPassword1: string;
+  newPassword2: string;
+}

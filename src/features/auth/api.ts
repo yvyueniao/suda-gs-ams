@@ -5,15 +5,24 @@ import type {
   User,
   UserInfoData,
   MenuNode,
+  SendVerifyCodePayload,
+  ForgetPasswordPayload,
+  OperationResult,
 } from "./types";
 
 /**
+ * ===========================
+ * 登录 & 鉴权
+ * ===========================
+ */
+
+/**
  * 登录
- * POST /login
+ * POST /suda_login
  */
 export function login(payload: LoginPayload) {
   return request<LoginData>({
-    url: "/suda_login", // ✅ 修正：不是 /suda_login
+    url: "/suda_login",
     method: "POST",
     data: payload,
   });
@@ -51,5 +60,37 @@ export function getMenuList() {
   return request<MenuNode[]>({
     url: "/menuList",
     method: "POST",
+  });
+}
+
+/**
+ * ===========================
+ * 忘记密码（无需登录）
+ * ===========================
+ */
+
+/**
+ * 发送验证码
+ * POST /user/send-verify-code
+ * data: null
+ */
+export function sendVerifyCode(payload: SendVerifyCodePayload) {
+  return request<null>({
+    url: "/user/send-verify-code",
+    method: "POST",
+    data: payload,
+  });
+}
+
+/**
+ * 忘记密码 - 重置密码
+ * POST /user/forget-password
+ * data: string | null
+ */
+export function forgetPassword(payload: ForgetPasswordPayload) {
+  return request<OperationResult>({
+    url: "/user/forget-password",
+    method: "POST",
+    data: payload,
   });
 }

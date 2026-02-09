@@ -16,9 +16,17 @@
  * - 可选 debounce（仅 change 模式生效）
  * - 统一 loading/disabled 控制
  * - 支持“已选 X 条 + 清空选择”的 selection 区域（给批量操作打基础）
+ *
+ * ✅ 修复：
+ * - 中文输入法 IME（拼音组合输入）导致：
+ *   1) 拼音 + 选中字同时触发搜索/过滤（显示异常）
+ *   2) 每敲/删一个字就触发一次刷新（过快）
+ * 处理方式：
+ * - compositionStart ~ compositionEnd 期间不触发 change 搜索
+ * - compositionEnd 时再触发一次（走 debounce）
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Space, Typography } from "antd";
 import type { InputProps } from "antd";
 import {
@@ -157,6 +165,9 @@ export function TableToolbar(props: TableToolbarProps) {
     setInputValue(keyword ?? "");
   }, [keyword]);
 
+  // ✅ IME 组合输入标记（拼音输入阶段不要触发 change 搜索）
+  const composingRef = useRef(false);
+
   const debouncedKeywordChange = useDebouncedCallback<[string]>(
     (kw) => onKeywordChange?.(kw),
     debounceMs,
@@ -168,35 +179,45 @@ export function TableToolbar(props: TableToolbarProps) {
 
   const effectiveSearchDisabled = loading || searchDisabled;
 
-  const triggerSearch = (kwRaw: string) => {
+  const triggerSearch = (
+    kwRaw: string,
+    opts?: { bypassDebounce?: boolean },
+  ) => {
     const kw = kwRaw ?? "";
-    // ✅ 兼容：不管 submit/change，onKeywordChange 仍然会同步 query.keyword（如果用户有传）
+
+    // ✅ submit 或 “强制立即触发” 时：绕过 debounce（例如点击搜索按钮）
+    if (opts?.bypassDebounce && debounceMs > 0) {
+      (debouncedKeywordChange as any)?.cancel?.();
+      (debouncedSearch as any)?.cancel?.();
+    }
+
     onKeywordChange?.(kw);
     onSearch?.(kw);
+  };
+
+  const emitChangeMode = (kw: string) => {
+    if (debounceMs > 0) {
+      debouncedKeywordChange?.(kw);
+      debouncedSearch?.(kw);
+    } else {
+      onKeywordChange?.(kw);
+      onSearch?.(kw);
+    }
   };
 
   const handleInputChange = (v: string) => {
     setInputValue(v);
 
-    if (searchMode === "change") {
-      // change 模式：输入即触发（可选防抖）
-      if (debounceMs > 0) {
-        debouncedKeywordChange?.(v);
-        debouncedSearch?.(v);
-      } else {
-        onKeywordChange?.(v);
-        onSearch?.(v);
-      }
-    }
+    if (searchMode !== "change") return;
+    if (composingRef.current) return; // ✅ 拼音阶段不触发（解决“拼音+中文都显示”）
+
+    emitChangeMode(v);
   };
 
   const handleSubmit = () => {
-    if (searchMode === "submit") {
-      triggerSearch(inputValue);
-    } else {
-      // change 模式下，点击搜索按钮等价于“立即触发一次”（绕过防抖）
-      triggerSearch(inputValue);
-    }
+    // submit 模式：回车/点按钮才触发
+    // change 模式：点按钮等价于“立即触发一次”（绕过防抖）
+    triggerSearch(inputValue, { bypassDebounce: true });
   };
 
   const renderSelection = () => {
@@ -254,6 +275,18 @@ export function TableToolbar(props: TableToolbarProps) {
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onPressEnter={handleSubmit}
+            // ✅ IME：拼音开始/结束
+            onCompositionStart={() => {
+              composingRef.current = true;
+            }}
+            onCompositionEnd={(e) => {
+              composingRef.current = false;
+
+              // ✅ 选字结束：如果是 change 模式，这里再触发一次（走 debounce）
+              if (searchMode === "change") {
+                emitChangeMode(e.currentTarget.value);
+              }
+            }}
             style={{ width: searchWidth }}
             suffix={
               // submit 模式下提供一个“明确的触发点”，change 模式也可点（立即触发一次）

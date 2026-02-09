@@ -1,147 +1,143 @@
 // src/features/profile/hooks/useProfile.ts
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { message } from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { getMyActivities, getUserInfo, getActivityDetailById } from "../api";
-import type { MyActivityItem, UserInfo, ProfileActivityDetail } from "../types";
-import { setToken } from "../../../shared/session/token";
+import type {
+  ModifyPasswordPayload,
+  UpdateEmailPayload,
+  UserInfo,
+  OperationResult,
+} from "../types";
+import { getMyProfile, modifyPassword, updateEmail } from "../api";
 import { ApiError } from "../../../shared/http/error";
 
-/* =========================
- * state 定义
- * ========================= */
+import { useProfileMyActivitiesTable } from "./useProfileMyActivitiesTable";
 
-type UseProfileState = {
-  user: UserInfo | null;
-  activities: MyActivityItem[];
-  loading: boolean;
-  error: string | null;
-
-  // —— 详情相关 ——
-  detailLoading: boolean;
-  currentDetail: ProfileActivityDetail | null;
-};
-
-/* =========================
- * Hook 实现
- * ========================= */
-
+/**
+ * useProfile（精简版）
+ * - 只管：用户信息 + 修改邮箱/密码
+ * - 表格：完全交给 useProfileMyActivitiesTable（三件套）
+ */
 export function useProfile() {
-  const [state, setState] = useState<UseProfileState>({
-    user: null,
-    activities: [],
-    loading: true,
-    error: null,
-    detailLoading: false,
-    currentDetail: null,
-  });
+  // ===== 用户信息 =====
+  const [profile, setProfile] = useState<UserInfo | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<unknown>(null);
 
-  /* ---------- 主数据加载 ---------- */
-  const load = useCallback(async () => {
-    setState((s) => ({
-      ...s,
-      loading: true,
-      error: null,
-    }));
+  // ✅ 用 ref 防并发 + 保证 reloadProfile 不依赖 loadingProfile（函数引用稳定）
+  const loadingProfileRef = useRef(false);
+
+  const reloadProfile = useCallback(async () => {
+    if (loadingProfileRef.current) return;
+
+    loadingProfileRef.current = true;
+    setLoadingProfile(true);
+    setProfileError(null);
 
     try {
-      const [userData, activities] = await Promise.all([
-        getUserInfo(), // { user, token }
-        getMyActivities(), // MyActivityItem[]
-      ]);
-
-      // token 续期
-      if (userData?.token) {
-        setToken(userData.token);
-      }
-
-      setState((s) => ({
-        ...s,
-        user: userData.user,
-        activities: Array.isArray(activities) ? activities : [],
-        loading: false,
-        error: null,
-      }));
-    } catch (err) {
-      const msg =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "加载失败";
-
-      message.error(msg);
-
-      setState((s) => ({
-        ...s,
-        loading: false,
-        error: msg,
-      }));
+      const u = await getMyProfile();
+      setProfile(u);
+      return u;
+    } catch (e) {
+      setProfileError(e);
+      throw e;
+    } finally {
+      loadingProfileRef.current = false;
+      setLoadingProfile(false);
     }
   }, []);
 
+  // ✅ 首屏自动加载：只跑一次（不依赖 reloadProfile）
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  const reload = useCallback(() => {
-    void load();
-  }, [load]);
-
-  /* ---------- 详情加载（方案 C 核心） ---------- */
-  const loadActivityDetail = useCallback(async (activityId: number) => {
-    setState((s) => ({
-      ...s,
-      detailLoading: true,
-      currentDetail: null,
-    }));
-
-    try {
-      const { activity } = await getActivityDetailById(activityId);
-
-      setState((s) => ({
-        ...s,
-        detailLoading: false,
-        currentDetail: activity,
-      }));
-    } catch (err) {
-      const msg =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "获取活动详情失败";
-
-      message.error(msg);
-
-      setState((s) => ({
-        ...s,
-        detailLoading: false,
-        currentDetail: null,
-      }));
-    }
+    void reloadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const clearDetail = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      currentDetail: null,
-    }));
-  }, []);
+  // ===== 修改邮箱/密码 =====
+  const [submittingEmail, setSubmittingEmail] = useState(false);
+  const [submittingPassword, setSubmittingPassword] = useState(false);
+  const [submitError, setSubmitError] = useState<unknown>(null);
 
-  /* ---------- 稳定引用导出 ---------- */
+  const submittingEmailRef = useRef(false);
+  const submittingPasswordRef = useRef(false);
+
+  const submitUpdateEmail = useCallback(
+    async (payload: UpdateEmailPayload): Promise<OperationResult> => {
+      if (submittingEmailRef.current) return null;
+
+      submittingEmailRef.current = true;
+      setSubmittingEmail(true);
+      setSubmitError(null);
+
+      try {
+        const msg = await updateEmail(payload);
+        setProfile((prev) => (prev ? { ...prev, email: payload.email } : prev));
+        return msg;
+      } catch (e) {
+        setSubmitError(e);
+        throw e;
+      } finally {
+        submittingEmailRef.current = false;
+        setSubmittingEmail(false);
+      }
+    },
+    [],
+  );
+
+  const submitModifyPassword = useCallback(
+    async (payload: ModifyPasswordPayload): Promise<OperationResult> => {
+      if (submittingPasswordRef.current) return null;
+
+      submittingPasswordRef.current = true;
+      setSubmittingPassword(true);
+      setSubmitError(null);
+
+      try {
+        const msg = await modifyPassword(payload);
+        return msg;
+      } catch (e) {
+        setSubmitError(e);
+        throw e;
+      } finally {
+        submittingPasswordRef.current = false;
+        setSubmittingPassword(false);
+      }
+    },
+    [],
+  );
+
+  // ===== 错误信息（给页面直接用）=====
+  const profileErrorMessage = useMemo(() => {
+    if (!profileError) return "";
+    if (profileError instanceof ApiError) return profileError.message;
+    return "加载用户信息失败";
+  }, [profileError]);
+
+  const submitErrorMessage = useMemo(() => {
+    if (!submitError) return "";
+    if (submitError instanceof ApiError) return submitError.message;
+    return "提交失败";
+  }, [submitError]);
+
+  // ===== 我的活动表格（三件套 Hook）=====
+  const myActivitiesTable = useProfileMyActivitiesTable();
+
   return {
-    // 主体数据
-    user: state.user,
-    activities: useMemo(() => state.activities, [state.activities]),
-    loading: state.loading,
-    error: state.error,
-    reload,
+    // 用户信息
+    profile,
+    loadingProfile,
+    profileError,
+    profileErrorMessage,
+    reloadProfile,
 
-    // 详情能力（供 ProfilePage 使用）
-    detailLoading: state.detailLoading,
-    currentDetail: state.currentDetail,
-    loadActivityDetail,
-    clearDetail,
+    // 修改邮箱/密码
+    submittingEmail,
+    submittingPassword,
+    submitUpdateEmail,
+    submitModifyPassword,
+    submitError,
+    submitErrorMessage,
+
+    // 表格
+    myActivitiesTable,
   };
 }

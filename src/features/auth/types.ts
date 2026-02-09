@@ -58,3 +58,34 @@ export interface MenuNode {
   label: string;
   children: MenuNode[];
 }
+
+/* ===========================
+ * 忘记密码（无需登录）
+ * =========================== */
+
+/**
+ * 发送验证码
+ * POST /user/send-verify-code
+ */
+export interface SendVerifyCodePayload {
+  username: string;
+}
+
+/**
+ * 忘记密码 - 重置密码
+ * POST /user/forget-password
+ */
+export interface ForgetPasswordPayload {
+  username: string;
+  verifyCode: string;
+  newPassword: string;
+}
+
+/**
+ * 通用操作结果
+ * - data 可能是 string（如“成功修改1条数据”）
+ * - 也可能是 null（部分接口）
+ *
+ * request<T>() 已经解到 data
+ */
+export type OperationResult = string | null;
