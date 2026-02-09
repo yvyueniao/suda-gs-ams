@@ -1,24 +1,26 @@
 // src/features/auth/hooks/useForgotPassword.ts
 import { useCallback, useEffect, useRef, useState } from "react";
-import { message } from "antd";
 
-import { ApiError } from "../../../shared/http/error";
-import { forgetPassword, sendVerifyCode } from "../api";
-import type { ForgetPasswordPayload } from "../types";
+import { sendVerifyCode, forgetPassword } from "../api";
+import type { ForgetPasswordPayload, OperationResult } from "../types";
 
 /**
- * useForgotPassword
+ * useForgotPassword（方案 B）
  *
  * 职责：
  * - 编排“忘记密码”两步流程：
  *   1) 发送验证码：POST /user/send-verify-code
  *   2) 重置密码：POST /user/forget-password
- * - 管理状态：sending / submitting / countdown
+ * - 管理状态：sendingCode / submitting / countdown
  *
- * 约定（和你项目风格对齐）：
+ * 约定（方案 B）：
  * - API 层只负责 request<T>()
- * - Hook 负责：try/catch + message + 状态编排
- * - 页面层只负责：表单 + 调用 hook
+ * - Hook 只负责：状态编排 + 调接口 + 倒计时
+ * - 不做：message 提示
+ * - 不做：输入合法性校验（交给页面 Form rules）
+ *
+ * 失败：
+ * - 直接抛 ApiError（由页面 catch 后统一 message）
  */
 
 const COUNTDOWN_SECONDS = 60;
@@ -63,36 +65,25 @@ export function useForgotPassword() {
     return () => stopTimer();
   }, [stopTimer]);
 
+  /**
+   * 发送验证码
+   * - 成功：开启倒计时，返回 true
+   * - 失败：抛 ApiError / Error（由页面处理提示）
+   *
+   * 注意：输入校验交给页面（Form rules）
+   */
   const sendCode = useCallback(
     async (username: string) => {
       const u = (username ?? "").trim();
 
-      if (!u) {
-        message.warning("请输入账号");
-        return false;
-      }
-      if (!/^\d{11}$/.test(u)) {
-        message.warning("账号必须为 11 位数字");
-        return false;
-      }
-      if (countdown > 0) {
-        // 倒计时中不重复发
-        return false;
-      }
+      // 倒计时中不重复发（静默返回 false，让页面决定是否提示）
+      if (countdown > 0) return false;
 
       setSendingCode(true);
       try {
         await sendVerifyCode({ username: u });
-        message.success("验证码已发送");
         startCountdown(COUNTDOWN_SECONDS);
         return true;
-      } catch (e: any) {
-        if (e instanceof ApiError) {
-          message.error(e.message);
-          return false;
-        }
-        message.error("发送失败");
-        return false;
       } finally {
         setSendingCode(false);
       }
@@ -100,41 +91,22 @@ export function useForgotPassword() {
     [countdown, startCountdown],
   );
 
+  /**
+   * 重置密码
+   * - 成功：返回服务端 OperationResult（通常是 string / null）
+   * - 失败：抛 ApiError / Error（由页面处理提示）
+   *
+   * 注意：输入校验交给页面（Form rules）
+   */
   const resetPassword = useCallback(async (payload: ForgetPasswordPayload) => {
     const username = (payload.username ?? "").trim();
     const verifyCode = (payload.verifyCode ?? "").trim();
-    const newPassword = (payload.newPassword ?? "").trim();
-
-    if (!/^\d{11}$/.test(username)) {
-      message.warning("账号必须为 11 位数字");
-      return null;
-    }
-    if (!verifyCode) {
-      message.warning("请输入验证码");
-      return null;
-    }
-    // 你后端示例是 6 位验证码；如果未来变动，这里也能放宽
-    if (!/^\d{6}$/.test(verifyCode)) {
-      message.warning("验证码格式不正确（应为 6 位数字）");
-      return null;
-    }
-    if (!newPassword) {
-      message.warning("请输入新密码");
-      return null;
-    }
+    const newPassword = payload.newPassword ?? "";
 
     setSubmitting(true);
     try {
       const res = await forgetPassword({ username, verifyCode, newPassword });
-      message.success(res || "密码重置成功");
-      return res;
-    } catch (e: any) {
-      if (e instanceof ApiError) {
-        message.error(e.message);
-        return null;
-      }
-      message.error("重置失败");
-      return null;
+      return res as OperationResult;
     } finally {
       setSubmitting(false);
     }

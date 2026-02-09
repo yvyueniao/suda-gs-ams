@@ -6,13 +6,11 @@ import {
   Descriptions,
   Divider,
   Empty,
-  Form,
-  Input,
-  Modal,
   Space,
   Spin,
   Typography,
   message,
+  Modal,
 } from "antd";
 
 import {
@@ -22,18 +20,16 @@ import {
 } from "../../shared/components/table";
 
 import { useProfile } from "../../features/profile/hooks/useProfile";
-import type {
-  ActivityDetail,
-  ModifyPasswordPayload,
-  UpdateEmailPayload,
-  UserInfo,
-} from "../../features/profile/types";
+import type { ActivityDetail, UserInfo } from "../../features/profile/types";
 import { ACTIVITY_STATE_LABEL } from "../../features/profile/types";
 import {
   activityTypeLabel,
   applicationStateLabel,
   boolLabel,
 } from "../../features/profile/table/helpers";
+
+import UpdateEmailModal from "./UpdateEmailModal";
+import ModifyPasswordModal from "./ModifyPasswordModal";
 
 const { Title, Text } = Typography;
 
@@ -152,21 +148,8 @@ export default function ProfilePage() {
   const p = useProfile();
   const t = p.myActivitiesTable;
 
-  // 修改邮箱/密码弹窗
   const [emailOpen, setEmailOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
-  const [emailForm] = Form.useForm<UpdateEmailPayload>();
-  const [pwdForm] = Form.useForm<ModifyPasswordPayload>();
-
-  const openEmailModal = () => {
-    emailForm.setFieldsValue({ email: p.profile?.email ?? "" });
-    setEmailOpen(true);
-  };
-
-  const openPwdModal = () => {
-    pwdForm.resetFields();
-    setPwdOpen(true);
-  };
 
   return (
     <div style={{ padding: 16 }}>
@@ -179,8 +162,8 @@ export default function ProfilePage() {
           }
           extra={
             <Space>
-              <Button onClick={openEmailModal}>修改邮箱</Button>
-              <Button onClick={openPwdModal}>修改密码</Button>
+              <Button onClick={() => setEmailOpen(true)}>修改邮箱</Button>
+              <Button onClick={() => setPwdOpen(true)}>修改密码</Button>
               <Button
                 onClick={() => void p.reloadProfile()}
                 loading={p.loadingProfile}
@@ -212,7 +195,7 @@ export default function ProfilePage() {
             showSearch
             searchMode="submit"
             keyword={t.query.keyword}
-            onSearch={(kw) => t.setKeyword(kw)} // ✅ 只有回车/点搜索按钮才触发
+            onSearch={(kw) => t.setKeyword(kw)}
             onReset={t.reset}
             onRefresh={t.reload}
             right={
@@ -251,112 +234,38 @@ export default function ProfilePage() {
         </Card>
       </Space>
 
-      {/* 修改邮箱 */}
-      <Modal
-        title="修改邮箱"
+      {/* 修改邮箱（方案 B：提示在页面） */}
+      <UpdateEmailModal
         open={emailOpen}
-        onCancel={() => {
-          setEmailOpen(false);
-          emailForm.resetFields();
-        }}
-        onOk={async () => {
-          let values: UpdateEmailPayload;
+        initialEmail={p.profile?.email ?? ""}
+        confirmLoading={p.submittingEmail}
+        onCancel={() => setEmailOpen(false)}
+        onSubmit={async (payload) => {
           try {
-            values = await emailForm.validateFields();
-          } catch {
-            return;
-          }
-
-          try {
-            const msgText = await p.submitUpdateEmail(values);
+            const msgText = await p.submitUpdateEmail(payload);
             message.success(msgText || "修改成功");
             setEmailOpen(false);
-            emailForm.resetFields();
           } catch (e: any) {
-            message.error(e?.message || p.submitErrorMessage || "修改失败");
+            message.error(e?.message || "修改失败");
           }
         }}
-        confirmLoading={p.submittingEmail}
-        destroyOnClose
-      >
-        <Form form={emailForm} layout="vertical">
-          <Form.Item
-            name="email"
-            label="新邮箱"
-            rules={[
-              { required: true, message: "请输入邮箱" },
-              { type: "email", message: "邮箱格式不正确" },
-            ]}
-          >
-            <Input placeholder="example@suda.edu.cn" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
 
-      {/* 修改密码 */}
-      <Modal
-        title="修改密码"
+      {/* 修改密码（方案 B：提示在页面） */}
+      <ModifyPasswordModal
         open={pwdOpen}
-        onCancel={() => {
-          setPwdOpen(false);
-          pwdForm.resetFields();
-        }}
-        onOk={async () => {
-          let values: ModifyPasswordPayload;
+        confirmLoading={p.submittingPassword}
+        onCancel={() => setPwdOpen(false)}
+        onSubmit={async (payload) => {
           try {
-            values = await pwdForm.validateFields();
-          } catch {
-            return;
-          }
-
-          try {
-            const msgText = await p.submitModifyPassword(values);
+            const msgText = await p.submitModifyPassword(payload);
             message.success(msgText || "修改成功");
             setPwdOpen(false);
-            pwdForm.resetFields();
           } catch (e: any) {
-            message.error(e?.message || p.submitErrorMessage || "修改失败");
+            message.error(e?.message || "修改失败");
           }
         }}
-        confirmLoading={p.submittingPassword}
-        destroyOnClose
-      >
-        <Form form={pwdForm} layout="vertical">
-          <Form.Item
-            name="oldPassword"
-            label="旧密码"
-            rules={[{ required: true, message: "请输入旧密码" }]}
-          >
-            <Input.Password />
-          </Form.Item>
-
-          <Form.Item
-            name="newPassword1"
-            label="新密码"
-            rules={[{ required: true, message: "请输入新密码" }]}
-          >
-            <Input.Password />
-          </Form.Item>
-
-          <Form.Item
-            name="newPassword2"
-            label="确认新密码"
-            dependencies={["newPassword1"]}
-            rules={[
-              { required: true, message: "请再次输入新密码" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  const p1 = getFieldValue("newPassword1");
-                  if (!value || value === p1) return Promise.resolve();
-                  return Promise.reject(new Error("两次输入的新密码不一致"));
-                },
-              }),
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
 
       {/* 活动详情 */}
       <Modal

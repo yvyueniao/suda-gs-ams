@@ -38,12 +38,10 @@ function normalizeFilterValue<T>(
   if (raw === undefined || raw === null) return undefined;
 
   if (kind === "number") {
-    // 可能是 0/1，也可能是 "0"/"1"
     const n = typeof raw === "number" ? raw : Number(raw);
     return (Number.isFinite(n) ? (n as any) : undefined) as T | undefined;
   }
 
-  // boolean：可能是 true/false，也可能是 "true"/"false"
   if (typeof raw === "boolean") return raw as any;
   if (raw === "true") return true as any;
   if (raw === "false") return false as any;
@@ -91,6 +89,7 @@ export function useProfileMyActivitiesTable() {
     reload,
   } = useTableData<MyActivityItem, MyActivityFilters>(query, fetcher, {
     auto: true,
+    autoDeps: "reload", // ✅ 全量拉取 + 本地查询：query 变化不重复请求，只在首次+手动 reload 时请求
   });
 
   // 3) 本地查询引擎（filtered / total / list）
@@ -111,7 +110,7 @@ export function useProfileMyActivitiesTable() {
     applyPresetsToAntdColumns,
   } = useColumnPrefs<MyActivityItem>(BIZ_KEY, presets, { version: 1 });
 
-  // 5) 详情弹窗（不耦合 Table Module，只提供 actions）
+  // 5) 详情弹窗
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
@@ -119,8 +118,9 @@ export function useProfileMyActivitiesTable() {
 
   const openDetail = useCallback(
     async (activityId: number) => {
+      // ✅ 优先从当前 filtered（用户看到的全集）里找当前行，语义更一致
       const row =
-        (rawRows ?? []).find((x) => x.activityId === activityId) ?? null;
+        (filtered ?? []).find((x) => x.activityId === activityId) ?? null;
       setCurrentRow(row);
 
       setDetailOpen(true);
@@ -133,10 +133,15 @@ export function useProfileMyActivitiesTable() {
         setDetailLoading(false);
       }
     },
-    [rawRows],
+    [filtered],
   );
 
-  const closeDetail = useCallback(() => setDetailOpen(false), []);
+  const closeDetail = useCallback(() => {
+    setDetailOpen(false);
+    setDetailLoading(false);
+    setDetail(null);
+    setCurrentRow(null);
+  }, []);
 
   // ✅ 兼容：仅获取详情数据（有些页面/旧逻辑会直接调用它）
   const fetchActivityDetail = useCallback(
@@ -155,28 +160,25 @@ export function useProfileMyActivitiesTable() {
     [actions],
   );
 
-  // ✅ 受控筛选闭环：把 query.filters 映射回 antd 的 filteredValue
+  // ✅ 受控筛选闭环：把 query.filters 映射回 antd 的 filteredValue（用映射表避免一堆 if）
   const controlledColumns = useMemo(() => {
     const f = query.filters;
+
+    const filterMap: Record<string, unknown> = {
+      type: f?.type,
+      state: f?.state,
+      checkIn: f?.checkIn,
+      checkOut: f?.checkOut,
+      getScore: f?.getScore,
+    };
 
     const mapColumn = (
       c: ColumnType<MyActivityItem>,
     ): ColumnWithFilteredValue<MyActivityItem> => {
       const k = (c.dataIndex ?? c.key) as string | undefined;
       if (!k) return c as any;
-
-      if (k === "type")
-        return { ...c, filteredValue: toFilteredValue(f?.type) };
-      if (k === "state")
-        return { ...c, filteredValue: toFilteredValue(f?.state) };
-      if (k === "checkIn")
-        return { ...c, filteredValue: toFilteredValue(f?.checkIn) };
-      if (k === "checkOut")
-        return { ...c, filteredValue: toFilteredValue(f?.checkOut) };
-      if (k === "getScore")
-        return { ...c, filteredValue: toFilteredValue(f?.getScore) };
-
-      return c as any;
+      if (!(k in filterMap)) return c as any;
+      return { ...c, filteredValue: toFilteredValue(filterMap[k]) };
     };
 
     return (baseColumns as ColumnsType<MyActivityItem>).map(mapColumn);
@@ -213,7 +215,6 @@ export function useProfileMyActivitiesTable() {
       if ("sorter" in next) {
         setSorter(next.sorter as TableSorter | undefined);
       }
-      // keyword/filters 不走 SmartTable（走 Toolbar / onFiltersChange）
     },
     [query.page, query.pageSize, setPage, setSorter],
   );
@@ -255,7 +256,7 @@ export function useProfileMyActivitiesTable() {
     [setFilters],
   );
 
-  // 10) 重置（查询 + 列）
+  // 10) 重置（查询）
   const reset = useCallback(() => {
     resetQuery();
   }, [resetQuery]);

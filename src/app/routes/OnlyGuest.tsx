@@ -1,25 +1,14 @@
+// src/app/routes/OnlyGuest.tsx
 import { Navigate, Outlet } from "react-router-dom";
+import { getUser } from "../../shared/session/session";
 
-import { getToken } from "../../shared/session/token";
-
-/**
- * OnlyGuest
- * - 已登录（本地存在 token）：不允许访问登录页，直接跳转到默认业务页
- * - 未登录：允许进入登录页
- *
- * 使用场景：
- * <Route element={<OnlyGuest />}>
- *   <Route path="/login" element={<LoginPage />} />
- * </Route>
- */
 export default function OnlyGuest() {
-  const token = getToken();
+  const user = getUser();
 
-  // 已登录用户访问 /login → 直接去业务首页
-  if (token) {
+  // ✅ 只有本地已经有 user（说明至少成功校验/拉取过信息）才跳业务页
+  if (user) {
     return <Navigate to="/enroll" replace />;
   }
 
-  // 未登录用户 → 放行
   return <Outlet />;
 }

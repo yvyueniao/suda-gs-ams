@@ -54,4 +54,9 @@ export const myActivitiesTablePresets: TableColumnPreset<MyActivityItem>[] = [
     title: "分数",
     width: 80,
   },
+  {
+    key: "actions",
+    title: "操作",
+    width: 120,
+  },
 ];

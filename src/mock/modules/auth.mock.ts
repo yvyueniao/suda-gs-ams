@@ -7,7 +7,7 @@ import { MOCK_TOKEN, requireAuth } from "../core/auth";
 const MOCK_USER = {
   id: 1,
   username: "20254227087",
-  name: "梁靖松",
+  name: "梁靖松1",
   invalid: true,
   role: 2,
   menuPermission: null,
@@ -140,26 +140,7 @@ export function setupAuthMock(middlewares: MW) {
   });
 
   /**
-   * 用户信息
-   * POST /api/user/info
-   */
-  middlewares.use("/api/user/info", async (req, res, next) => {
-    if (req.method !== "POST") return next();
 
-    await withDelay();
-    if (maybeFail(res)) return;
-
-    if (!requireAuth(req, res)) return;
-
-    // 可测试空态：返回 user=null（若前端不接受，别开）
-    // if (maybeEmpty(res, { user: null, token: MOCK_TOKEN }, "获取成功")) return;
-
-    return sendJson(
-      res,
-      200,
-      ok({ user: MOCK_USER, token: MOCK_TOKEN }, "获取成功"),
-    );
-  });
 
   /**
    * 菜单

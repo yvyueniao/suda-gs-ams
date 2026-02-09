@@ -13,9 +13,11 @@ import { ApiError } from "../../../shared/http/error";
 import { useProfileMyActivitiesTable } from "./useProfileMyActivitiesTable";
 
 /**
- * useProfile（精简版）
- * - 只管：用户信息 + 修改邮箱/密码
- * - 表格：完全交给 useProfileMyActivitiesTable（三件套）
+ * useProfile（方案 B）
+ * - 只管：数据获取 / 提交动作 / 状态（loading、submitting）
+ * - 不做：message 提示
+ * - 失败：直接 throw（页面 catch 后统一提示）
+ * - 表格：交给 useProfileMyActivitiesTable
  */
 export function useProfile() {
   // ===== 用户信息 =====
@@ -23,7 +25,7 @@ export function useProfile() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileError, setProfileError] = useState<unknown>(null);
 
-  // ✅ 用 ref 防并发 + 保证 reloadProfile 不依赖 loadingProfile（函数引用稳定）
+  // 防并发
   const loadingProfileRef = useRef(false);
 
   const reloadProfile = useCallback(async () => {
@@ -46,7 +48,6 @@ export function useProfile() {
     }
   }, []);
 
-  // ✅ 首屏自动加载：只跑一次（不依赖 reloadProfile）
   useEffect(() => {
     void reloadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,7 +56,6 @@ export function useProfile() {
   // ===== 修改邮箱/密码 =====
   const [submittingEmail, setSubmittingEmail] = useState(false);
   const [submittingPassword, setSubmittingPassword] = useState(false);
-  const [submitError, setSubmitError] = useState<unknown>(null);
 
   const submittingEmailRef = useRef(false);
   const submittingPasswordRef = useRef(false);
@@ -66,15 +66,12 @@ export function useProfile() {
 
       submittingEmailRef.current = true;
       setSubmittingEmail(true);
-      setSubmitError(null);
 
       try {
         const msg = await updateEmail(payload);
+        // 本地乐观更新（避免再拉一次 profile）
         setProfile((prev) => (prev ? { ...prev, email: payload.email } : prev));
         return msg;
-      } catch (e) {
-        setSubmitError(e);
-        throw e;
       } finally {
         submittingEmailRef.current = false;
         setSubmittingEmail(false);
@@ -89,14 +86,10 @@ export function useProfile() {
 
       submittingPasswordRef.current = true;
       setSubmittingPassword(true);
-      setSubmitError(null);
 
       try {
         const msg = await modifyPassword(payload);
         return msg;
-      } catch (e) {
-        setSubmitError(e);
-        throw e;
       } finally {
         submittingPasswordRef.current = false;
         setSubmittingPassword(false);
@@ -105,18 +98,12 @@ export function useProfile() {
     [],
   );
 
-  // ===== 错误信息（给页面直接用）=====
+  // ===== 错误信息（给页面展示 Empty 用）=====
   const profileErrorMessage = useMemo(() => {
     if (!profileError) return "";
     if (profileError instanceof ApiError) return profileError.message;
     return "加载用户信息失败";
   }, [profileError]);
-
-  const submitErrorMessage = useMemo(() => {
-    if (!submitError) return "";
-    if (submitError instanceof ApiError) return submitError.message;
-    return "提交失败";
-  }, [submitError]);
 
   // ===== 我的活动表格（三件套 Hook）=====
   const myActivitiesTable = useProfileMyActivitiesTable();
@@ -134,8 +121,6 @@ export function useProfile() {
     submittingPassword,
     submitUpdateEmail,
     submitModifyPassword,
-    submitError,
-    submitErrorMessage,
 
     // 表格
     myActivitiesTable,

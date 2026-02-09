@@ -34,7 +34,7 @@ export default defineConfig(({ command, mode }) => {
         ? undefined
         : {
             "/api": {
-              target: "https://43cd5493.r26.cpolar.top",
+              target: "https://571d10d2.r26.cpolar.top",
               changeOrigin: true,
               secure: false,
               rewrite: (path) => path.replace(/^\/api/, ""),

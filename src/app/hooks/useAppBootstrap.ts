@@ -1,82 +1,104 @@
-import { useEffect, useMemo, useState } from "react";
-import { message } from "antd";
+// src/app/hooks/useAppBootstrap.ts
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { getMenuList, getUserInfo } from "../../features/auth/api";
 import type { MenuNode, User } from "../../features/auth/types";
 import { ApiError } from "../../shared/http/error";
 import { getUser, setUser } from "../../shared/session/session";
 
-/**
- * useAppBootstrap
- *
- * 负责 AppLayout 初始化阶段的数据准备：
- * - /user/info 获取当前用户（并写入 localStorage）
- * - /menuList 获取菜单树
- * - 管理 loading 状态
- * - 处理初始化错误（对 401 不做 toast，让 RequireAuth 兜底跳转更干净）
- *
- * Layout 只负责“渲染 + 交互”，不负责“业务编排”。
- */
 export function useAppBootstrap() {
+  const navigate = useNavigate();
+
   // ✅ 优先使用本地缓存 user，避免闪一下“未登录”
   const [user, setUserState] = useState<User | null>(() => getUser());
   const [menuTree, setMenuTree] = useState<MenuNode[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 你也可以暴露一个 error 状态给 UI（比如显示 ErrorResult）
   const [error, setError] = useState<ApiError | null>(null);
 
+  // ✅ 防止 React18 StrictMode 开发环境 effect 执行两次
+  const ranOnceRef = useRef(false);
+  // ✅ 防止卸载后 setState
+  const aliveRef = useRef(true);
+
+  const refetch = useCallback(async () => {
+    // ✅ 如果正在加载中，点击重试不再重复发请求
+    if (loading) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const info = await getUserInfo();
+      if (!aliveRef.current) return;
+
+      setUser(info.user);
+      setUserState(info.user);
+
+      const menus = await getMenuList();
+      if (!aliveRef.current) return;
+
+      setMenuTree(menus);
+    } catch (err) {
+      if (!aliveRef.current) return;
+
+      const apiErr =
+        err instanceof ApiError ? err : new ApiError("初始化失败", "UNKNOWN");
+      setError(apiErr);
+
+      // ✅ 你要求：失败后直接跳 404
+      navigate("/404", { replace: true });
+    } finally {
+      if (!aliveRef.current) return;
+      setLoading(false);
+    }
+  }, [loading, navigate]);
+
   useEffect(() => {
-    let alive = true;
+    aliveRef.current = true;
 
-    async function init() {
-      try {
-        setLoading(true);
-        setError(null);
+    // ✅ 首次只自动执行一次
+    if (!ranOnceRef.current) {
+      ranOnceRef.current = true;
+      // 首次进入：允许自动请求（不需要用户点重试）
+      void (async () => {
+        // 这里不要走 if(loading) 的短路，所以手动执行一遍内部逻辑
+        try {
+          setLoading(true);
+          setError(null);
 
-        // 1) 拉用户信息（后端可能刷新 token）
-        const info = await getUserInfo();
-        if (!alive) return;
+          const info = await getUserInfo();
+          if (!aliveRef.current) return;
 
-        setUser(info.user);
-        setUserState(info.user);
+          setUser(info.user);
+          setUserState(info.user);
 
-        // 2) 拉菜单
-        const menus = await getMenuList();
-        if (!alive) return;
+          const menus = await getMenuList();
+          if (!aliveRef.current) return;
 
-        setMenuTree(menus);
-      } catch (err) {
-        if (!alive) return;
+          setMenuTree(menus);
+        } catch (err) {
+          if (!aliveRef.current) return;
 
-        if (err instanceof ApiError) {
-          setError(err);
+          const apiErr =
+            err instanceof ApiError
+              ? err
+              : new ApiError("初始化失败", "UNKNOWN");
+          setError(apiErr);
 
-          /**
-           * 401/403 通常是登录态问题：
-           * - token 失效会被 RequireAuth 兜底跳转到 /login
-           * - 这里不再额外弹 toast，避免“闪一下错误再跳走”
-           */
-          if (err.status !== 401 && err.status !== 403) {
-            message.error(err.message);
-          }
-        } else {
-          // 非 ApiError 的兜底
-          message.error("初始化失败，请稍后重试");
+          navigate("/404", { replace: true });
+        } finally {
+          if (!aliveRef.current) return;
+          setLoading(false);
         }
-      } finally {
-        if (!alive) return;
-        setLoading(false);
-      }
+      })();
     }
 
-    init();
     return () => {
-      alive = false;
+      aliveRef.current = false;
     };
-  }, []);
+  }, [navigate]);
 
-  // 可选：给 Layout 一个“是否已登录用户”的派生值
   const authed = useMemo(() => Boolean(user), [user]);
 
   return {
@@ -85,6 +107,6 @@ export function useAppBootstrap() {
     loading,
     error,
     authed,
-    // 如果以后你想支持“点击重试”，可以把 init 抽出来 return 一个 refetch()
+    refetch, // ✅ 点击重试用这个
   };
 }

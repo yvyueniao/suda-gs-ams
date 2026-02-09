@@ -1,3 +1,4 @@
+// src/App.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import AppLayout from "./app/layout/AppLayout";
@@ -19,6 +20,9 @@ import AdminManagePage from "./pages/rbac/AdminManagePage";
 import OrgPage from "./pages/org/OrgPage";
 import AuditPage from "./pages/system/AuditPage";
 import ForbiddenPage from "./pages/403/ForbiddenPage";
+import NotFoundPage from "./pages/error/NotFoundPage";
+
+const NOT_FOUND_PATH = "/404";
 
 export default function App() {
   return (
@@ -26,7 +30,10 @@ export default function App() {
       {/* 根路径：智能分流 */}
       <Route path="/" element={<RootRedirect />} />
 
-      {/* 登录页：已登录用户禁止访问 */}
+      {/* ✅ 显式 404：不走鉴权/不走 Layout（很关键，避免死循环） */}
+      <Route path={NOT_FOUND_PATH} element={<NotFoundPage />} />
+
+      {/* 登录页：只允许游客访问 */}
       <Route element={<OnlyGuest />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
@@ -46,7 +53,7 @@ export default function App() {
             <Route path="/feedback-admin" element={<FeedbackAdminPage />} />
           </Route>
 
-          {/* ===== 用户与权限 / 组织架构 / 系统管理：主席 / 管理员 ===== */}
+          {/* ===== 用户与权限 / 组织架构 / 系统管理：主席/管理员 ===== */}
           <Route element={<RequireRole allow={ROLES.ADMIN_ONLY} />}>
             {/* RBAC：默认进用户管理 */}
             <Route
@@ -63,10 +70,13 @@ export default function App() {
           {/* 403 页面 */}
           <Route path="/403" element={<ForbiddenPage />} />
 
-          {/* 兜底：未知业务路由 → enroll */}
-          <Route path="*" element={<Navigate to="/enroll" replace />} />
+          {/* ✅ 业务区兜底：未知业务路由 → /404（不要再跳 /enroll） */}
+          <Route path="*" element={<Navigate to={NOT_FOUND_PATH} replace />} />
         </Route>
       </Route>
+
+      {/* ✅ 全局兜底：任何未知路由 → /404 */}
+      <Route path="*" element={<Navigate to={NOT_FOUND_PATH} replace />} />
     </Routes>
   );
 }

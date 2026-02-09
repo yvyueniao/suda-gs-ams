@@ -34,8 +34,8 @@ const mockUser = {
   grade: "研一",
   department: "计算机学院研究生会",
 
-  serviceScore: 3,
-  lectureNum: 1,
+  serviceScore: 5,
+  lectureNum: 4,
 
   createTime: "2026-02-01 12:00:30",
   lastLoginTime: "2026-02-01 18:28:59",

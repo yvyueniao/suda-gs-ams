@@ -1,37 +1,55 @@
+// src/pages/login/LoginPage.tsx
 import { useState } from "react";
 import { Card, Form, Input, Button, Typography, message } from "antd";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLogin } from "../../features/auth/hooks/useLogin";
+import { ApiError } from "../../shared/http/error";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 export default function LoginPage() {
   const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingLogin, setSubmittingLogin] = useState(false);
 
   const { doLogin } = useLogin();
 
+  // ✅ 方案 B：页面负责“提示 + 跳转”
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { from?: string } | null;
+  const from = state?.from || "/enroll";
+
+  // ===== 忘记密码弹窗 =====
+  const [forgotOpen, setForgotOpen] = useState(false);
+
+  const openForgot = () => setForgotOpen(true);
+  const closeForgot = () => setForgotOpen(false);
+
   const handleSubmit = async () => {
-    if (submitting) return;
+    if (submittingLogin) return;
 
     try {
       const values = await form.validateFields();
-      setSubmitting(true);
+      setSubmittingLogin(true);
 
-      // ✅ 页面只负责拿到用户输入，再交给 useLogin 处理
-      await doLogin(values.username as string, values.password as string);
+      await doLogin(String(values.username).trim(), String(values.password));
+
+      message.success("登录成功");
+      navigate(from, { replace: true });
     } catch (err: any) {
-      // antd 表单校验失败：不 toast，Form.Item 会展示错误
+      // 表单校验错误：不提示
       if (err?.errorFields) return;
 
-      // doLogin 内部已经 message.error 过了
-      // 这里不需要重复提示
+      if (err instanceof ApiError) message.error(err.message);
+      else message.error("登录失败，请重试");
     } finally {
-      setSubmitting(false);
+      setSubmittingLogin(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    message.info("忘记密码功能暂未开放，请联系管理员");
-  };
+  const initialForgotUsername = String(
+    form.getFieldValue("username") ?? "",
+  ).trim();
 
   return (
     <div
@@ -77,7 +95,7 @@ export default function LoginPage() {
           <Button
             type="primary"
             block
-            loading={submitting}
+            loading={submittingLogin}
             onClick={handleSubmit}
             style={{ marginTop: 8 }}
           >
@@ -85,12 +103,17 @@ export default function LoginPage() {
           </Button>
 
           <div style={{ textAlign: "right", marginTop: 12 }}>
-            <Typography.Link onClick={handleForgotPassword}>
-              忘记密码？
-            </Typography.Link>
+            <Typography.Link onClick={openForgot}>忘记密码？</Typography.Link>
           </div>
         </Form>
       </Card>
+
+      {/* ✅ 忘记密码弹窗（已拆分组件） */}
+      <ForgotPasswordModal
+        open={forgotOpen}
+        onClose={closeForgot}
+        initialUsername={initialForgotUsername}
+      />
     </div>
   );
 }
