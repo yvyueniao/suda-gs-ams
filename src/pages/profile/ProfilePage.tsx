@@ -1,4 +1,3 @@
-// src/pages/profile/ProfilePage.tsx
 import { useState } from "react";
 import {
   Button,
@@ -11,6 +10,7 @@ import {
   Typography,
   message,
   Modal,
+  Avatar,
 } from "antd";
 
 import {
@@ -20,7 +20,11 @@ import {
 } from "../../shared/components/table";
 
 import { useProfile } from "../../features/profile/hooks/useProfile";
-import type { ActivityDetail, UserInfo } from "../../features/profile/types";
+import type {
+  ActivityDetail,
+  UserInfo,
+  MyActivityItem,
+} from "../../features/profile/types"; // 导入 MyActivityItem 类型
 import { ACTIVITY_STATE_LABEL } from "../../features/profile/types";
 import {
   activityTypeLabel,
@@ -30,6 +34,7 @@ import {
 
 import UpdateEmailModal from "./UpdateEmailModal";
 import ModifyPasswordModal from "./ModifyPasswordModal";
+import ActivityDetailModal from "./ActivityDetailModal"; // 导入 ActivityDetailModal 组件
 
 const { Title, Text } = Typography;
 
@@ -49,7 +54,7 @@ function renderUserInfo(user: UserInfo) {
     <Descriptions
       size="small"
       column={2}
-      labelStyle={{ width: 96 }}
+      labelStyle={{ width: 128 }}
       items={[
         { key: "username", label: "学号/工号", children: user.username },
         { key: "name", label: "姓名", children: user.name },
@@ -58,18 +63,18 @@ function renderUserInfo(user: UserInfo) {
         { key: "major", label: "专业", children: user.major },
         { key: "grade", label: "年级", children: user.grade },
         { key: "email", label: "邮箱", children: user.email },
-        {
-          key: "serviceScore",
-          label: "社会服务分",
-          children: user.serviceScore,
-        },
-        { key: "lectureNum", label: "学术讲座次数", children: user.lectureNum },
         { key: "createTime", label: "创建时间", children: user.createTime },
         {
           key: "lastLoginTime",
           label: "上次登录",
           children: user.lastLoginTime,
         },
+        {
+          key: "serviceScore",
+          label: "社会服务分",
+          children: user.serviceScore,
+        },
+        { key: "lectureNum", label: "学术讲座次数", children: user.lectureNum },
       ]}
     />
   );
@@ -164,22 +169,28 @@ export default function ProfilePage() {
             <Space>
               <Button onClick={() => setEmailOpen(true)}>修改邮箱</Button>
               <Button onClick={() => setPwdOpen(true)}>修改密码</Button>
-              <Button
-                onClick={() => void p.reloadProfile()}
-                loading={p.loadingProfile}
-              >
-                刷新
-              </Button>
             </Space>
           }
         >
-          {p.loadingProfile ? (
-            <Spin />
-          ) : p.profile ? (
-            renderUserInfo(p.profile)
-          ) : (
-            <Empty description={p.profileErrorMessage || "暂无用户信息"} />
-          )}
+          <Space
+            direction="horizontal"
+            align="center"
+            style={{ width: "100%" }}
+          >
+            {/* 头像 */}
+            <Avatar
+              size={100}
+              src="/public/avatar-default.png"
+              style={{ marginRight: 16 }}
+            />
+            {p.loadingProfile ? (
+              <Spin />
+            ) : p.profile ? (
+              renderUserInfo(p.profile)
+            ) : (
+              <Empty description={p.profileErrorMessage || "暂无用户信息"} />
+            )}
+          </Space>
         </Card>
 
         <Card
@@ -268,39 +279,13 @@ export default function ProfilePage() {
       />
 
       {/* 活动详情 */}
-      <Modal
-        title="活动详情"
+      <ActivityDetailModal
         open={t.detailOpen}
+        loading={t.detailLoading}
+        detail={t.detail}
+        currentRow={t.currentRow} // 传递 currentRow
         onCancel={t.closeDetail}
-        footer={null}
-        destroyOnClose
-      >
-        {t.detailLoading ? (
-          <Spin />
-        ) : !t.detail ? (
-          <Empty description="未找到活动详情" />
-        ) : (
-          <div>
-            {renderActivityDetail(t.detail)}
-            <Divider />
-            <Space wrap>
-              <Text type="secondary">（报名记录字段）</Text>
-              <Text type="secondary">
-                报名状态：{applicationStateLabel(t.currentRow?.state)}
-              </Text>
-              <Text type="secondary">
-                签到：{boolLabel(t.currentRow?.checkIn)}
-              </Text>
-              <Text type="secondary">
-                签退：{boolLabel(t.currentRow?.checkOut)}
-              </Text>
-              <Text type="secondary">
-                可加分：{boolLabel(t.currentRow?.getScore)}
-              </Text>
-            </Space>
-          </div>
-        )}
-      </Modal>
+      />
     </div>
   );
 }
