@@ -1,23 +1,97 @@
-import { Card, Typography } from "antd";
+// src/pages/org/OrgPage.tsx
+
+import { useMemo, useState } from "react";
+import { Button, Card, Space } from "antd";
+
+import {
+  SmartTable,
+  TableToolbar,
+  ColumnSettings,
+} from "../../shared/components/table";
+
+import { useAsyncMapAction } from "../../shared/actions";
+
+import CreateDepartmentModal from "./CreateDepartmentModal";
+
+import { useDepartmentManage } from "../../features/org/department/hooks/useDepartmentManage";
+import { buildDepartmentColumns } from "../../features/org/department/table/columns";
+import { departmentColumnPresets } from "../../features/org/department/table/presets";
 
 export default function OrgPage() {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  // ✅ useDepartmentManage 无参数（按你报错修正）
+  const { table, submitCreate, submitDelete } = useDepartmentManage();
+
+  // ✅ 行内删除 loading（按 id 管理）
+  const deleteAction = useAsyncMapAction<number>({
+    successMessage: "删除成功",
+  });
+
+  const columns = useMemo(() => {
+    return buildDepartmentColumns({
+      onDelete: (record) =>
+        deleteAction.run(record.id, async () => {
+          await submitDelete({ departmentId: record.id });
+          table.reload();
+        }),
+      isDeleting: (id) => deleteAction.isLoading(id),
+    });
+  }, [deleteAction, submitDelete, table]);
+
+  const antdColumns = useMemo(() => {
+    return table.applyPresetsToAntdColumns(columns);
+  }, [table, columns]);
+
   return (
-    <Card>
-      <Typography.Title level={3} style={{ marginTop: 0 }}>
-        组织架构（部门管理）
-      </Typography.Title>
+    <Card title="部门管理">
+      <TableToolbar
+        keyword={table.query.keyword}
+        onKeywordChange={(v) => table.onQueryChange({ keyword: v })}
+        onReset={table.reset} // ✅ 你提示里说有 reset
+        onRefresh={table.reload}
+        right={
+          <Space>
+            <Button type="primary" onClick={() => setCreateOpen(true)}>
+              新建部门
+            </Button>
 
-      <Typography.Paragraph>
-        面向主席/超管：维护研究生会部门、岗位、成员归属关系，供活动分派与权限使用。
-      </Typography.Paragraph>
+            <Button onClick={() => table.exportCsv()} loading={table.exporting}>
+              导出 CSV
+            </Button>
 
-      <Typography.Title level={5}>下一步</Typography.Title>
-      <Typography.Paragraph>
-        - 部门树/列表（新增/编辑/删除）
-        <br />
-        - 部门成员管理（加入/移除/设置职位）
-        <br />- 与活动“负责人/协办部门”字段联动
-      </Typography.Paragraph>
+            <ColumnSettings
+              presets={departmentColumnPresets} // ✅ 关键：不再 require
+              visibleKeys={table.visibleKeys}
+              onChange={table.setVisibleKeys}
+              orderedKeys={table.orderedKeys}
+              onOrderChange={table.setOrderedKeys}
+              onReset={table.resetToDefault}
+            />
+          </Space>
+        }
+      />
+
+      <SmartTable
+        bizKey="org.department"
+        columns={antdColumns}
+        dataSource={table.rows}
+        rowKey="id"
+        query={table.query}
+        total={table.total}
+        loading={table.loading}
+        error={table.error}
+        onQueryChange={table.onQueryChange}
+        sticky
+        enableColumnResize
+      />
+
+      <CreateDepartmentModal
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        createDepartment={(name) => submitCreate({ department: name })}
+        onSuccess={() => table.reload()}
+      />
     </Card>
   );
 }

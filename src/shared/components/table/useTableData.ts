@@ -3,7 +3,7 @@
  * useTableData
  *
  * 职责：
- * - 负责“请求态”的组织：loading / error / data / total
+ * - 负责“请求态”的组织：loading / error / list / total
  * - 通过业务侧传入的 fetcher 获取数据：
  *    fetcher(query) -> Promise<ListResult<T>>
  *
@@ -11,6 +11,11 @@
  * - 支持两种自动加载模式：
  *   1) "query"  ：query 变化就自动拉取（后端分页/后端筛选）
  *   2) "reload" ：只在首次加载 + 手动 reload 时拉取（全量拉取 + 本地查询）
+ *
+ * ✅ 修复：
+ * - reload 模式下，原实现用 `reloadTick > 0` 判断会导致：
+ *   一旦点过一次 reload，后续只要 load 引用变化（很常见），effect 就会重复触发 load -> 无限刷新
+ * - 现在用 lastReloadTickRef 做“同 tick 去重”，保证每次 reloadTick 增加只触发一次 load
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -119,15 +124,22 @@ export function useTableData<
     // 这里不做事，交给下面另一个 effect 处理
   }, [auto, autoDeps, depsKey, load]);
 
-  // ✅ reload 模式：只在 reloadTick 变化时触发（并且也要 auto=true）
+  // ✅ reload 模式：只在 reloadTick “递增”时触发一次（并且也要 auto=true）
+  //    修复：避免 `reloadTick > 0` + load 引用变化 => 重复触发 load（无限刷新）
+  const lastReloadTickRef = useRef(0);
+
   useEffect(() => {
     if (!auto) return;
     if (autoDeps !== "reload") return;
     if (!didInitRef.current) return; // 首次已经在上面跑过了
 
-    if (reloadTick > 0) {
-      void load();
-    }
+    if (reloadTick <= 0) return;
+
+    // ✅ 同一个 tick 只触发一次
+    if (reloadTick === lastReloadTickRef.current) return;
+
+    lastReloadTickRef.current = reloadTick;
+    void load();
   }, [auto, autoDeps, reloadTick, load]);
 
   return { list, total, loading, error, reload };
