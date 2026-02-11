@@ -1,3 +1,4 @@
+//src\shared\session\session.ts
 import type { User } from "../../features/auth/types";
 
 const USER_KEY = "suda-gs-ams:user";

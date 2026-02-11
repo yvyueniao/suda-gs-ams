@@ -1,3 +1,4 @@
+//src\shared\session\token.ts
 const TOKEN_KEY = "suda-gs-ams:token";
 
 export function getToken(): string | null {

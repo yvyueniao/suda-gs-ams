@@ -1,3 +1,4 @@
+//src\shared\http\error.ts
 export type ApiErrorCode =
   | "NETWORK_ERROR"
   | "TIMEOUT"

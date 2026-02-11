@@ -21,9 +21,9 @@ import OrgPage from "./pages/org/OrgPage";
 import AuditPage from "./pages/system/AuditPage";
 import ForbiddenPage from "./pages/403/ForbiddenPage";
 import NotFoundPage from "./pages/error/NotFoundPage";
-
+import ServerErrorPage from "./pages/error/ServerErrorPage";
 const NOT_FOUND_PATH = "/404";
-
+const SERVER_ERROR_PATH = "/500";
 export default function App() {
   return (
     <Routes>
@@ -77,6 +77,7 @@ export default function App() {
 
       {/* ✅ 全局兜底：任何未知路由 → /404 */}
       <Route path="*" element={<Navigate to={NOT_FOUND_PATH} replace />} />
+      <Route path={SERVER_ERROR_PATH} element={<ServerErrorPage />} />
     </Routes>
   );
 }

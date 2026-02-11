@@ -1,3 +1,4 @@
+//src\app\routes\RootRedirect.tsx
 import { Navigate } from "react-router-dom";
 import { getToken } from "../../shared/session/token";
 

@@ -1,4 +1,4 @@
-/**
+/**src\app\menu\menuMap.ts
  * 后端 menu key → 前端路由 path 映射
  *
  * 规则：

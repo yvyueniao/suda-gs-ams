@@ -1,3 +1,4 @@
+//src\mock\core\faults.ts
 import type { ServerResponse } from "http";
 import { mockConfig } from "./config";
 import { fail, ok, sendJson } from "./http";

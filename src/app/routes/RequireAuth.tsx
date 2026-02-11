@@ -61,7 +61,7 @@ export default function RequireAuth() {
         if (!fatalRef.current) {
           fatalRef.current = true;
           setState("fatal");
-          navigate("/404", { replace: true });
+          navigate("/500", { replace: true });
         }
       }
     })();

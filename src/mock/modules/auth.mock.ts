@@ -9,7 +9,7 @@ const MOCK_USER = {
   username: "20254227087",
   name: "梁靖松1",
   invalid: true,
-  role: 2,
+  role: 1,
   menuPermission: null,
   email: "123@qq.com",
   major: "软件工程",

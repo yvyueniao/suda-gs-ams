@@ -1,3 +1,4 @@
+//src\mock\core\config.ts
 export type MockConfig = {
   enabled: boolean;
   delayMs: { min: number; max: number };

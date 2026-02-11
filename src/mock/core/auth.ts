@@ -1,3 +1,4 @@
+//src\mock\core\auth.ts
 import type { Connect } from "vite";
 import type { ServerResponse } from "http";
 import { fail, sendJson } from "./http";
