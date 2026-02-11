@@ -5,34 +5,22 @@ import { sendVerifyCode, forgetPassword } from "../api";
 import type { ForgetPasswordPayload, OperationResult } from "../types";
 
 /**
- * useForgotPassword（方案 B）
+ * useForgotPassword
  *
- * 职责：
- * - 编排“忘记密码”两步流程：
- *   1) 发送验证码：POST /user/send-verify-code
- *   2) 重置密码：POST /user/forget-password
- * - 管理状态：sendingCode / submitting / countdown
+ * 职责（升级后）：
+ * - 只编排“倒计时”规则（countdown）
+ * - 提供两步动作：sendCode / resetPassword（不维护 loading、不 message）
  *
- * 约定（方案 B）：
- * - API 层只负责 request<T>()
- * - Hook 只负责：状态编排 + 调接口 + 倒计时
- * - 不做：message 提示
- * - 不做：输入合法性校验（交给页面 Form rules）
- *
- * 失败：
- * - 直接抛 ApiError（由页面 catch 后统一 message）
+ * loading / 错误提示 / 成功提示：
+ * - 统一交给 shared/actions/useAsyncAction
  */
 
 const COUNTDOWN_SECONDS = 60;
 
 export function useForgotPassword() {
-  const [sendingCode, setSendingCode] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
   // 倒计时（>0 表示按钮禁用）
   const [countdown, setCountdown] = useState(0);
 
-  // 用 ref 保存 timer，避免重复启动 & 组件卸载后 setState
   const timerRef = useRef<number | null>(null);
 
   const stopTimer = useCallback(() => {
@@ -61,55 +49,39 @@ export function useForgotPassword() {
   );
 
   useEffect(() => {
-    // 卸载时清理
     return () => stopTimer();
   }, [stopTimer]);
 
   /**
    * 发送验证码
+   * - 倒计时中：返回 false（不抛错，让页面决定是否提示）
    * - 成功：开启倒计时，返回 true
-   * - 失败：抛 ApiError / Error（由页面处理提示）
-   *
-   * 注意：输入校验交给页面（Form rules）
+   * - 失败：抛 ApiError（由 useAsyncAction 统一提示）
    */
   const sendCode = useCallback(
     async (username: string) => {
       const u = (username ?? "").trim();
-
-      // 倒计时中不重复发（静默返回 false，让页面决定是否提示）
       if (countdown > 0) return false;
 
-      setSendingCode(true);
-      try {
-        await sendVerifyCode({ username: u });
-        startCountdown(COUNTDOWN_SECONDS);
-        return true;
-      } finally {
-        setSendingCode(false);
-      }
+      await sendVerifyCode({ username: u });
+      startCountdown(COUNTDOWN_SECONDS);
+      return true;
     },
     [countdown, startCountdown],
   );
 
   /**
    * 重置密码
-   * - 成功：返回服务端 OperationResult（通常是 string / null）
-   * - 失败：抛 ApiError / Error（由页面处理提示）
-   *
-   * 注意：输入校验交给页面（Form rules）
+   * - 成功：返回服务端 OperationResult（string / null）
+   * - 失败：抛 ApiError（由 useAsyncAction 统一提示）
    */
   const resetPassword = useCallback(async (payload: ForgetPasswordPayload) => {
     const username = (payload.username ?? "").trim();
     const verifyCode = (payload.verifyCode ?? "").trim();
     const newPassword = payload.newPassword ?? "";
 
-    setSubmitting(true);
-    try {
-      const res = await forgetPassword({ username, verifyCode, newPassword });
-      return res as OperationResult;
-    } finally {
-      setSubmitting(false);
-    }
+    const res = await forgetPassword({ username, verifyCode, newPassword });
+    return res as OperationResult;
   }, []);
 
   const resetCountdown = useCallback(() => {
@@ -118,16 +90,9 @@ export function useForgotPassword() {
   }, [stopTimer]);
 
   return {
-    // 状态
-    sendingCode,
-    submitting,
-    countdown, // 0 表示可发送；>0 表示还剩 xx 秒
-
-    // 动作
+    countdown,
     sendCode,
     resetPassword,
-
-    // 工具（可选）
     resetCountdown,
   };
 }
