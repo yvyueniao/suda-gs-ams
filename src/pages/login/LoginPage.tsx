@@ -4,16 +4,20 @@ import { Card, Form, Input, Button, Typography, message } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLogin } from "../../features/auth/hooks/useLogin";
-import { ApiError } from "../../shared/http/error";
+import { useAsyncAction } from "../../shared/actions";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
+type LoginFormValues = {
+  username: string;
+  password: string;
+};
+
 export default function LoginPage() {
-  const [form] = Form.useForm();
-  const [submittingLogin, setSubmittingLogin] = useState(false);
+  const [form] = Form.useForm<LoginFormValues>();
 
   const { doLogin } = useLogin();
 
-  // ✅ 方案 B：页面负责“提示 + 跳转”
+  // ✅ 页面负责“提示 + 跳转”
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as { from?: string } | null;
@@ -21,31 +25,27 @@ export default function LoginPage() {
 
   // ===== 忘记密码弹窗 =====
   const [forgotOpen, setForgotOpen] = useState(false);
-
   const openForgot = () => setForgotOpen(true);
   const closeForgot = () => setForgotOpen(false);
 
-  const handleSubmit = async () => {
-    if (submittingLogin) return;
-
-    try {
-      const values = await form.validateFields();
-      setSubmittingLogin(true);
-
-      await doLogin(String(values.username).trim(), String(values.password));
-
-      message.success("登录成功");
-      navigate(from, { replace: true });
-    } catch (err: any) {
+  // ✅ 登录 action：统一 loading / 错误提示 / 成功提示
+  const loginAction = useAsyncAction<void>({
+    successMessage: "登录成功",
+    errorMessage: "登录失败，请重试",
+    onError: (e: any) => {
       // 表单校验错误：不提示
-      if (err?.errorFields) return;
+      if (e?.errorFields) return true;
+    },
+    onSuccess: async () => {
+      navigate(from, { replace: true });
+    },
+  });
 
-      if (err instanceof ApiError) message.error(err.message);
-      else message.error("登录失败，请重试");
-    } finally {
-      setSubmittingLogin(false);
-    }
-  };
+  const handleSubmit = () =>
+    loginAction.run(async () => {
+      const values = await form.validateFields();
+      await doLogin(String(values.username).trim(), String(values.password));
+    });
 
   const initialForgotUsername = String(
     form.getFieldValue("username") ?? "",
@@ -95,7 +95,7 @@ export default function LoginPage() {
           <Button
             type="primary"
             block
-            loading={submittingLogin}
+            loading={loginAction.loading}
             onClick={handleSubmit}
             style={{ marginTop: 8 }}
           >
@@ -108,7 +108,6 @@ export default function LoginPage() {
         </Form>
       </Card>
 
-      {/* ✅ 忘记密码弹窗（已拆分组件） */}
       <ForgotPasswordModal
         open={forgotOpen}
         onClose={closeForgot}

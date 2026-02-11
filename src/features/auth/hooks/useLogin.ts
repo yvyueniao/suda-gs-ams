@@ -1,5 +1,4 @@
 // src/features/auth/hooks/useLogin.ts
-
 import { login } from "../api";
 import { encryptPassword } from "../crypto";
 import { setToken } from "../../../shared/session/token";
@@ -23,26 +22,15 @@ import { setUser } from "../../../shared/session/session";
  * - 登录后跳转逻辑
  */
 export function useLogin() {
-  /**
-   * 执行登录
-   *
-   * 成功：
-   * - 返回用户信息（或 void，看你是否需要）
-   *
-   * 失败：
-   * - 抛出 ApiError（由页面层 catch 并提示）
-   */
   async function doLogin(username: string, password: string) {
     const resp = await login({
       username,
       password: encryptPassword(password),
     });
 
-    // 建立登录态
     setToken(resp.token);
     setUser(resp.user);
 
-    // 不提示、不跳转，只返回结果
     return resp.user;
   }
 
