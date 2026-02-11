@@ -1,4 +1,5 @@
 // src/shared/ui/confirmAsync.ts
+import type { ReactNode } from "react";
 import { Modal } from "antd";
 import type { ModalFuncProps } from "antd/es/modal";
 
@@ -26,8 +27,8 @@ import type { ModalFuncProps } from "antd/es/modal";
  */
 
 export type ConfirmAsyncOptions = {
-  title?: React.ReactNode;
-  content?: React.ReactNode;
+  title?: ReactNode;
+  content?: ReactNode;
 
   okText?: string;
   cancelText?: string;

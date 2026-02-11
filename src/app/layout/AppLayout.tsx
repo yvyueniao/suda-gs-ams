@@ -20,6 +20,12 @@ import { useLayoutNav } from "../hooks/useLayoutNav";
 // ✅ 新增：菜单 key -> icon 的映射
 import { getMenuIcon } from "../menu/menuIconMap";
 
+// ✅ 异步动作编排（统一 toast + loading）
+import { useAsyncAction } from "../../shared/actions";
+
+// ✅ 二次确认弹窗（你们封装好的）
+import { confirmAsync } from "../../shared/ui/confirmAsync";
+
 const { Header, Content, Footer } = Layout;
 
 function roleLabel(role: number) {
@@ -36,7 +42,7 @@ function roleLabel(role: number) {
 function buildAntdMenuItems(nodes: MenuNode[]): MenuProps["items"] {
   return nodes.map((n) => ({
     key: n.key,
-    icon: getMenuIcon(n.key), // ✅ 给每一项加图标（没配置会走 fallback）
+    icon: getMenuIcon(n.key),
     label: n.label,
     children: n.children?.length ? buildAntdMenuItems(n.children) : undefined,
   }));
@@ -49,8 +55,14 @@ export default function AppLayout() {
   // ✅ 初始化逻辑解耦：user/menu/loading/error 全部从 hook 来
   const { user, menuTree, loading } = useAppBootstrap();
 
-  // ✅ 退出逻辑解耦
+  // ✅ 退出逻辑（Pure）：只清 session + 跳转，不弹窗、不 toast
   const { logout } = useLogout();
+
+  // ✅ 退出异步编排：统一 toast + loading
+  const logoutAction = useAsyncAction({
+    successMessage: "已退出登录",
+    errorMessage: "退出失败",
+  });
 
   // ✅ 导航交互状态解耦：是否移动端、折叠、抽屉开关
   const {
@@ -87,15 +99,38 @@ export default function AppLayout() {
   };
 
   // 右上角下拉：个人中心 / 退出
-  const dropdownItems: MenuProps["items"] = [
-    { key: "profile", label: "个人中心" },
-    { type: "divider" },
-    { key: "logout", label: "退出" },
-  ];
+  const dropdownItems: MenuProps["items"] = useMemo(() => {
+    return [
+      { key: "profile", label: "个人中心" },
+      { type: "divider" as const },
+      {
+        key: "logout",
+        label: logoutAction.loading ? "退出中..." : "退出",
+        disabled: logoutAction.loading,
+      },
+    ];
+  }, [logoutAction.loading]);
 
-  const onDropdownClick: MenuProps["onClick"] = ({ key }) => {
-    if (key === "profile") navigate("/profile");
-    if (key === "logout") logout(true);
+  // ✅ 下拉点击：加二次确认 + 统一异步编排
+  const onDropdownClick: MenuProps["onClick"] = async ({ key }) => {
+    if (key === "profile") {
+      navigate("/profile");
+      return;
+    }
+
+    if (key === "logout") {
+      const ok = await confirmAsync({
+        title: "确认退出登录？",
+        content: "退出后需要重新登录才能使用系统功能。",
+        okText: "退出",
+        cancelText: "取消",
+        danger: true,
+      });
+
+      if (!ok) return;
+
+      await logoutAction.run(() => logout());
+    }
   };
 
   if (loading) return <Spin fullscreen />;
@@ -175,7 +210,7 @@ export default function AppLayout() {
         </Content>
       </Layout>
 
-      {/* ✅ 通用页脚（全局固定在底部，不遮挡内容） */}
+      {/* ✅ 通用页脚 */}
       <Footer
         style={{
           textAlign: "center",

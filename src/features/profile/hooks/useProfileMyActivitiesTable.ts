@@ -1,5 +1,37 @@
 // src/features/profile/hooks/useProfileMyActivitiesTable.ts
-import { useCallback, useMemo, useState } from "react";
+/**
+ * useProfileMyActivitiesTable
+ *
+ * ✅ 文件定位
+ * - 个人中心「我的活动/讲座」表格的“编排层 Hook”（ProfilePage 直接用它）
+ * - 只做：查询状态管理、拉数、本地过滤/排序/分页、列配置持久化、导出、详情弹窗编排
+ * - 不做：UI 渲染（交给 SmartTable / TableToolbar / ColumnSettings / ActivityDetailModal）
+ *
+ * ✅ 数据流（从上到下）
+ * 1) useTableQuery：维护 query（page/pageSize/keyword/filters/sorter）
+ * 2) useTableData：一次性拉取全量 rawRows（autoDeps="reload" => query 变化不触发请求）
+ * 3) queryMyActivities：前端本地过滤/排序/分页，得到 filtered/total/list
+ * 4) useColumnPrefs：列显隐/顺序/宽度（localStorage 持久化）
+ * 5) buildMyActivitiesColumns：生成基础 columns（ActionCell 触发 “详情”）
+ * 6) 受控筛选闭环：
+ *    - query.filters -> antd filteredValue（控制勾选态）
+ *    - antd filters -> onFiltersChange -> setFilters（回写 query.filters）
+ * 7) useLocalExport：导出 CSV（全量模式用 filtered 导出）
+ * 8) 详情弹窗：
+ *    - openDetail：打开弹窗并请求详情
+ *    - closeDetail：关闭弹窗并“作废”未完成请求，防止串线
+ *
+ * ✅ 本次修复 / 新增
+ * - ✅ 引入 useAsyncMapAction：为“详情”提供【按行独立 loading + 防连点】能力
+ * - ✅ actions 注入 detailAction：columns.tsx 可直接使用 loading={detailAction.isLoading(id)}
+ * - ✅ openDetail 显式约束返回类型（MyActivitiesActions["openDetail"]），避免推断成 Promise<unknown>
+ *
+ * ✅ 关键设计点
+ * - 全量拉取 + 本地查询：分页/搜索/筛选不打接口，体验顺滑
+ * - 详情请求防串线：用户连续点不同“详情”，旧请求返回不会覆盖新请求
+ */
+
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { FilterValue, Key } from "antd/es/table/interface";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 
@@ -11,6 +43,8 @@ import {
   type TableQuery,
   type TableSorter,
 } from "../../../shared/components/table";
+
+import { useAsyncMapAction } from "../../../shared/actions";
 
 import type {
   ActivityDetail,
@@ -58,7 +92,9 @@ type ColumnWithFilteredValue<T> = ColumnType<T> & {
 };
 
 export function useProfileMyActivitiesTable() {
+  // =====================================================
   // 1) 查询状态（统一 TableQuery）
+  // =====================================================
   const {
     query,
     setPage,
@@ -76,7 +112,9 @@ export function useProfileMyActivitiesTable() {
     },
   });
 
+  // =====================================================
   // 2) 拉全量数据（全量模式：fetcher 忽略 page/pageSize）
+  // =====================================================
   const fetcher = useCallback(async (_q: TableQuery<MyActivityFilters>) => {
     const rows = await getMyApplications();
     return { list: rows, total: rows.length };
@@ -89,16 +127,20 @@ export function useProfileMyActivitiesTable() {
     reload,
   } = useTableData<MyActivityItem, MyActivityFilters>(query, fetcher, {
     auto: true,
-    autoDeps: "reload", // ✅ 全量拉取 + 本地查询：query 变化不重复请求，只在首次+手动 reload 时请求
+    // ✅ 全量拉取 + 本地查询：query 变化不重复请求，只在首次+手动 reload 时请求
+    autoDeps: "reload",
   });
 
+  // =====================================================
   // 3) 本地查询引擎（filtered / total / list）
-  const { filtered, total, list } = useMemo(
-    () => queryMyActivities(rawRows ?? [], query),
-    [rawRows, query],
-  );
+  // =====================================================
+  const { filtered, total, list } = useMemo(() => {
+    return queryMyActivities(rawRows ?? [], query);
+  }, [rawRows, query]);
 
+  // =====================================================
   // 4) 列预设 + 列偏好（显隐/顺序/宽度持久化）
+  // =====================================================
   const presets = myActivitiesTablePresets;
 
   const {
@@ -110,15 +152,40 @@ export function useProfileMyActivitiesTable() {
     applyPresetsToAntdColumns,
   } = useColumnPrefs<MyActivityItem>(BIZ_KEY, presets, { version: 1 });
 
-  // 5) 详情弹窗
+  // =====================================================
+  // 5) 详情弹窗状态 + 防串线机制
+  // =====================================================
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
   const [currentRow, setCurrentRow] = useState<MyActivityItem | null>(null);
 
-  const openDetail = useCallback(
+  /**
+   * ✅ 防串线：详情请求版本号
+   * - openDetail 会生成 reqId
+   * - closeDetail 会递增，使之前未完成请求全部“作废”
+   */
+  const detailReqIdRef = useRef(0);
+
+  /**
+   * ✅ 行内异步动作：按 activityId 独立 loading（给 ActionCell 用）
+   * - successMessage 不需要（查看详情一般不 toast）
+   * - errorMessage 给一个统一兜底即可
+   */
+  const detailAction = useAsyncMapAction<number, void>({
+    errorMessage: "加载详情失败",
+  });
+
+  /**
+   * ✅ openDetail：显式约束类型（避免 Promise<unknown>）
+   * - 返回 Promise<void>（符合 MyActivitiesActions 定义）
+   * - 详情接口本身仍可能返回任意类型，但这里不会把它“作为返回值传出去”
+   */
+  const openDetail = useCallback<MyActivitiesActions["openDetail"]>(
     async (activityId: number) => {
-      // ✅ 优先从当前 filtered（用户看到的全集）里找当前行，语义更一致
+      const reqId = ++detailReqIdRef.current;
+
+      // ✅ 从用户当前看到的 filtered 中找“当前行”
       const row =
         (filtered ?? []).find((x) => x.activityId === activityId) ?? null;
       setCurrentRow(row);
@@ -126,17 +193,32 @@ export function useProfileMyActivitiesTable() {
       setDetailOpen(true);
       setDetailLoading(true);
       setDetail(null);
+
       try {
-        const d = await getActivityDetail(activityId);
-        setDetail(d);
+        // ✅ 关键：用 detailAction 包起来 => 按行 loading + 防连点
+        // 注意：这里 fn 明确返回 Promise<void>，避免 run 推断成 unknown
+        await detailAction.run(activityId, async () => {
+          const d = await getActivityDetail(activityId);
+
+          // ✅ 只接受“最新一次”请求的结果
+          if (detailReqIdRef.current !== reqId) return;
+
+          setDetail(d);
+        });
       } finally {
-        setDetailLoading(false);
+        // ✅ 只结束“最新一次”请求的 loading（并且弹窗仍开着时）
+        if (detailReqIdRef.current === reqId) {
+          setDetailLoading(false);
+        }
       }
     },
-    [filtered],
+    [detailAction, filtered],
   );
 
   const closeDetail = useCallback(() => {
+    // ✅ 作废所有未完成请求（避免关闭后旧请求回来又 setDetail）
+    detailReqIdRef.current += 1;
+
     setDetailOpen(false);
     setDetailLoading(false);
     setDetail(null);
@@ -149,10 +231,12 @@ export function useProfileMyActivitiesTable() {
     [],
   );
 
-  // 6) columns（用 presets 应用显隐/顺序/宽度；受控筛选闭环）
+  // =====================================================
+  // 6) columns：基础 columns + 受控筛选闭环 + presets 应用
+  // =====================================================
   const actions: MyActivitiesActions = useMemo(
-    () => ({ openDetail }),
-    [openDetail],
+    () => ({ openDetail, detailAction }),
+    [openDetail, detailAction],
   );
 
   const baseColumns = useMemo(
@@ -160,10 +244,10 @@ export function useProfileMyActivitiesTable() {
     [actions],
   );
 
-  // ✅ 受控筛选闭环：把 query.filters 映射回 antd 的 filteredValue（用映射表避免一堆 if）
   const controlledColumns = useMemo(() => {
     const f = query.filters;
 
+    // 约定：这些 key 必须与 columns 的 dataIndex/key 对应
     const filterMap: Record<string, unknown> = {
       type: f?.type,
       state: f?.state,
@@ -178,21 +262,22 @@ export function useProfileMyActivitiesTable() {
       const k = (c.dataIndex ?? c.key) as string | undefined;
       if (!k) return c as any;
       if (!(k in filterMap)) return c as any;
+
       return { ...c, filteredValue: toFilteredValue(filterMap[k]) };
     };
 
     return (baseColumns as ColumnsType<MyActivityItem>).map(mapColumn);
   }, [baseColumns, query.filters]);
 
-  const columns = useMemo(
-    () =>
-      applyPresetsToAntdColumns(
-        controlledColumns as ColumnsType<MyActivityItem>,
-      ),
-    [applyPresetsToAntdColumns, controlledColumns],
-  );
+  const columns = useMemo(() => {
+    return applyPresetsToAntdColumns(
+      controlledColumns as ColumnsType<MyActivityItem>,
+    );
+  }, [applyPresetsToAntdColumns, controlledColumns]);
 
-  // 7) 导出（全量模式必须用 filtered）
+  // =====================================================
+  // 7) 导出 CSV（全量模式必须用 filtered）
+  // =====================================================
   const {
     exporting,
     error: exportError,
@@ -206,12 +291,15 @@ export function useProfileMyActivitiesTable() {
     doExportCsv();
   }, [doExportCsv]);
 
+  // =====================================================
   // 8) SmartTable 桥接：分页/排序回传（Partial TableQuery）
+  // =====================================================
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<MyActivityFilters>>) => {
       if (typeof next.page === "number" || typeof next.pageSize === "number") {
         setPage(next.page ?? query.page, next.pageSize ?? query.pageSize);
       }
+
       if ("sorter" in next) {
         setSorter(next.sorter as TableSorter | undefined);
       }
@@ -219,7 +307,9 @@ export function useProfileMyActivitiesTable() {
     [query.page, query.pageSize, setPage, setSorter],
   );
 
-  // 9) antd filters → MyActivityFilters（闭环）
+  // =====================================================
+  // 9) antd filters -> MyActivityFilters（闭环）
+  // =====================================================
   const onFiltersChange = useCallback(
     (antdFilters: Record<string, FilterValue | null>) => {
       const pickFirst = (v: FilterValue | null) => {
@@ -256,11 +346,16 @@ export function useProfileMyActivitiesTable() {
     [setFilters],
   );
 
+  // =====================================================
   // 10) 重置（查询）
+  // =====================================================
   const reset = useCallback(() => {
     resetQuery();
   }, [resetQuery]);
 
+  // =====================================================
+  // 对外返回
+  // =====================================================
   return {
     // 表格基础
     bizKey: BIZ_KEY,
@@ -303,6 +398,9 @@ export function useProfileMyActivitiesTable() {
     currentRow,
     openDetail,
     closeDetail,
+
+    // ✅ 新增：给 columns.tsx / 页面层使用
+    detailAction,
 
     // 兼容
     fetchActivityDetail,

@@ -1,4 +1,24 @@
 // src/shared/components/table/ActionCell.tsx
+/**
+ * ActionCell
+ *
+ * ✅ 文件定位
+ * - 表格“操作列”的通用渲染器（纯 UI + 触发器）
+ *
+ * ✅ 负责什么
+ * 1) 渲染：前 N 个操作按钮 + “更多”下拉菜单
+ * 2) 二次确认：统一走 confirmAsync（await 风格），避免 Popconfirm 嵌 Dropdown 不稳定
+ * 3) 触发动作：执行 action.onClick(record)
+ *
+ * ✅ 不负责什么（保持解耦）
+ * - 不做 message/toast（交给页面或 shared/actions）
+ * - 不做异步编排（如：全局 loading、防重复、错误兜底），仅消费业务侧传入的 loading/disabled
+ *
+ * ✅ 关键类型修复（解决 Promise<unknown> -> Promise<void> 报错）
+ * - ActionCell 不需要消费 onClick 的返回值，所以不应该强约束 Promise<void>
+ * - 允许 onClick 返回 Promise<unknown>，以兼容各种业务函数（可能返回 data / msg / unknown）
+ */
+
 import React from "react";
 import { Button, Dropdown, Space } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
@@ -14,10 +34,11 @@ export type ActionItem<T = any> = {
 
   /**
    * 点击动作
-   * - 允许返回 Promise：方便你在业务侧接 useAsyncAction / useAsyncMapAction
-   * - ActionCell 只负责触发，不负责 message/toast
+   * ✅ 允许返回 Promise<unknown>
+   * - ActionCell 只负责触发与 await（保证时序），不消费返回值
+   * - 避免业务侧 Promise<unknown> 与 Promise<void> 不兼容
    */
-  onClick: (record: T) => void | Promise<void>;
+  onClick: (record: T) => void | Promise<unknown>;
 
   /** 危险操作（红色样式 + confirm 弹窗危险按钮） */
   danger?: boolean;
@@ -58,16 +79,6 @@ export type ActionCellProps<T = any> = {
   size?: "small" | "middle";
 };
 
-/**
- * ActionCell
- *
- * 定位：表格“操作列”的通用渲染器（纯 UI + 触发器）
- *
- * 设计原则：
- * 1) 不持有业务状态：loading/disabled 由业务侧传入
- * 2) 不做业务提示：成功/失败 toast 交给 shared/actions（useAsyncAction/useAsyncMapAction）
- * 3) confirm 统一：使用 confirmAsync（Promise 化 Modal.confirm）
- */
 export function ActionCell<T>({
   record,
   actions,
@@ -100,19 +111,18 @@ export function ActionCell<T>({
         content: action.confirm.content,
         okText: action.confirm.okText ?? "确认",
         cancelText: action.confirm.cancelText ?? "取消",
-        danger: !!action.danger, // ✅ 这里用你 confirmAsync 的 danger 字段
+        danger: !!action.danger,
       });
 
       if (!ok) return;
     }
 
-    // 3) 执行动作（允许 Promise）
+    // 3) 执行动作（不关心返回值，但需要 await 保证顺序）
     await action.onClick(record);
   };
 
   /**
    * renderButton：渲染单个操作按钮
-   * 注意：这里不要再包 Popconfirm，否则会出现“按钮 onClick 先触发”的 bug
    */
   const renderButton = (action: ActionItem<T>) => {
     return (
@@ -140,7 +150,6 @@ export function ActionCell<T>({
         <Dropdown
           trigger={["click"]}
           menu={{
-            // Dropdown items：只负责展示，点击统一走 menu.onClick
             items: more.map((a) => ({
               key: a.key,
               disabled: a.disabled,
@@ -150,7 +159,6 @@ export function ActionCell<T>({
                 </span>
               ),
             })),
-            // 统一点击入口：找到对应 action，再走 handleClick（支持 confirmAsync）
             onClick: ({ key }) => {
               const action = more.find((x) => x.key === key);
               if (!action) return;

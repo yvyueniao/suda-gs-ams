@@ -1,5 +1,28 @@
-import { useState } from "react";
+// src/pages/profile/ProfilePage.tsx
+/**
+ * ProfilePage
+ *
+ * ✅ 文件定位
+ * - 个人中心页面（UI 渲染层）
+ * - 展示：用户信息卡片 + 我的活动/讲座表格
+ * - 触发：改邮箱/改密码弹窗 + 表格查询/导出/列设置 + 活动详情弹窗
+ *
+ * ✅ 分层约定（你现在的架构是对的）
+ * - 数据与动作编排：useProfile / useProfileMyActivitiesTable（features/profile/hooks）
+ * - 表格通用能力：SmartTable / TableToolbar / ColumnSettings（shared/components/table）
+ * - 异步动作统一：shared/actions（useAsyncAction / useAsyncMapAction）
+ * - 弹窗：页面层只“开/关 + 绑定 confirmLoading”，不直接写复杂业务
+ *
+ * ✅ 本次修改点（让页面更“薄”、更一致）
+ * 1) 删除未使用的 import（ActivityDetail、MyActivityItem、ACTIVITY_STATE_LABEL、helpers、Modal、message、renderActivityDetail）
+ * 2) 修正 Avatar 静态资源路径：public 下资源用 "/avatar-default.png"（不要写 /public/...）
+ * 3) 改邮箱/改密码：用 useAsyncAction 统一 loading + 错误口径 + 成功提示（页面不再 try/catch）
+ * 4) TableToolbar：传入 loading，让搜索/刷新/重置禁用口径一致（可选但推荐）
+ */
+
+import React, { useMemo, useState } from "react";
 import {
+  Avatar,
   Button,
   Card,
   Descriptions,
@@ -8,9 +31,6 @@ import {
   Space,
   Spin,
   Typography,
-  message,
-  Modal,
-  Avatar,
 } from "antd";
 
 import {
@@ -18,23 +38,14 @@ import {
   SmartTable,
   TableToolbar,
 } from "../../shared/components/table";
+import { useAsyncAction } from "../../shared/actions";
 
 import { useProfile } from "../../features/profile/hooks/useProfile";
-import type {
-  ActivityDetail,
-  UserInfo,
-  MyActivityItem,
-} from "../../features/profile/types"; // 导入 MyActivityItem 类型
-import { ACTIVITY_STATE_LABEL } from "../../features/profile/types";
-import {
-  activityTypeLabel,
-  applicationStateLabel,
-  boolLabel,
-} from "../../features/profile/table/helpers";
+import type { UserInfo } from "../../features/profile/types";
 
 import UpdateEmailModal from "./UpdateEmailModal";
 import ModifyPasswordModal from "./ModifyPasswordModal";
-import ActivityDetailModal from "./ActivityDetailModal"; // 导入 ActivityDetailModal 组件
+import ActivityDetailModal from "./ActivityDetailModal";
 
 const { Title, Text } = Typography;
 
@@ -80,81 +91,51 @@ function renderUserInfo(user: UserInfo) {
   );
 }
 
-function renderActivityDetail(detail: ActivityDetail) {
-  return (
-    <Descriptions
-      size="small"
-      column={2}
-      labelStyle={{ width: 96 }}
-      items={[
-        { key: "name", label: "名称", children: detail.name },
-        {
-          key: "type",
-          label: "类型",
-          children: activityTypeLabel(detail.type),
-        },
-        {
-          key: "state",
-          label: "状态",
-          children: ACTIVITY_STATE_LABEL[detail.state] ?? "-",
-        },
-        { key: "department", label: "部门", children: detail.department },
-        { key: "location", label: "地点", children: detail.location },
-        { key: "score", label: "分数", children: detail.score },
-        { key: "fullNum", label: "容量", children: detail.fullNum },
-        {
-          key: "registeredNum",
-          label: "已报名",
-          children: detail.registeredNum,
-        },
-        { key: "candidateNum", label: "候补中", children: detail.candidateNum },
-        {
-          key: "candidateSuccNum",
-          label: "候补成功",
-          children: detail.candidateSuccNum,
-        },
-        {
-          key: "candidateFailNum",
-          label: "候补失败",
-          children: detail.candidateFailNum,
-        },
-        { key: "time", label: "创建时间", children: detail.time },
-        {
-          key: "signStartTime",
-          label: "报名开始",
-          children: detail.signStartTime,
-        },
-        { key: "signEndTime", label: "报名截止", children: detail.signEndTime },
-        {
-          key: "activityStime",
-          label: "开始时间",
-          children: detail.activityStime,
-        },
-        {
-          key: "activityEtime",
-          label: "结束时间",
-          children: detail.activityEtime,
-        },
-        {
-          key: "description",
-          label: "描述",
-          children: (
-            <div style={{ whiteSpace: "pre-wrap" }}>
-              {detail.description || "-"}
-            </div>
-          ),
-        },
-      ]}
-    />
-  );
-}
-
 export default function ProfilePage() {
   const p = useProfile();
   const t = p.myActivitiesTable;
 
   const [emailOpen, setEmailOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
+
+  /**
+   * ✅ 用 useAsyncAction 把“弹窗提交”统一起来
+   * - loading：直接绑定给 Modal confirmLoading
+   * - success/error：统一 toast（不再页面 try/catch）
+   */
+  const updateEmailAction = useAsyncAction({
+    successMessage: (msg) => (msg ? String(msg) : "修改成功"),
+    errorMessage: "修改失败",
+    onSuccess: async () => {
+      setEmailOpen(false);
+    },
+  });
+
+  const modifyPasswordAction = useAsyncAction({
+    successMessage: (msg) => (msg ? String(msg) : "修改成功"),
+    errorMessage: "修改失败",
+    onSuccess: async () => {
+      setPwdOpen(false);
+    },
+  });
+
+  /**
+   * ✅ 页面级 busy（可选）
+   * - 用途：工具条统一禁用搜索/重置/刷新，避免“正在提交邮箱时还能疯狂刷新表格”等交互冲突
+   */
+  const pageBusy = useMemo(() => {
+    return (
+      p.loadingProfile ||
+      t.loading ||
+      updateEmailAction.loading ||
+      modifyPasswordAction.loading
+    );
+  }, [
+    p.loadingProfile,
+    t.loading,
+    updateEmailAction.loading,
+    modifyPasswordAction.loading,
+  ]);
 
   return (
     <div style={{ padding: 16 }}>
@@ -177,12 +158,13 @@ export default function ProfilePage() {
             align="center"
             style={{ width: "100%" }}
           >
-            {/* 头像 */}
+            {/* ✅ public 下静态资源：直接用 /xxx.png */}
             <Avatar
               size={100}
-              src="/public/avatar-default.png"
+              src="/avatar-default.png"
               style={{ marginRight: 16 }}
             />
+
             {p.loadingProfile ? (
               <Spin />
             ) : p.profile ? (
@@ -209,11 +191,13 @@ export default function ProfilePage() {
             onSearch={(kw) => t.setKeyword(kw)}
             onReset={t.reset}
             onRefresh={t.reload}
+            loading={pageBusy}
             right={
               <Space>
                 <Button onClick={t.exportCsv} loading={t.exporting}>
                   导出 CSV
                 </Button>
+
                 <ColumnSettings
                   presets={t.presets}
                   visibleKeys={t.visibleKeys}
@@ -245,37 +229,25 @@ export default function ProfilePage() {
         </Card>
       </Space>
 
-      {/* 修改邮箱（方案 B：提示在页面） */}
+      {/* 修改邮箱（✅ 由 useAsyncAction 统一提示/关闭） */}
       <UpdateEmailModal
         open={emailOpen}
         initialEmail={p.profile?.email ?? ""}
-        confirmLoading={p.submittingEmail}
+        confirmLoading={updateEmailAction.loading}
         onCancel={() => setEmailOpen(false)}
-        onSubmit={async (payload) => {
-          try {
-            const msgText = await p.submitUpdateEmail(payload);
-            message.success(msgText || "修改成功");
-            setEmailOpen(false);
-          } catch (e: any) {
-            message.error(e?.message || "修改失败");
-          }
-        }}
+        onSubmit={(payload) =>
+          updateEmailAction.run(() => p.submitUpdateEmail(payload))
+        }
       />
 
-      {/* 修改密码（方案 B：提示在页面） */}
+      {/* 修改密码（✅ 由 useAsyncAction 统一提示/关闭） */}
       <ModifyPasswordModal
         open={pwdOpen}
-        confirmLoading={p.submittingPassword}
+        confirmLoading={modifyPasswordAction.loading}
         onCancel={() => setPwdOpen(false)}
-        onSubmit={async (payload) => {
-          try {
-            const msgText = await p.submitModifyPassword(payload);
-            message.success(msgText || "修改成功");
-            setPwdOpen(false);
-          } catch (e: any) {
-            message.error(e?.message || "修改失败");
-          }
-        }}
+        onSubmit={(payload) =>
+          modifyPasswordAction.run(() => p.submitModifyPassword(payload))
+        }
       />
 
       {/* 活动详情 */}
@@ -283,7 +255,7 @@ export default function ProfilePage() {
         open={t.detailOpen}
         loading={t.detailLoading}
         detail={t.detail}
-        currentRow={t.currentRow} // 传递 currentRow
+        currentRow={t.currentRow}
         onCancel={t.closeDetail}
       />
     </div>
