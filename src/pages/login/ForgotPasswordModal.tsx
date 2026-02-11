@@ -32,7 +32,6 @@ export default function ForgotPasswordModal({
   const sendAction = useAsyncAction<boolean>({
     successMessage: "验证码已发送（请查收邮箱/短信）",
     errorMessage: "发送失败，请稍后重试",
-    onError: () => false,
   });
 
   // 重置密码 action（对应 Modal OK）

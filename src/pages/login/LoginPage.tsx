@@ -1,6 +1,6 @@
 // src/pages/login/LoginPage.tsx
 import { useState } from "react";
-import { Card, Form, Input, Button, Typography, message } from "antd";
+import { Card, Form, Input, Button, Typography } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLogin } from "../../features/auth/hooks/useLogin";

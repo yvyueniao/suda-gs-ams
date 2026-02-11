@@ -104,23 +104,37 @@ export type TableToolbarProps = {
   inputProps?: Omit<InputProps, "value" | "onChange" | "onPressEnter">;
 };
 
+/**
+ * useDebouncedCallback
+ *
+ * ✅ 关键修复点：
+ * - 不论是否启用 debounce，都返回 “带 cancel 的函数”
+ * - 这样外部可以稳定调用 fn.cancel()，不会出现 TS 报错
+ */
 function useDebouncedCallback<T extends any[]>(
   cb: ((...args: T) => void) | undefined,
   delayMs: number,
 ) {
-  return useMemo(() => {
+  type DebouncedFn = ((...args: T) => void) & { cancel: () => void };
+
+  return useMemo<DebouncedFn | undefined>(() => {
     if (!cb) return undefined;
-    if (!delayMs || delayMs <= 0) return cb;
+
+    // ✅ 没有 debounce：也返回“带 cancel 的函数”，cancel 为空操作
+    if (!delayMs || delayMs <= 0) {
+      const fn = ((...args: T) => cb(...args)) as DebouncedFn;
+      fn.cancel = () => {};
+      return fn;
+    }
 
     let t: any;
-    const fn = (...args: T) => {
+    const fn = ((...args: T) => {
       clearTimeout(t);
       t = setTimeout(() => cb(...args), delayMs);
-    };
+    }) as DebouncedFn;
 
-    // 给外面一个 cancel 的机会（可选）
-    (fn as any).cancel = () => clearTimeout(t);
-    return fn as (...args: T) => void;
+    fn.cancel = () => clearTimeout(t);
+    return fn;
   }, [cb, delayMs]);
 }
 
@@ -172,10 +186,19 @@ export function TableToolbar(props: TableToolbarProps) {
     (kw) => onKeywordChange?.(kw),
     debounceMs,
   );
+
   const debouncedSearch = useDebouncedCallback<[string]>(
     (kw) => onSearch?.(kw),
     debounceMs,
   );
+
+  // ✅ 卸载时取消定时器（避免极端情况下卸载后触发）
+  useEffect(() => {
+    return () => {
+      debouncedKeywordChange?.cancel();
+      debouncedSearch?.cancel();
+    };
+  }, [debouncedKeywordChange, debouncedSearch]);
 
   const effectiveSearchDisabled = loading || searchDisabled;
 
@@ -187,15 +210,17 @@ export function TableToolbar(props: TableToolbarProps) {
 
     // ✅ submit 或 “强制立即触发” 时：绕过 debounce（例如点击搜索按钮）
     if (opts?.bypassDebounce && debounceMs > 0) {
-      (debouncedKeywordChange as any)?.cancel?.();
-      (debouncedSearch as any)?.cancel?.();
+      debouncedKeywordChange?.cancel();
+      debouncedSearch?.cancel();
     }
 
+    // ✅ 两套回调都兼容：老项目可以只接 onKeywordChange，新项目可以用 onSearch
     onKeywordChange?.(kw);
     onSearch?.(kw);
   };
 
   const emitChangeMode = (kw: string) => {
+    // change 模式：可选 debounce
     if (debounceMs > 0) {
       debouncedKeywordChange?.(kw);
       debouncedSearch?.(kw);
@@ -209,7 +234,7 @@ export function TableToolbar(props: TableToolbarProps) {
     setInputValue(v);
 
     if (searchMode !== "change") return;
-    if (composingRef.current) return; // ✅ 拼音阶段不触发（解决“拼音+中文都显示”）
+    if (composingRef.current) return; // ✅ 拼音阶段不触发
 
     emitChangeMode(v);
   };
@@ -221,8 +246,10 @@ export function TableToolbar(props: TableToolbarProps) {
   };
 
   const renderSelection = () => {
+    // ✅ 业务侧自定义 selection 区
     if (selectionInfo) return selectionInfo;
 
+    // ✅ 内置“已选 N 条 + 清空”
     const count = typeof selectedCount === "number" ? selectedCount : 0;
     if (!count) return null;
 
@@ -289,7 +316,6 @@ export function TableToolbar(props: TableToolbarProps) {
             }}
             style={{ width: searchWidth }}
             suffix={
-              // submit 模式下提供一个“明确的触发点”，change 模式也可点（立即触发一次）
               <Button
                 type="text"
                 icon={<SearchOutlined />}
