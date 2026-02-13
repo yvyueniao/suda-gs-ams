@@ -1,6 +1,6 @@
 // src/pages/activity-apply/SupplementApplyModal.tsx
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Alert, Form, Input, Modal, Space, Typography, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { InboxOutlined } from "@ant-design/icons";

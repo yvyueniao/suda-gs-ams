@@ -19,8 +19,6 @@ import ApplyResultModal from "./ApplyResultModal";
 const { Title, Text } = Typography;
 
 export default function EnrollPage() {
-  const navigate = useNavigate();
-
   const onNotify = useCallback(
     ({ kind, msg }: { kind: "success" | "error" | "info"; msg: string }) => {
       if (kind === "success") message.success(msg);

@@ -1,6 +1,6 @@
 // src/pages/activity-apply/ApplyResultModal.tsx
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Button, Modal, Space, Typography } from "antd";
 
 const { Text } = Typography;

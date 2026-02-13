@@ -56,7 +56,6 @@ export function buildEnrollColumns(
 ): ColumnsType<EnrollTableRow> {
   const {
     nowMs = Date.now(),
-    departmentFilters,
     onRegister,
     onCancel,
     onDetail,
