@@ -25,7 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ✅ 保持 Node 18
+      # ✅ 设置 Node 18 环境
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -33,7 +33,7 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org/
 
-      # ✅ 避免 npmmirror 超时：强制走 npm 官方源 + 增加重试/超时
+      # ✅ 配置 npm registry 和重试策略
       - name: Configure npm registry & retries
         run: |
           npm config set registry https://registry.npmjs.org/
@@ -42,21 +42,29 @@ jobs:
           npm config set fetch-retry-maxtimeout 120000
           npm config set fetch-timeout 120000
 
-      # ✅ CI 用 lockfile 安装，避免自动装到 v7
+      # ✅ 安装依赖
       - name: Install dependencies
         run: npm ci
 
+      # ✅ 设置环境变量 VITE_USE_MOCK 为 false，使用真实后端
+      - name: Set environment variable for production build
+        run: echo "VITE_USE_MOCK=false" >> $GITHUB_ENV
+
+      # ✅ 构建项目
       - name: Build
         run: npm run build
 
+      # ✅ 设置 GitHub Pages
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # ✅ 上传构建文件
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
+      # ✅ 部署到 GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
