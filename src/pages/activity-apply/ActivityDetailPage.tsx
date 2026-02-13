@@ -29,7 +29,7 @@ import type {
 import {
   deriveApplyActionState,
   inSignWindow,
-  canCancelBy12h,
+  // ✅ 12h 取消限制已删除：这里不再 import canCancelBy12h
   getPrimaryActionMeta,
   getApplyStateTagMeta,
   getCancelConfirmMeta,
@@ -110,7 +110,11 @@ export default function ActivityDetailPage() {
     return deriveApplyActionState(myApp);
   }, [myApp]);
 
-  // ✅ 动作：取消成功/失败也需要 toast，所以后续 onOk 里走 applyFlow.startCancelWithNotify
+  /**
+   * ✅ 动作：由 flow 统一 toast（报名弹窗 + 取消成功/失败提示）
+   * - actions 只负责请求与 loading
+   * - 页面层负责 message 渲染
+   */
   const applyActions = useApplyActions({
     onChanged: async () => {
       await reload();
@@ -133,6 +137,11 @@ export default function ActivityDetailPage() {
   const primary = useMemo(() => getPrimaryActionMeta(applyState), [applyState]);
   const isCancel = primary.isCancel;
 
+  /**
+   * nowMs：用于“报名时间窗内才能取消”的前置禁用
+   * - 你现在不用 12h 限制了，所以只需要这个判断
+   * - 这里用 useMemo 让它在“详情/状态变化”时更新一次即可
+   */
   const nowMs = useMemo(() => Date.now(), [detail?.id, applyState]);
 
   const signOk = useMemo(() => {
@@ -146,29 +155,21 @@ export default function ActivityDetailPage() {
     );
   }, [detail, nowMs]);
 
-  const cancelOk = useMemo(() => {
-    if (!detail) return true;
-    return canCancelBy12h(
-      { activityStime: detail.activityStime } as Pick<
-        ActivityItem,
-        "activityStime"
-      >,
-      nowMs,
-    );
-  }, [detail, nowMs]);
-
-  // ✅ 与列表页一致：取消类动作做“窗口/12h”限制；报名不做前置禁用（交给后端 msg + 弹窗）
+  /**
+   * ✅ 取消限制（已按你要求删除 12h 规则）：
+   * - 报名：不前置禁用（交给后端 msg + 报名结果弹窗）
+   * - 取消：只做“报名时间窗”限制
+   */
   const primaryDisabled = useMemo(() => {
     if (!detail) return true;
-    return isCancel ? !signOk || !cancelOk : false;
-  }, [detail, isCancel, signOk, cancelOk]);
+    return isCancel ? !signOk : false;
+  }, [detail, isCancel, signOk]);
 
   const primaryReason = useMemo(() => {
     if (!isCancel) return undefined;
     if (!signOk) return "不在报名时间范围内";
-    if (!cancelOk) return "距离活动开始不足12小时";
     return undefined;
-  }, [isCancel, signOk, cancelOk]);
+  }, [isCancel, signOk]);
 
   const primaryLoading = useMemo(() => {
     if (activityId == null) return false;
@@ -178,13 +179,13 @@ export default function ActivityDetailPage() {
   const onPrimaryClick = useCallback(async () => {
     if (activityId == null || !detail) return;
 
-    // 报名：走 flow（必弹成功/失败弹窗）
+    // ✅ 报名：走 flow（必弹成功/失败弹窗）
     if (!isCancel) {
       await applyFlow.startRegister({ id: activityId, name: detail.name });
       return;
     }
 
-    // 取消：二次确认 + ✅ 最终成功/失败 toast（用 flow 封装）
+    // ✅ 取消：二次确认 + 最终成功/失败 toast（统一走 flow）
     const confirm = getCancelConfirmMeta({
       primaryText: primary.text,
       activityName: detail.name,
@@ -197,7 +198,6 @@ export default function ActivityDetailPage() {
       okText: confirm.okText,
       cancelText: confirm.cancelText,
       onOk: async () => {
-        // ✅ 这里不要直接 applyActions.cancel；要用 flow，才能统一 toast
         await applyFlow.startCancelWithNotify(activityId);
       },
     });
@@ -348,7 +348,7 @@ export default function ActivityDetailPage() {
         </Spin>
       </Card>
 
-      {/* 报名结果弹窗（成功/失败 + 失败可候补） */}
+      {/* ✅ 报名结果弹窗（成功/失败 + 失败可候补） */}
       <ApplyResultModal
         open={applyFlow.modal.open}
         kind={resultKind}

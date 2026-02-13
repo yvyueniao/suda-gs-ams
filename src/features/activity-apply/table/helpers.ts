@@ -7,27 +7,26 @@
  *
  * 文件定位：
  * - features/activity-apply/table 层
- * - 为“活动/讲座报名列表页 / 详情页”提供纯工具函数（不含 UI / 不含 React）
+ * - 为“活动/讲座报名列表页 / 详情页”提供纯工具函数
  *
  * 设计目标：
- * 1) ✅ 不拉接口：不 import api，不做请求
- * 2) ✅ 不依赖 React：可被任意环境复用（hooks / node mock / 单测）
- * 3) ✅ 保持纯函数：输入确定 => 输出确定（便于测试）
+ * 1) ✅ 不拉接口
+ * 2) ✅ 不依赖 React
+ * 3) ✅ 纯函数
  *
- * 主要职责：
- * - 时间处理：parseTimeMs / inSignWindow / canCancelBy12h
- * - 状态派生：deriveApplyActionState
- * - 列表拼接：mergeEnrollRows（activities + myApplications => EnrollTableRow）
- * - 本地搜索/筛选/排序：getSearchTexts / matchFilters / getSortValue
- * - ✅ 动作主按钮逻辑复用（列表页/详情页共用）：
- *   - getPrimaryActionMeta
- *   - getApplyStateTagMeta
- *   - getCancelConfirmMeta
+ * 当前能力：
+ * - 状态派生
+ * - 主按钮逻辑复用
+ * - Tag 映射
+ * - 二次确认文案生成
+ * - 本地搜索 / 筛选 / 排序
  *
- * ✅ 本次修改点（关键）：
- * - EnrollTableFilters.department 支持 string | string[]（兼容 antd FilterValue）
- * - matchFilters：兼容 antd filters 的数组值
- * - getSortValue：签名对齐 localQuery 约定 (row, sorter) => value
+ * ❌ 已删除：
+ * - 取消报名 12 小时限制逻辑
+ *
+ * ✅ 本次修复点：
+ * - getCancelConfirmMeta 支持 reason?: string（用于“报名时间窗外”提示）
+ *   解决：页面传入 reason 报 TS 错误的问题
  */
 
 import type {
@@ -36,42 +35,26 @@ import type {
   MyApplicationItem,
   ApplyActionState,
 } from "../types";
+
 import type { TableSorter } from "../../../shared/components/table";
+import { parseTimeMs, isInTimeWindow } from "../../../shared/utils/datetime";
 
 /* =====================================================
- * 一、时间工具
+ * 一、时间相关（仅时间判断，不含业务规则）
  * ===================================================== */
 
 /**
- * 后端时间格式：YYYY-MM-DD HH:mm:ss
- * 这里转成 ISO-like（YYYY-MM-DDTHH:mm:ss），降低环境差异
+ * 是否在报名时间窗内（包含边界）
+ *
+ * ✅ 说明：
+ * - 这里只做“是否在时间窗”判断，不再包含“活动开始前 12h 不能取消”等业务规则
+ * - 具体禁用逻辑由页面/列工厂决定（例如：取消按钮只受报名时间窗限制）
  */
-export function parseTimeMs(s?: string): number | null {
-  if (!s) return null;
-  const isoLike = s.replace(" ", "T");
-  const t = Date.parse(isoLike);
-  return Number.isNaN(t) ? null : t;
-}
-
-/** 是否在报名时间窗内（包含边界） */
 export function inSignWindow(
   activity: Pick<ActivityItem, "signStartTime" | "signEndTime">,
   nowMs: number,
 ) {
-  const start = parseTimeMs(activity.signStartTime);
-  const end = parseTimeMs(activity.signEndTime);
-  if (start == null || end == null) return false;
-  return nowMs >= start && nowMs <= end;
-}
-
-/** 距离活动开始不足 12h 不可取消（后端也会校验，前端用于禁用态提示） */
-export function canCancelBy12h(
-  activity: Pick<ActivityItem, "activityStime">,
-  nowMs: number,
-) {
-  const start = parseTimeMs(activity.activityStime);
-  if (start == null) return true; // 解析失败：不做前置拦截，交给后端
-  return start - nowMs >= 12 * 60 * 60 * 1000;
+  return isInTimeWindow(activity.signStartTime, activity.signEndTime, nowMs);
 }
 
 /* =====================================================
@@ -114,7 +97,7 @@ export function deriveApplyActionState(
 
 /**
  * 生成 activityId -> MyApplicationItem 的索引
- * （避免在 map/render 中反复 find）
+ * - 避免在 map/render 中反复 find
  */
 export function buildMyApplicationMap(apps: MyApplicationItem[]) {
   const map = new Map<number, MyApplicationItem>();
@@ -123,7 +106,8 @@ export function buildMyApplicationMap(apps: MyApplicationItem[]) {
 }
 
 /**
- * 把活动列表与“我的报名记录”拼成表格行
+ * 把活动列表与“我的报名记录”拼成表格行（EnrollTableRow）
+ * - 每行带上 myApplication + applyState（前端派生）
  */
 export function mergeEnrollRows(
   activities: ActivityItem[],
@@ -134,6 +118,7 @@ export function mergeEnrollRows(
   return activities.map((act) => {
     const my = map.get(act.id);
     const applyState = deriveApplyActionState(my);
+
     return {
       ...act,
       myApplication: my,
@@ -143,11 +128,13 @@ export function mergeEnrollRows(
 }
 
 /* =====================================================
- * 三、主按钮/Tag 逻辑复用（列表页/详情页共用）
+ * 三、主按钮 / Tag 逻辑复用
  * ===================================================== */
 
 /**
- * 与列表页一致的主按钮文案：
+ * 主按钮元信息（列表页/详情页共用）
+ *
+ * 规则：
  * - NOT_APPLIED / CANDIDATE_FAIL / REVIEW_FAIL：报名
  * - APPLIED / CANDIDATE_SUCC：取消报名
  * - CANDIDATE：取消候补
@@ -166,11 +153,15 @@ export function getPrimaryActionMeta(applyState: ApplyActionState): {
     case "REVIEWING":
       return { text: "取消审核", isCancel: true };
     default:
-      // NOT_APPLIED / CANDIDATE_FAIL / REVIEW_FAIL
       return { text: "报名", isCancel: false };
   }
 }
 
+/**
+ * 报名状态 Tag 展示元信息（列表页/详情页共用）
+ * - label：展示文字
+ * - color：antd Tag color
+ */
 export function getApplyStateTagMeta(applyState: ApplyActionState): {
   label: string;
   color?: string;
@@ -187,25 +178,33 @@ export function getApplyStateTagMeta(applyState: ApplyActionState): {
 
   const label = labelMap[applyState] ?? "-";
 
-  // antd Tag color：'success' 等也可以，但你现在全用基础色，保持一致
   if (applyState === "APPLIED" || applyState === "CANDIDATE_SUCC")
     return { label, color: "green" };
+
   if (applyState === "CANDIDATE") return { label, color: "blue" };
+
   if (applyState === "REVIEWING") return { label, color: "gold" };
+
   if (applyState === "CANDIDATE_FAIL" || applyState === "REVIEW_FAIL")
     return { label, color: "red" };
+
   return { label, color: "default" };
 }
 
 /**
- * 取消动作二次确认弹窗文案（给 ActionCell.confirm 用）
- * - 列表页/详情页通用
+ * 取消动作二次确认弹窗文案（列表页/详情页共用）
+ *
+ * ✅ 说明：
+ * - reason 可选：用于展示“为何被禁用/为何提示”的原因
+ *   （你现在删除了 12h 规则，因此 reason 只会来自“报名时间窗外”等提示）
  */
-export function getCancelConfirmMeta(payload: {
-  primaryText: string; // "取消报名" | "取消候补" | "取消审核"
+export type CancelConfirmMetaPayload = {
+  primaryText: string;
   activityName: string;
-  reason?: string; // 不在窗口 / 12h 限制等
-}): {
+  reason?: string;
+};
+
+export function getCancelConfirmMeta(payload: CancelConfirmMetaPayload): {
   title: string;
   content: string;
   okText: string;
@@ -213,7 +212,6 @@ export function getCancelConfirmMeta(payload: {
 } {
   const { primaryText, activityName, reason } = payload;
 
-  // 列表页原来只有 “取消报名/取消候补” 两个分支，这里补齐 “取消审核”
   const title =
     primaryText === "取消报名"
       ? "确认取消报名？"
@@ -223,15 +221,21 @@ export function getCancelConfirmMeta(payload: {
           ? "确认取消审核？"
           : "确认执行取消操作？";
 
+  // ✅ 如果有 reason，就把 reason 放进 content（页面/列工厂可以选择传或不传）
   const content = reason
     ? `${reason}（仍确认继续？）`
     : `活动：${activityName}`;
 
-  return { title, content, okText: "确认", cancelText: "取消" };
+  return {
+    title,
+    content,
+    okText: "确认",
+    cancelText: "取消",
+  };
 }
 
 /* =====================================================
- * 四、本地搜索/筛选/排序（给 applyLocalQuery 用）
+ * 四、本地搜索 / 筛选 / 排序
  * ===================================================== */
 
 /**
@@ -242,28 +246,14 @@ export function getCancelConfirmMeta(payload: {
  * - 所以这里的字段类型允许：标量 或 标量数组
  */
 export type EnrollTableFilters = {
-  /** 发布部门（单选/多选：兼容 antd 回传数组） */
   department?: string | string[];
-
-  /** 类型（0:活动 / 1:讲座） */
   type?: 0 | 1 | Array<0 | 1>;
-
-  /** 活动状态（0~4，来自 activity.state） */
   state?: 0 | 1 | 2 | 3 | 4 | Array<0 | 1 | 2 | 3 | 4>;
-
-  /** 我的报名状态（前端派生） */
   applyState?: ApplyActionState | ApplyActionState[];
 
-  /** 报名开始时间范围（毫秒时间戳） */
   signStartRange?: [number, number];
-
-  /** 报名结束时间范围（毫秒时间戳） */
   signEndRange?: [number, number];
-
-  /** 活动开始时间范围（毫秒时间戳） */
   activityStartRange?: [number, number];
-
-  /** 活动结束时间范围（毫秒时间戳） */
   activityEndRange?: [number, number];
 };
 
@@ -287,6 +277,7 @@ function inRange(targetMs: number | null, range?: [number, number]) {
 /** filters 值可能是标量或数组，这里做统一判断（兼容 antd FilterValue） */
 function matchValue<T>(rowVal: T, filterVal: T | T[] | undefined): boolean {
   if (filterVal == null) return true;
+
   return Array.isArray(filterVal)
     ? filterVal.includes(rowVal)
     : rowVal === filterVal;
@@ -312,11 +303,13 @@ export function matchFilters(
 
   if (!inRange(parseTimeMs(row.signStartTime), filters.signStartRange))
     return false;
+
   if (!inRange(parseTimeMs(row.signEndTime), filters.signEndRange))
     return false;
 
   if (!inRange(parseTimeMs(row.activityStime), filters.activityStartRange))
     return false;
+
   if (!inRange(parseTimeMs(row.activityEtime), filters.activityEndRange))
     return false;
 
@@ -401,17 +394,4 @@ export function getSortValue(
 /** 组装成 localQuery 常用 options */
 export function buildLocalQueryOptions() {
   return { getSearchTexts, matchFilters, getSortValue };
-}
-
-/* =====================================================
- * 五、筛选项辅助（可选）
- * ===================================================== */
-
-/** 从活动列表中提取部门候选项（若你不想额外请求 /department/allDepartment） */
-export function deriveDepartmentOptions(activities: ActivityItem[]) {
-  const set = new Set<string>();
-  for (const a of activities) {
-    if (a.department) set.add(a.department);
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }

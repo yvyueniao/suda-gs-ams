@@ -8,7 +8,6 @@ import type { EnrollTableRow } from "../types";
 // ✅ 统一从 helpers 复用（唯一真相源）
 import {
   inSignWindow,
-  canCancelBy12h,
   getPrimaryActionMeta,
   getApplyStateTagMeta,
   getCancelConfirmMeta,
@@ -31,7 +30,6 @@ type BuildColumnsParams = {
 /* =====================================================
  * 映射（UI 轻量展示）
  * - 这俩是“列表列显示”所需，不属于动作逻辑
- * - 也可以继续抽去 helpers（但不是必须）
  * ===================================================== */
 
 function activityTypeLabel(type: 0 | 1) {
@@ -58,7 +56,7 @@ export function buildEnrollColumns(
 ): ColumnsType<EnrollTableRow> {
   const {
     nowMs = Date.now(),
-    departmentFilters, // 目前不用也没关系
+    departmentFilters,
     onRegister,
     onCancel,
     onDetail,
@@ -204,33 +202,28 @@ export function buildEnrollColumns(
       width: 220,
       fixed: "right",
       render: (_: unknown, record: EnrollTableRow) => {
+        // ✅ 现在只保留“报名时间窗限制”（12h 已删）
         const signOk = inSignWindow(record, nowMs);
-        const cancelOk = canCancelBy12h(record, nowMs);
 
         const primary = getPrimaryActionMeta(record.applyState);
         const isCancel = primary.isCancel;
 
-        // ✅ 报名不前置禁用；取消才限制
-        const primaryDisabled = isCancel ? !signOk || !cancelOk : false;
+        // ✅ 报名不前置禁用；取消只看是否在报名窗内
+        const primaryDisabled = isCancel ? !signOk : false;
 
         const primaryLoading = isCancel
           ? isCanceling?.(record.id)
           : isRegistering?.(record.id);
 
-        const reason = isCancel
-          ? !signOk
-            ? "不在报名时间范围内"
-            : !cancelOk
-              ? "距离活动开始不足12小时"
-              : undefined
-          : undefined;
+        const reason = isCancel && !signOk ? "不在报名时间范围内" : undefined;
 
         const confirm = isCancel
           ? getCancelConfirmMeta({
               primaryText: primary.text,
               activityName: record.name,
+              // helpers 里目前是可选的 reason：有就展示“仍确认继续？”
               reason,
-            })
+            } as any)
           : undefined;
 
         const onClick = () => {

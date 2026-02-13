@@ -1,5 +1,31 @@
 // src/features/activity-apply/hooks/useEnrollTable.ts
 
+/**
+ * useEnrollTable
+ *
+ * 文件定位：
+ * - features/activity-apply/hooks 层
+ * - “报名列表页”的表格编排 Hook（不做 UI）
+ *
+ * 职责：
+ * 1) 拉取：全部活动列表 + 我的报名记录
+ * 2) 合并：生成 EnrollTableRow（包含 applyState / myApplication）
+ * 3) 接入通用表格能力：
+ *    - query（分页/排序/筛选/搜索）
+ *    - data（加载/错误/刷新）
+ *    - localQuery（本地搜索/筛选/排序/分页）
+ *    - columnPrefs（列偏好持久化）
+ *    - export（本地 CSV 导出）
+ * 4) 组装 columns：
+ *    - 操作列：报名/取消/详情
+ *    - ✅ 报名优先走页面层注入的 flow（弹窗结果）
+ *    - ✅ 取消优先走页面层注入的 flow（最终 toast 成功/失败）
+ *
+ * 约定：
+ * - ✅ 只做业务编排，不做 UI（不 message、不 Modal）
+ * - ✅ 行为统一：优先使用外部注入 actions/flow，避免“两个 loading 状态源”
+ */
+
 import { useCallback, useMemo } from "react";
 import type {
   ListResult,
@@ -30,6 +56,18 @@ import {
 import { useApplyActions } from "./useApplyActions";
 import { useApplyFlow } from "./useApplyFlow";
 
+/**
+ * normalizeAntdFilters
+ *
+ * antd Table 的 filters 回传：
+ * - null：未设置
+ * - []：清空
+ * - [value] / [v1,v2]：单选/多选
+ *
+ * 我们这里的约定：
+ * - filters 直接存进 TableQuery.filters（保持数组形态，兼容多选）
+ * - 遇到 null/空数组 => 不写入
+ */
 function normalizeAntdFilters<F extends Record<string, any>>(
   filters: Record<string, FilterValue | null>,
 ): Partial<F> {
@@ -37,12 +75,13 @@ function normalizeAntdFilters<F extends Record<string, any>>(
   for (const [k, v] of Object.entries(filters ?? {})) {
     if (v == null) continue;
     if (Array.isArray(v) && v.length === 0) continue;
-    out[k] = v; // 保留数组（兼容单选/多选）
+    out[k] = v;
   }
   return out as Partial<F>;
 }
 
 export function useEnrollTable(options?: {
+  /** 点击“详情”时抛出 id（页面层决定：跳转详情页 / 打开弹窗） */
   onOpenDetail?: (id: number) => void;
 
   /** ✅ 报名按钮点击：页面层接入 useApplyFlow 后传 startRegister 进来 */
@@ -52,18 +91,25 @@ export function useEnrollTable(options?: {
   onCancel?: (row: EnrollTableRow) => void | Promise<unknown>;
 
   /**
-   * ✅ 允许外部注入 applyActions（关键：避免你 useEnrollPage 里那套 actions/flow 和这里不一致）
+   * ✅ 允许外部注入 applyActions
+   * 用途：
+   * - 保证列表页（useEnrollTable）与页面层（useEnrollPage/useApplyFlow）共用同一套 actions
+   * - 这样 loading/错误口径/刷新回调都不会分裂
    */
   applyActions?: ReturnType<typeof useApplyActions>;
 
   /**
-   * ✅ 可选：也允许外部注入 applyFlow（如果你希望列表页所有动作都统一走 flow）
-   * - 如果传了，会优先使用它来处理“取消后 toast”
+   * ✅ 可选：也允许外部注入 applyFlow
+   * 用途：
+   * - 当列表页不显式传 onCancel 时，依旧可以通过 flow 来实现“取消成功/失败 toast”
    */
   applyFlow?: ReturnType<typeof useApplyFlow>;
 }) {
   const bizKey = "activityApply.list";
 
+  // =========================
+  // 1) 查询状态（受控表格）
+  // =========================
   const {
     query,
     setKeyword,
@@ -81,6 +127,9 @@ export function useEnrollTable(options?: {
     },
   });
 
+  // =========================
+  // 2) 数据拉取（一次拉全量：列表页走本地分页/排序/筛选）
+  // =========================
   const fetcher: TableFetcher<EnrollTableRow, EnrollTableFilters> = useCallback(
     async (
       _q: TableQuery<EnrollTableFilters>,
@@ -89,6 +138,7 @@ export function useEnrollTable(options?: {
         searchAllActivities(),
         getMyApplications(),
       ]);
+
       const list = mergeEnrollRows(activities ?? [], myApps ?? []);
       return { list, total: list.length };
     },
@@ -101,6 +151,9 @@ export function useEnrollTable(options?: {
     { autoDeps: "reload" },
   );
 
+  // =========================
+  // 3) 本地过滤/排序/搜索/分页（applyLocalQuery）
+  // =========================
   const local = useMemo(() => {
     return applyLocalQuery<EnrollTableRow, EnrollTableFilters>(
       tableData.list ?? [],
@@ -109,13 +162,20 @@ export function useEnrollTable(options?: {
     );
   }, [tableData.list, query]);
 
+  // =========================
+  // 4) 列偏好（显隐/顺序/宽度）
+  // =========================
   const columnPrefs = useColumnPrefs<EnrollTableRow>(
     bizKey,
     activityApplyTablePresets,
     { version: 3 },
   );
 
-  // ✅ 关键：优先用外部注入的 applyActions（同一套 loading / 同一套错误策略）
+  // =========================
+  // 5) 行动作：报名/候补/取消
+  // - ✅ 优先使用外部注入（避免状态分裂）
+  // - ✅ fallback：内部创建（用于简单页面/单测）
+  // =========================
   const innerActions = useApplyActions({
     onChanged: async () => {
       await tableData.reload();
@@ -124,30 +184,32 @@ export function useEnrollTable(options?: {
   });
   const applyActions = options?.applyActions ?? innerActions;
 
+  // =========================
+  // 6) columns 组装（含 操作列：报名/取消/详情）
+  // =========================
   const columns = useMemo(() => {
     const base = buildEnrollColumns({
       onDetail: (row) => options?.onOpenDetail?.(row.id),
 
-      // ✅ 报名入口：优先走页面层传入（弹窗 flow），否则默认直接 register（无弹窗）
+      // ✅ 报名：优先走页面层注入（通常是 flow.startRegister → 弹窗结果）
       onRegister: async (row) => {
         if (options?.onRegister) return options.onRegister(row);
         return applyActions.register(row.id);
       },
 
-      // ✅ 取消入口：优先走页面层（推荐：flow.startCancelWithNotify）
-      // 没传的话：fallback 到 flow（如果注入了）或直接 actions.cancel（无 toast）
+      // ✅ 取消：优先走页面层注入（通常是 flow.startCancelWithNotify → toast）
+      // fallback：
+      // 1) 如果注入了 applyFlow，则用 flow.startCancelWithNotify（带 toast）
+      // 2) 否则直接 actions.cancel（不 toast）
       onCancel: async (row) => {
         if (options?.onCancel) return options.onCancel(row);
-
-        // 1) 若注入了 flow，则用它（带最终成功/失败 toast）
         if (options?.applyFlow) {
           return options.applyFlow.startCancelWithNotify(row.id);
         }
-
-        // 2) 否则只执行取消（不 toast）
         return applyActions.cancel(row.id);
       },
 
+      // loading：同一个 rowAction 池，避免重复 loading
       isRegistering: (id) => applyActions.rowAction.isLoading(id),
       isCanceling: (id) => applyActions.rowAction.isLoading(id),
     });
@@ -162,6 +224,9 @@ export function useEnrollTable(options?: {
     columnPrefs,
   ]);
 
+  // =========================
+  // 7) 导出：基于“过滤后的全量列表”
+  // =========================
   const exporter = useLocalExport<EnrollTableRow>(
     local.filtered,
     activityApplyTablePresets,
@@ -169,6 +234,9 @@ export function useEnrollTable(options?: {
     { filenameBase: "活动讲座报名列表" },
   );
 
+  // =========================
+  // 8) 受控回写（SmartTable 触发）
+  // =========================
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<EnrollTableFilters>>) => {
       if (next.page !== undefined || next.pageSize !== undefined) {
@@ -188,6 +256,9 @@ export function useEnrollTable(options?: {
     [setFilters, setPage, query.pageSize],
   );
 
+  // =========================
+  // 9) 对外输出（页面层直接消费）
+  // =========================
   return {
     table: {
       bizKey,
@@ -210,6 +281,7 @@ export function useEnrollTable(options?: {
       exportCsv: exporter.exportCsv,
     },
 
+    // ✅ 暴露 actions：页面层可复用（比如：详情页复用同一套 loading）
     applyActions,
   };
 }
