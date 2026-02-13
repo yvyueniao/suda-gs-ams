@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { Button, Card, Space, Typography, message } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
 
 import {
   ColumnSettings,

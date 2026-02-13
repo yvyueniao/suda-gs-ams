@@ -1,7 +1,7 @@
 // src/pages/org/OrgPage.tsx
 
-import React, { useMemo, useState } from "react";
-import { Button, Card, Space, Typography, message } from "antd";
+import { useMemo, useState } from "react";
+import { Button, Card, Space, Typography } from "antd";
 
 import {
   TableToolbar,

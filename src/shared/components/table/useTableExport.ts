@@ -14,9 +14,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ListResult, TableFetcher, TableQuery } from "./types";
 
-export type UseTableExportOptions<
-  F extends Record<string, any> = Record<string, any>,
-> = {
+export type UseTableExportOptions = {
   /** 导出时每页拉多少条（越大请求越少，但单次响应越大） */
   pageSize?: number;
   /** 最大导出条数保护（防止把浏览器撑爆） */
@@ -63,7 +61,7 @@ export function useTableExport<
 >(
   query: TableQuery<F>,
   fetcher: TableFetcher<T, F>,
-  options?: UseTableExportOptions<F>,
+  options?: UseTableExportOptions,
 ): UseTableExportResult<T> {
   const {
     pageSize = 500,

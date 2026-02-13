@@ -1,5 +1,4 @@
 // src/pages/error/NotFoundPage.tsx
-import React from "react";
 import { Button, Result, Space, Typography } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 
