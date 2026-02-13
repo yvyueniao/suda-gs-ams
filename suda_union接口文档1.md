@@ -502,7 +502,7 @@ url：/activity/userApplications
 
 activityId：报名活动/讲座的ID
 username：用户名
-state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败)
+state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败/4:审核中/5:审核失败)
 time：申请时间
 attachment：附件url地址
 checkIn：是否签到
