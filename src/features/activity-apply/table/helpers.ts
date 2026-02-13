@@ -7,7 +7,7 @@
  *
  * 文件定位：
  * - features/activity-apply/table 层
- * - 为“活动/讲座报名列表页”提供纯工具函数（不含 UI / 不含 React）
+ * - 为“活动/讲座报名列表页 / 详情页”提供纯工具函数（不含 UI / 不含 React）
  *
  * 设计目标：
  * 1) ✅ 不拉接口：不 import api，不做请求
@@ -19,6 +19,10 @@
  * - 状态派生：deriveApplyActionState
  * - 列表拼接：mergeEnrollRows（activities + myApplications => EnrollTableRow）
  * - 本地搜索/筛选/排序：getSearchTexts / matchFilters / getSortValue
+ * - ✅ 动作主按钮逻辑复用（列表页/详情页共用）：
+ *   - getPrimaryActionMeta
+ *   - getApplyStateTagMeta
+ *   - getCancelConfirmMeta
  *
  * ✅ 本次修改点（关键）：
  * - EnrollTableFilters.department 支持 string | string[]（兼容 antd FilterValue）
@@ -139,7 +143,95 @@ export function mergeEnrollRows(
 }
 
 /* =====================================================
- * 三、本地搜索/筛选/排序（给 applyLocalQuery 用）
+ * 三、主按钮/Tag 逻辑复用（列表页/详情页共用）
+ * ===================================================== */
+
+/**
+ * 与列表页一致的主按钮文案：
+ * - NOT_APPLIED / CANDIDATE_FAIL / REVIEW_FAIL：报名
+ * - APPLIED / CANDIDATE_SUCC：取消报名
+ * - CANDIDATE：取消候补
+ * - REVIEWING：取消审核
+ */
+export function getPrimaryActionMeta(applyState: ApplyActionState): {
+  text: string;
+  isCancel: boolean;
+} {
+  switch (applyState) {
+    case "APPLIED":
+    case "CANDIDATE_SUCC":
+      return { text: "取消报名", isCancel: true };
+    case "CANDIDATE":
+      return { text: "取消候补", isCancel: true };
+    case "REVIEWING":
+      return { text: "取消审核", isCancel: true };
+    default:
+      // NOT_APPLIED / CANDIDATE_FAIL / REVIEW_FAIL
+      return { text: "报名", isCancel: false };
+  }
+}
+
+export function getApplyStateTagMeta(applyState: ApplyActionState): {
+  label: string;
+  color?: string;
+} {
+  const labelMap: Record<ApplyActionState, string> = {
+    NOT_APPLIED: "未报名",
+    APPLIED: "报名成功",
+    CANDIDATE: "候补中",
+    CANDIDATE_SUCC: "候补成功",
+    CANDIDATE_FAIL: "候补失败",
+    REVIEWING: "审核中",
+    REVIEW_FAIL: "审核失败",
+  };
+
+  const label = labelMap[applyState] ?? "-";
+
+  // antd Tag color：'success' 等也可以，但你现在全用基础色，保持一致
+  if (applyState === "APPLIED" || applyState === "CANDIDATE_SUCC")
+    return { label, color: "green" };
+  if (applyState === "CANDIDATE") return { label, color: "blue" };
+  if (applyState === "REVIEWING") return { label, color: "gold" };
+  if (applyState === "CANDIDATE_FAIL" || applyState === "REVIEW_FAIL")
+    return { label, color: "red" };
+  return { label, color: "default" };
+}
+
+/**
+ * 取消动作二次确认弹窗文案（给 ActionCell.confirm 用）
+ * - 列表页/详情页通用
+ */
+export function getCancelConfirmMeta(payload: {
+  primaryText: string; // "取消报名" | "取消候补" | "取消审核"
+  activityName: string;
+  reason?: string; // 不在窗口 / 12h 限制等
+}): {
+  title: string;
+  content: string;
+  okText: string;
+  cancelText: string;
+} {
+  const { primaryText, activityName, reason } = payload;
+
+  // 列表页原来只有 “取消报名/取消候补” 两个分支，这里补齐 “取消审核”
+  const title =
+    primaryText === "取消报名"
+      ? "确认取消报名？"
+      : primaryText === "取消候补"
+        ? "确认取消候补？"
+        : primaryText === "取消审核"
+          ? "确认取消审核？"
+          : "确认执行取消操作？";
+
+  const content = reason
+    ? `${reason}（仍确认继续？）`
+    : `活动：${activityName}`;
+
+  return { title, content, okText: "确认", cancelText: "取消" };
+}
+
+/* =====================================================
+ * 四、本地搜索/筛选/排序（给 applyLocalQuery 用）
  * ===================================================== */
 
 /**
@@ -312,7 +404,7 @@ export function buildLocalQueryOptions() {
 }
 
 /* =====================================================
- * 四、筛选项辅助（可选）
+ * 五、筛选项辅助（可选）
  * ===================================================== */
 
 /** 从活动列表中提取部门候选项（若你不想额外请求 /department/allDepartment） */

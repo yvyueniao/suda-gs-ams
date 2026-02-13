@@ -1,8 +1,7 @@
-// src/pages/activity-apply/EnrollPage.tsx
-
-import { useCallback, useMemo } from "react";
-import { Button, Card, Modal, Space, Spin, Typography, message } from "antd";
+import { useCallback } from "react";
+import { Button, Card, Space, Typography, message } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 import {
   ColumnSettings,
@@ -20,16 +19,10 @@ import ApplyResultModal from "./ApplyResultModal";
 const { Title, Text } = Typography;
 
 export default function EnrollPage() {
-  /**
-   * ✅ 关键修复点：
-   * - 确保 Hook（useEnrollPage）只在组件顶层调用
-   * - 不要把 useEnrollPage / useAsyncMapAction 包在 useMemo/useEffect 里
-   *
-   * 同时把 onNotify 提到 useCallback，避免每次 render 传入新函数导致内部逻辑重复构建
-   * （不改变原有行为，只让引用稳定）
-   */
+  const navigate = useNavigate();
+
   const onNotify = useCallback(
-    ({ kind, msg }: { kind: string; msg: string }) => {
+    ({ kind, msg }: { kind: "success" | "error" | "info"; msg: string }) => {
       if (kind === "success") message.success(msg);
       else if (kind === "error") message.error(msg);
       else message.info(msg);
@@ -37,14 +30,9 @@ export default function EnrollPage() {
     [],
   );
 
-  const { table, detail, supplement, applyFlow } = useEnrollPage({ onNotify });
-
-  // 把 flow 的 kind 映射到 ApplyResultModal 的 kind（不影响逻辑，仅做 memo 避免无意义重复计算）
-  const resultKind = useMemo(() => {
-    return applyFlow.modal.kind === "REGISTER_OK"
-      ? "REGISTER_SUCCESS"
-      : "REGISTER_FAIL";
-  }, [applyFlow.modal.kind]);
+  const { table, supplement, applyFlow } = useEnrollPage({
+    onNotify,
+  });
 
   return (
     <Space direction="vertical" style={{ width: "100%" }} size="middle">
@@ -132,9 +120,14 @@ export default function EnrollPage() {
         />
       </Card>
 
+      {/* 报名结果弹窗（这个保留，因为这是报名结果，不是详情） */}
       <ApplyResultModal
         open={applyFlow.modal.open}
-        kind={resultKind as any}
+        kind={
+          applyFlow.modal.kind === "REGISTER_OK"
+            ? "REGISTER_SUCCESS"
+            : "REGISTER_FAIL"
+        }
         message={applyFlow.modal.msg}
         onClose={applyFlow.closeModal}
         onCandidate={
@@ -146,35 +139,6 @@ export default function EnrollPage() {
         }
         candidating={applyFlow.modal.candidateLoading}
       />
-
-      <Modal
-        open={detail.visible}
-        title="活动/讲座详情"
-        onCancel={detail.closeDetail}
-        width={860}
-        footer={
-          <Space>
-            <Button onClick={detail.closeDetail}>关闭</Button>
-            <Button
-              onClick={() => void detail.reloadDetail()}
-              loading={detail.loading}
-            >
-              刷新详情
-            </Button>
-          </Space>
-        }
-        destroyOnClose
-      >
-        <Spin spinning={detail.loading}>
-          {detail.detail ? (
-            <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(detail.detail, null, 2)}
-            </pre>
-          ) : (
-            <Text type="secondary">暂无详情数据</Text>
-          )}
-        </Spin>
-      </Modal>
 
       <SupplementApplyModal
         open={supplement.visible}

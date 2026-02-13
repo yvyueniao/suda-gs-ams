@@ -11,6 +11,7 @@ import { ROLES } from "./app/routes/routeAccess";
 // pages
 import LoginPage from "./pages/login/LoginPage";
 import EnrollPage from "./pages/activity-apply/EnrollPage";
+import ActivityDetailPage from "./pages/activity-apply/ActivityDetailPage";
 import ActivityAdminPage from "./pages/activity-admin/ActivityAdminPage";
 import FeedbackCenterPage from "./pages/feedback-center/FeedbackCenterPage";
 import FeedbackAdminPage from "./pages/feedback-admin/FeedbackAdminPage";
@@ -22,8 +23,10 @@ import AuditPage from "./pages/system/AuditPage";
 import ForbiddenPage from "./pages/403/ForbiddenPage";
 import NotFoundPage from "./pages/error/NotFoundPage";
 import ServerErrorPage from "./pages/error/ServerErrorPage";
+
 const NOT_FOUND_PATH = "/404";
 const SERVER_ERROR_PATH = "/500";
+
 export default function App() {
   return (
     <Routes>
@@ -32,6 +35,9 @@ export default function App() {
 
       {/* ✅ 显式 404：不走鉴权/不走 Layout（很关键，避免死循环） */}
       <Route path={NOT_FOUND_PATH} element={<NotFoundPage />} />
+
+      {/* ✅ 显式 500：不走鉴权/不走 Layout（避免错误页被权限挡住） */}
+      <Route path={SERVER_ERROR_PATH} element={<ServerErrorPage />} />
 
       {/* 登录页：只允许游客访问 */}
       <Route element={<OnlyGuest />}>
@@ -44,6 +50,13 @@ export default function App() {
         <Route element={<AppLayout />}>
           {/* ===== 所有登录用户可访问 ===== */}
           <Route path="/enroll" element={<EnrollPage />} />
+
+          {/* ✅ 隐藏路由：活动/讲座详情（不挂菜单） */}
+          <Route
+            path="/activity-apply/detail/:id"
+            element={<ActivityDetailPage />}
+          />
+
           <Route path="/feedback-center" element={<FeedbackCenterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
 
@@ -77,7 +90,6 @@ export default function App() {
 
       {/* ✅ 全局兜底：任何未知路由 → /404 */}
       <Route path="*" element={<Navigate to={NOT_FOUND_PATH} replace />} />
-      <Route path={SERVER_ERROR_PATH} element={<ServerErrorPage />} />
     </Routes>
   );
 }

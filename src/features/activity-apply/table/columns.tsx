@@ -3,7 +3,16 @@
 import type { ColumnsType } from "antd/es/table";
 import { Tag } from "antd";
 import { ActionCell } from "../../../shared/components/table";
-import type { ApplyActionState, EnrollTableRow } from "../types";
+import type { EnrollTableRow } from "../types";
+
+// ✅ 统一从 helpers 复用（唯一真相源）
+import {
+  inSignWindow,
+  canCancelBy12h,
+  getPrimaryActionMeta,
+  getApplyStateTagMeta,
+  getCancelConfirmMeta,
+} from "./helpers";
 
 type BuildColumnsParams = {
   nowMs?: number;
@@ -20,31 +29,9 @@ type BuildColumnsParams = {
 };
 
 /* =====================================================
- * 工具
- * ===================================================== */
-
-function parseTimeMs(s?: string): number | null {
-  if (!s) return null;
-  const iso = s.replace(" ", "T");
-  const t = Date.parse(iso);
-  return Number.isNaN(t) ? null : t;
-}
-
-function inSignWindow(row: EnrollTableRow, nowMs: number): boolean {
-  const start = parseTimeMs(row.signStartTime);
-  const end = parseTimeMs(row.signEndTime);
-  if (start == null || end == null) return false;
-  return nowMs >= start && nowMs <= end;
-}
-
-function canCancelBy12h(row: EnrollTableRow, nowMs: number): boolean {
-  const start = parseTimeMs(row.activityStime);
-  if (start == null) return true;
-  return start - nowMs >= 12 * 60 * 60 * 1000;
-}
-
-/* =====================================================
- * 映射
+ * 映射（UI 轻量展示）
+ * - 这俩是“列表列显示”所需，不属于动作逻辑
+ * - 也可以继续抽去 helpers（但不是必须）
  * ===================================================== */
 
 function activityTypeLabel(type: 0 | 1) {
@@ -60,48 +47,6 @@ function activityStateLabel(state: 0 | 1 | 2 | 3 | 4) {
     4: "已结束",
   };
   return map[state] ?? "-";
-}
-
-function applyStateLabel(s: ApplyActionState) {
-  const map: Record<ApplyActionState, string> = {
-    NOT_APPLIED: "未报名",
-    APPLIED: "报名成功",
-    CANDIDATE: "候补中",
-    CANDIDATE_SUCC: "候补成功",
-    CANDIDATE_FAIL: "候补失败",
-    REVIEWING: "审核中",
-    REVIEW_FAIL: "审核失败",
-  };
-  return map[s] ?? "-";
-}
-
-function applyStateColor(s: ApplyActionState) {
-  if (s === "APPLIED" || s === "CANDIDATE_SUCC") return "green";
-  if (s === "CANDIDATE") return "blue";
-  if (s === "REVIEWING") return "gold";
-  if (s === "CANDIDATE_FAIL" || s === "REVIEW_FAIL") return "red";
-  return "default";
-}
-
-/**
- * ✅ 你的真实诉求：
- * - 只有 NOT_APPLIED（我的记录里没有）才显示“报名”
- * - 其余状态沿用原来的取消逻辑（取消报名/取消候补/取消审核）
- * - 但列表里不提供“候补”入口（候补只在报名失败弹窗）
- */
-function primaryActionText(s: ApplyActionState) {
-  switch (s) {
-    case "APPLIED":
-    case "CANDIDATE_SUCC":
-      return "取消报名";
-    case "CANDIDATE":
-      return "取消候补";
-    case "REVIEWING":
-      return "取消审核";
-    default:
-      // NOT_APPLIED / CANDIDATE_FAIL / REVIEW_FAIL 仍显示“报名”（入口统一）
-      return "报名";
-  }
 }
 
 /* =====================================================
@@ -122,13 +67,7 @@ export function buildEnrollColumns(
   } = params;
 
   return [
-    {
-      title: "编号",
-      dataIndex: "id",
-      key: "id",
-      width: 96,
-      sorter: true,
-    },
+    { title: "编号", dataIndex: "id", key: "id", width: 96, sorter: true },
     {
       title: "活动 / 讲座名称",
       dataIndex: "name",
@@ -157,7 +96,6 @@ export function buildEnrollColumns(
       ],
       render: (v: 0 | 1) => <Tag>{activityTypeLabel(v)}</Tag>,
     },
-    // ✅ 分数/次数：只显示数字
     {
       title: "分数/次数",
       dataIndex: "score",
@@ -238,6 +176,7 @@ export function buildEnrollColumns(
       width: 100,
       sorter: true,
     },
+
     {
       title: "我的报名状态",
       dataIndex: "applyState",
@@ -253,12 +192,12 @@ export function buildEnrollColumns(
         { text: "审核中", value: "REVIEWING" },
         { text: "审核失败", value: "REVIEW_FAIL" },
       ],
-      render: (_: unknown, record: EnrollTableRow) => (
-        <Tag color={applyStateColor(record.applyState)}>
-          {applyStateLabel(record.applyState)}
-        </Tag>
-      ),
+      render: (_: unknown, record: EnrollTableRow) => {
+        const meta = getApplyStateTagMeta(record.applyState);
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
     },
+
     {
       title: "操作",
       key: "actions",
@@ -268,19 +207,17 @@ export function buildEnrollColumns(
         const signOk = inSignWindow(record, nowMs);
         const cancelOk = canCancelBy12h(record, nowMs);
 
-        const text = primaryActionText(record.applyState);
-        const isCancel =
-          text === "取消报名" || text === "取消候补" || text === "取消审核";
+        const primary = getPrimaryActionMeta(record.applyState);
+        const isCancel = primary.isCancel;
 
-        // ✅ 报名按钮不做前置禁用（让后端返回 msg，交给“报名结果弹窗”处理）
-        // ✅ 取消类动作才限制
+        // ✅ 报名不前置禁用；取消才限制
         const primaryDisabled = isCancel ? !signOk || !cancelOk : false;
 
         const primaryLoading = isCancel
           ? isCanceling?.(record.id)
           : isRegistering?.(record.id);
 
-        const primaryReason = isCancel
+        const reason = isCancel
           ? !signOk
             ? "不在报名时间范围内"
             : !cancelOk
@@ -288,7 +225,15 @@ export function buildEnrollColumns(
               : undefined
           : undefined;
 
-        const primaryClick = () => {
+        const confirm = isCancel
+          ? getCancelConfirmMeta({
+              primaryText: primary.text,
+              activityName: record.name,
+              reason,
+            })
+          : undefined;
+
+        const onClick = () => {
           if (!isCancel) return onRegister(record);
           return onCancel(record);
         };
@@ -299,21 +244,19 @@ export function buildEnrollColumns(
             actions={[
               {
                 key: "primary",
-                label: text,
+                label: primary.text,
                 danger: isCancel,
                 loading: !!primaryLoading,
                 disabled: primaryDisabled,
-                confirm: isCancel
+                confirm: confirm
                   ? {
-                      title: `确认取消${text === "取消报名" ? "报名" : "候补"}？`,
-                      content: primaryReason
-                        ? `${primaryReason}（仍确认继续？）`
-                        : `活动：${record.name}`,
-                      okText: "确认",
-                      cancelText: "取消",
+                      title: confirm.title,
+                      content: confirm.content,
+                      okText: confirm.okText,
+                      cancelText: confirm.cancelText,
                     }
                   : undefined,
-                onClick: primaryClick,
+                onClick,
               },
               {
                 key: "detail",
