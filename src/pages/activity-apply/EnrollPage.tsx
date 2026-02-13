@@ -120,7 +120,7 @@ export default function EnrollPage() {
         />
       </Card>
 
-      {/* 报名结果弹窗（这个保留，因为这是报名结果，不是详情） */}
+      {/* 报名结果弹窗（保留：这是报名结果，不是详情） */}
       <ApplyResultModal
         open={applyFlow.modal.open}
         kind={
@@ -144,6 +144,7 @@ export default function EnrollPage() {
         open={supplement.visible}
         onCancel={supplement.closeSupplement}
         onSubmit={async () => {
+          // 当前补报名未接后端：先仅关闭
           supplement.closeSupplement();
         }}
       />

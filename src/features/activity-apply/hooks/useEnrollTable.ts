@@ -28,6 +28,7 @@ import {
   getSortValue,
 } from "../table/helpers";
 import { useApplyActions } from "./useApplyActions";
+import { useApplyFlow } from "./useApplyFlow";
 
 function normalizeAntdFilters<F extends Record<string, any>>(
   filters: Record<string, FilterValue | null>,
@@ -47,10 +48,19 @@ export function useEnrollTable(options?: {
   /** ✅ 报名按钮点击：页面层接入 useApplyFlow 后传 startRegister 进来 */
   onRegister?: (row: EnrollTableRow) => void | Promise<unknown>;
 
+  /** ✅ 取消按钮点击：建议页面层接入 useApplyFlow.startCancelWithNotify */
+  onCancel?: (row: EnrollTableRow) => void | Promise<unknown>;
+
   /**
    * ✅ 允许外部注入 applyActions（关键：避免你 useEnrollPage 里那套 actions/flow 和这里不一致）
    */
   applyActions?: ReturnType<typeof useApplyActions>;
+
+  /**
+   * ✅ 可选：也允许外部注入 applyFlow（如果你希望列表页所有动作都统一走 flow）
+   * - 如果传了，会优先使用它来处理“取消后 toast”
+   */
+  applyFlow?: ReturnType<typeof useApplyFlow>;
 }) {
   const bizKey = "activityApply.list";
 
@@ -124,8 +134,18 @@ export function useEnrollTable(options?: {
         return applyActions.register(row.id);
       },
 
+      // ✅ 取消入口：优先走页面层（推荐：flow.startCancelWithNotify）
+      // 没传的话：fallback 到 flow（如果注入了）或直接 actions.cancel（无 toast）
       onCancel: async (row) => {
-        await applyActions.cancel(row.id);
+        if (options?.onCancel) return options.onCancel(row);
+
+        // 1) 若注入了 flow，则用它（带最终成功/失败 toast）
+        if (options?.applyFlow) {
+          return options.applyFlow.startCancelWithNotify(row.id);
+        }
+
+        // 2) 否则只执行取消（不 toast）
+        return applyActions.cancel(row.id);
       },
 
       isRegistering: (id) => applyActions.rowAction.isLoading(id),
@@ -133,7 +153,14 @@ export function useEnrollTable(options?: {
     });
 
     return columnPrefs.applyPresetsToAntdColumns(base);
-  }, [options?.onOpenDetail, options?.onRegister, applyActions, columnPrefs]);
+  }, [
+    options?.onOpenDetail,
+    options?.onRegister,
+    options?.onCancel,
+    options?.applyFlow,
+    applyActions,
+    columnPrefs,
+  ]);
 
   const exporter = useLocalExport<EnrollTableRow>(
     local.filtered,

@@ -110,6 +110,7 @@ export default function ActivityDetailPage() {
     return deriveApplyActionState(myApp);
   }, [myApp]);
 
+  // ✅ 动作：取消成功/失败也需要 toast，所以后续 onOk 里走 applyFlow.startCancelWithNotify
   const applyActions = useApplyActions({
     onChanged: async () => {
       await reload();
@@ -119,7 +120,7 @@ export default function ActivityDetailPage() {
 
   const applyFlow = useApplyFlow({
     applyActions,
-    // ✅ 不再重复传 onChanged，避免一次动作触发两次 reload
+    // ✅ 不重复传 onChanged，避免一次动作触发两次 reload
     onNotify: ({ kind, msg }) => {
       if (kind === "success") message.success(msg);
       else if (kind === "error") message.error(msg);
@@ -156,6 +157,7 @@ export default function ActivityDetailPage() {
     );
   }, [detail, nowMs]);
 
+  // ✅ 与列表页一致：取消类动作做“窗口/12h”限制；报名不做前置禁用（交给后端 msg + 弹窗）
   const primaryDisabled = useMemo(() => {
     if (!detail) return true;
     return isCancel ? !signOk || !cancelOk : false;
@@ -176,11 +178,13 @@ export default function ActivityDetailPage() {
   const onPrimaryClick = useCallback(async () => {
     if (activityId == null || !detail) return;
 
+    // 报名：走 flow（必弹成功/失败弹窗）
     if (!isCancel) {
       await applyFlow.startRegister({ id: activityId, name: detail.name });
       return;
     }
 
+    // 取消：二次确认 + ✅ 最终成功/失败 toast（用 flow 封装）
     const confirm = getCancelConfirmMeta({
       primaryText: primary.text,
       activityName: detail.name,
@@ -193,18 +197,11 @@ export default function ActivityDetailPage() {
       okText: confirm.okText,
       cancelText: confirm.cancelText,
       onOk: async () => {
-        await applyActions.cancel(activityId);
+        // ✅ 这里不要直接 applyActions.cancel；要用 flow，才能统一 toast
+        await applyFlow.startCancelWithNotify(activityId);
       },
     });
-  }, [
-    activityId,
-    detail,
-    isCancel,
-    applyFlow,
-    applyActions,
-    primary,
-    primaryReason,
-  ]);
+  }, [activityId, detail, isCancel, applyFlow, primary, primaryReason]);
 
   const resultKind =
     applyFlow.modal.kind === "REGISTER_OK"
@@ -351,6 +348,7 @@ export default function ActivityDetailPage() {
         </Spin>
       </Card>
 
+      {/* 报名结果弹窗（成功/失败 + 失败可候补） */}
       <ApplyResultModal
         open={applyFlow.modal.open}
         kind={resultKind}

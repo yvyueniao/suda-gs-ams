@@ -169,6 +169,26 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
     }
   }, [applyActions, closeModal, modal.activityId, onNotify]);
 
+  /**
+   * ✅ 新增：取消动作（取消报名/取消候补/取消审核）
+   * - 二次确认在页面层/ActionCell 处理
+   * - 这里负责：执行取消 + 最终成功/失败提示（toast）
+   */
+  const startCancelWithNotify = useCallback(
+    async (activityId: number): Promise<ApplyActionResult> => {
+      const res = await applyActions.cancel(activityId);
+
+      if (res.ok) {
+        onNotify?.({ kind: "success", msg: res.msg || "取消成功" });
+      } else {
+        onNotify?.({ kind: "error", msg: res.msg || "取消失败" });
+      }
+
+      return res;
+    },
+    [applyActions, onNotify],
+  );
+
   const isLoading = useCallback(
     (activityId: number) => applyActions.rowAction.isLoading(activityId),
     [applyActions],
@@ -198,6 +218,9 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
 
     // ✅ 报名入口（列表按钮调用这个）
     startRegister,
+
+    // ✅ 新增：取消入口（列表/详情页确认后调用这个，自动 toast）
+    startCancelWithNotify,
 
     // ✅ 弹窗状态与事件
     modal: modalView,

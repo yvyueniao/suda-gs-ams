@@ -62,25 +62,33 @@ export function useEnrollPage(options?: {
   );
 
   // =========================
-  // 3) 用 ref 桥接：让 onRegister 能“晚绑定”到 applyFlow
+  // 3) 用 ref 桥接：让 onRegister / onCancel 能“晚绑定”到 applyFlow
   // =========================
   const applyFlowRef = useRef<ReturnType<typeof useApplyFlow> | null>(null);
 
-  // 这个函数会被 buildEnrollColumns 固定住，所以必须稳定（不要依赖 applyFlow）
+  // 注意：buildEnrollColumns 会固定住函数引用，所以这里必须稳定（不依赖 applyFlow）
   const onRegisterViaFlow = useCallback(async (row: EnrollTableRow) => {
     await applyFlowRef.current?.startRegister({ id: row.id, name: row.name });
   }, []);
 
+  // ✅ 新增：取消也统一走 flow（用于最终成功/失败 toast）
+  const onCancelViaFlow = useCallback(async (row: EnrollTableRow) => {
+    await applyFlowRef.current?.startCancelWithNotify(row.id);
+  }, []);
+
   // =========================
-  // 4) 先创建 table（把 onRegister / onOpenDetail 传进去），拿到 applyActions
+  // 4) 先创建 table（把 onRegister / onCancel / onOpenDetail 传进去），拿到 applyActions
   // =========================
   const { table, applyActions } = useEnrollTable({
     onOpenDetail: (id) => {
       navigateToDetail(id);
     },
 
-    // ✅ 关键：报名按钮永远走这个入口，它再转发给 applyFlowRef
+    // ✅ 报名按钮永远走这个入口，它再转发给 applyFlowRef
     onRegister: onRegisterViaFlow,
+
+    // ✅ 取消按钮也走这个入口（confirm 由 ActionCell 负责，这里只做“最终结果 toast”）
+    onCancel: onCancelViaFlow,
   });
 
   // =========================
@@ -96,7 +104,7 @@ export function useEnrollPage(options?: {
     muteActionErrorToast: true,
   });
 
-  // ✅ 把 flow 写进 ref，供 onRegisterViaFlow 使用
+  // ✅ 把 flow 写进 ref，供 onRegisterViaFlow / onCancelViaFlow 使用
   useEffect(() => {
     applyFlowRef.current = applyFlow;
   }, [applyFlow]);
