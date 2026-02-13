@@ -65,8 +65,8 @@ let departments: MockDepartment[] = [
 let activities: MockActivityItem[] = [
   {
     id: 1,
-    name: "夜跑活动",
-    description: "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
+    name: "夜跑活动（已报名示例）",
+    description: "用于演示：已报名 -> 重复报名会失败",
     department: "文体部",
     time: "2026-02-04 14:57:57",
     signStartTime: "2026-02-04 14:00:00",
@@ -86,7 +86,7 @@ let activities: MockActivityItem[] = [
   {
     id: 2,
     name: "夜跑活动2（名额已满示例）",
-    description: "用于演示：报名已满 -> 引导候补",
+    description: "用于演示：报名人数已满 -> 报名失败",
     department: "文体部",
     time: "2026-02-04 18:49:26",
     signStartTime: "2026-02-04 14:00:00",
@@ -98,15 +98,15 @@ let activities: MockActivityItem[] = [
     activityEtime: "2026-03-15 22:00:00",
     type: 0,
     state: 1,
-    registeredNum: 200,
+    registeredNum: 200, // ✅ 满
     candidateNum: 5,
     candidateSuccNum: 1,
     candidateFailNum: 0,
   },
   {
     id: 3,
-    name: "大模型前沿讲座",
-    description: "邀请业界老师分享多模态与推理大模型最新进展。",
+    name: "大模型前沿讲座（可报名成功示例）",
+    description: "用于演示：未报名且未满 -> 报名成功 -> 我的报名状态变化",
     department: "学术部",
     time: "2026-02-02 10:20:00",
     signStartTime: "2026-02-03 10:00:00",
@@ -115,18 +115,18 @@ let activities: MockActivityItem[] = [
     score: 5,
     location: "本部报告厅",
     activityStime: "2026-02-26 19:00:00",
-    activityEtime: "2026-02-06 21:00:00",
+    activityEtime: "2026-02-26 21:00:00",
     type: 1,
     state: 2,
-    registeredNum: 66,
+    registeredNum: 66, // ✅ 未满
     candidateNum: 0,
     candidateSuccNum: 0,
     candidateFailNum: 0,
   },
   {
     id: 4,
-    name: "摄影作品征集（未开始示例）",
-    description: "用于演示：未开始 -> 报名按钮禁用",
+    name: "摄影作品征集（可报名成功示例）",
+    description: "用于演示：未报名且未满 -> 报名成功",
     department: "宣传部",
     time: "2026-02-01 09:00:00",
     signStartTime: "2026-02-20 10:00:00",
@@ -138,7 +138,7 @@ let activities: MockActivityItem[] = [
     activityEtime: "2026-03-10 23:59:59",
     type: 0,
     state: 0,
-    registeredNum: 12,
+    registeredNum: 999, // ✅ 未满（别写满，不然永远失败）
     candidateNum: 0,
     candidateSuccNum: 0,
     candidateFailNum: 0,
@@ -155,34 +155,11 @@ let myApplications: MockMyApplicationItem[] = [
     checkIn: true,
     getScore: true,
     type: 0,
-    score: 1,
+    score: 20,
     checkOut: false,
-    activityName: "夜跑活动",
-  },
-  {
-    activityId: 2,
-    username: MOCK_USERNAME,
-    state: 1,
-    time: "2026-02-01 13:10:24",
-    attachment: null,
-    checkIn: false,
-    getScore: false,
-    type: 0,
-    score: 0,
-    checkOut: false,
-    activityName: "夜跑活动2（名额已满示例）",
+    activityName: "夜跑活动（已报名示例）",
   },
 ];
-
-function parseTimeMs(s: string) {
-  return Date.parse(s.replace(" ", "T"));
-}
-
-function canCancelBy12h(act: MockActivityItem) {
-  const now = Date.now();
-  const start = parseTimeMs(act.activityStime);
-  return start - now >= 12 * 60 * 60 * 1000;
-}
 
 function nowString() {
   return new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -238,25 +215,30 @@ function mountActivity(middlewares: Connect.Server, base: string) {
       return sendJson(res, 200, ok(mine));
     }
 
+    /**
+     * ✅ 报名：只判断 “是否重复报名” + “名额是否满”
+     */
     if (req.url === "/register") {
       const act = activities.find((a) => a.id === Number(data.id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
-      if (act.state !== 1)
-        return sendJson(res, 200, fail("当前不在报名阶段", 4002));
-      if (findMyApp(act.id))
+
+      if (findMyApp(act.id)) {
         return sendJson(
           res,
           200,
           fail("你已报名/候补/审核中，勿重复操作", 4003),
         );
-      if (act.registeredNum >= act.fullNum)
+      }
+
+      if (act.registeredNum >= act.fullNum) {
         return sendJson(res, 200, fail("报名人数已满", 4004));
+      }
 
       act.registeredNum += 1;
       myApplications.push({
         activityId: act.id,
         username: MOCK_USERNAME,
-        state: 0,
+        state: 0, // 报名成功
         time: nowString(),
         attachment: null,
         checkIn: false,
@@ -267,30 +249,37 @@ function mountActivity(middlewares: Connect.Server, base: string) {
         activityName: act.name,
       });
 
-      return sendJson(res, 200, ok("成功报名1个活动"));
+      return sendJson(res, 200, ok("报名成功"));
     }
 
+    /**
+     * ✅ 候补：只有满员才能候补（你现在的前端是“失败弹窗里才给候补”，这正好匹配）
+     */
     if (req.url === "/candidate") {
       const act = activities.find((a) => a.id === Number(data.id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
-      if (findMyApp(act.id))
+
+      if (findMyApp(act.id)) {
         return sendJson(
           res,
           200,
           fail("你已报名/候补/审核中，勿重复操作", 4003),
         );
-      if (act.registeredNum < act.fullNum)
+      }
+
+      if (act.registeredNum < act.fullNum) {
         return sendJson(
           res,
           200,
           fail("报名未满，不能候补（请直接报名）", 4007),
         );
+      }
 
       act.candidateNum += 1;
       myApplications.push({
         activityId: act.id,
         username: MOCK_USERNAME,
-        state: 1,
+        state: 1, // 候补中
         time: nowString(),
         attachment: null,
         checkIn: false,
@@ -301,30 +290,28 @@ function mountActivity(middlewares: Connect.Server, base: string) {
         activityName: act.name,
       });
 
-      return sendJson(res, 200, ok("成功候补1个活动"));
+      return sendJson(res, 200, ok("候补成功"));
     }
 
+    /**
+     * ✅ 取消：只要存在记录就允许取消，不校验 12h
+     */
     if (req.url === "/cancel") {
       const act = activities.find((a) => a.id === Number(data.id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
 
       const existed = findMyApp(act.id);
-      if (!existed)
+      if (!existed) {
         return sendJson(
           res,
           200,
           fail("你当前没有可取消的报名/候补/审核记录", 4010),
         );
-      if (!canCancelBy12h(act))
-        return sendJson(
-          res,
-          200,
-          fail("距离活动开始不足 12 小时，无法取消", 4011),
-        );
+      }
 
       removeMyApp(act.id);
 
-      // 若之前是报名成功，回退 registeredNum；若是候补则回退 candidateNum
+      // state=0 报名成功：回退 registeredNum；state=1 候补：回退 candidateNum
       if (existed.state === 0)
         act.registeredNum = Math.max(0, act.registeredNum - 1);
       if (existed.state === 1)
@@ -338,7 +325,6 @@ function mountActivity(middlewares: Connect.Server, base: string) {
 }
 
 export function setupActivityApplyMock(middlewares: Connect.Server) {
-  // ✅ 同时挂载两套：带 /api 与不带 /api（避免你 client/baseURL 切换时再改 mock）
   mountDepartment(middlewares, "/department");
   mountDepartment(middlewares, "/api/department");
 

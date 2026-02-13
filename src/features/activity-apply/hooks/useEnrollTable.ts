@@ -43,6 +43,14 @@ function normalizeAntdFilters<F extends Record<string, any>>(
 
 export function useEnrollTable(options?: {
   onOpenDetail?: (id: number) => void;
+
+  /** ✅ 报名按钮点击：页面层接入 useApplyFlow 后传 startRegister 进来 */
+  onRegister?: (row: EnrollTableRow) => void | Promise<unknown>;
+
+  /**
+   * ✅ 允许外部注入 applyActions（关键：避免你 useEnrollPage 里那套 actions/flow 和这里不一致）
+   */
+  applyActions?: ReturnType<typeof useApplyActions>;
 }) {
   const bizKey = "activityApply.list";
 
@@ -97,32 +105,35 @@ export function useEnrollTable(options?: {
     { version: 3 },
   );
 
-  const applyActions = useApplyActions({
+  // ✅ 关键：优先用外部注入的 applyActions（同一套 loading / 同一套错误策略）
+  const innerActions = useApplyActions({
     onChanged: async () => {
       await tableData.reload();
     },
     muteActionErrorToast: true,
   });
+  const applyActions = options?.applyActions ?? innerActions;
 
   const columns = useMemo(() => {
     const base = buildEnrollColumns({
       onDetail: (row) => options?.onOpenDetail?.(row.id),
+
+      // ✅ 报名入口：优先走页面层传入（弹窗 flow），否则默认直接 register（无弹窗）
       onRegister: async (row) => {
-        await applyActions.register(row.id);
+        if (options?.onRegister) return options.onRegister(row);
+        return applyActions.register(row.id);
       },
-      onCandidate: async (row) => {
-        await applyActions.candidate(row.id);
-      },
+
       onCancel: async (row) => {
         await applyActions.cancel(row.id);
       },
+
       isRegistering: (id) => applyActions.rowAction.isLoading(id),
-      isCandidating: (id) => applyActions.rowAction.isLoading(id),
       isCanceling: (id) => applyActions.rowAction.isLoading(id),
     });
 
     return columnPrefs.applyPresetsToAntdColumns(base);
-  }, [options?.onOpenDetail, applyActions, columnPrefs]);
+  }, [options?.onOpenDetail, options?.onRegister, applyActions, columnPrefs]);
 
   const exporter = useLocalExport<EnrollTableRow>(
     local.filtered,
@@ -131,7 +142,6 @@ export function useEnrollTable(options?: {
     { filenameBase: "活动讲座报名列表" },
   );
 
-  // pagination / sorter / keyword 走 onQueryChange
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<EnrollTableFilters>>) => {
       if (next.page !== undefined || next.pageSize !== undefined) {
@@ -139,16 +149,14 @@ export function useEnrollTable(options?: {
       }
       if ("sorter" in next) setSorter(next.sorter);
       if ("keyword" in next) setKeyword(next.keyword);
-      // ⚠️ filters 不在这里接（由 onFiltersChange 接）
     },
     [query.page, query.pageSize, setPage, setSorter, setKeyword],
   );
 
-  // ✅ 关键：筛选变化走这里（和 SmartTable 设计对齐）
   const onFiltersChange = useCallback(
     (antdFilters: Record<string, FilterValue | null>) => {
       setFilters(normalizeAntdFilters<EnrollTableFilters>(antdFilters));
-      setPage(1, query.pageSize); // 筛选后回第一页（可选）
+      setPage(1, query.pageSize);
     },
     [setFilters, setPage, query.pageSize],
   );
@@ -165,7 +173,7 @@ export function useEnrollTable(options?: {
       query,
 
       onQueryChange,
-      onFiltersChange, // ✅ 新增：页面层传给 SmartTable
+      onFiltersChange,
 
       setKeyword,
       resetQuery,
@@ -174,6 +182,7 @@ export function useEnrollTable(options?: {
       columnPrefs,
       exportCsv: exporter.exportCsv,
     },
+
     applyActions,
   };
 }

@@ -2,22 +2,19 @@
 
 import type { ColumnsType } from "antd/es/table";
 import { Tag } from "antd";
-
 import { ActionCell } from "../../../shared/components/table";
 import type { ApplyActionState, EnrollTableRow } from "../types";
 
 type BuildColumnsParams = {
   nowMs?: number;
 
-  /** ✅ 新增：部门筛选项（建议由 hooks 从 rows 中 derive 后传进来） */
+  /** （你目前不打算做部门筛选的话，这个可以先留着不传） */
   departmentFilters?: Array<{ text: string; value: string }>;
 
   isRegistering?: (id: number) => boolean;
-  isCandidating?: (id: number) => boolean;
   isCanceling?: (id: number) => boolean;
 
   onRegister: (record: EnrollTableRow) => void | Promise<unknown>;
-  onCandidate: (record: EnrollTableRow) => void | Promise<unknown>;
   onCancel: (record: EnrollTableRow) => void | Promise<unknown>;
   onDetail: (record: EnrollTableRow) => void;
 };
@@ -54,11 +51,6 @@ function activityTypeLabel(type: 0 | 1) {
   return type === 0 ? "活动" : "讲座";
 }
 
-function scoreLabelByType(type: 0 | 1) {
-  // 0: 活动（分数） / 1: 讲座（次数）
-  return type === 0 ? "分数" : "次数";
-}
-
 function activityStateLabel(state: 0 | 1 | 2 | 3 | 4) {
   const map: Record<number, string> = {
     0: "未开始",
@@ -91,6 +83,12 @@ function applyStateColor(s: ApplyActionState) {
   return "default";
 }
 
+/**
+ * ✅ 你的真实诉求：
+ * - 只有 NOT_APPLIED（我的记录里没有）才显示“报名”
+ * - 其余状态沿用原来的取消逻辑（取消报名/取消候补/取消审核）
+ * - 但列表里不提供“候补”入口（候补只在报名失败弹窗）
+ */
 function primaryActionText(s: ApplyActionState) {
   switch (s) {
     case "APPLIED":
@@ -101,6 +99,7 @@ function primaryActionText(s: ApplyActionState) {
     case "REVIEWING":
       return "取消审核";
     default:
+      // NOT_APPLIED / CANDIDATE_FAIL / REVIEW_FAIL 仍显示“报名”（入口统一）
       return "报名";
   }
 }
@@ -114,13 +113,11 @@ export function buildEnrollColumns(
 ): ColumnsType<EnrollTableRow> {
   const {
     nowMs = Date.now(),
-    departmentFilters,
+    departmentFilters, // 目前不用也没关系
     onRegister,
-    onCandidate,
     onCancel,
     onDetail,
     isRegistering,
-    isCandidating,
     isCanceling,
   } = params;
 
@@ -146,6 +143,7 @@ export function buildEnrollColumns(
       key: "department",
       width: 160,
       sorter: true,
+      // filters: departmentFilters,
     },
     {
       title: "类型",
@@ -159,20 +157,15 @@ export function buildEnrollColumns(
       ],
       render: (v: 0 | 1) => <Tag>{activityTypeLabel(v)}</Tag>,
     },
-
-    // ✅ 新增：分数/次数（后端字段 score）
+    // ✅ 分数/次数：只显示数字
     {
       title: "分数/次数",
       dataIndex: "score",
       key: "score",
       width: 120,
       sorter: true,
-      render: (v: number | undefined) => {
-        if (typeof v !== "number") return "-";
-        return v;
-      },
+      render: (v: number | undefined) => (typeof v === "number" ? v : "-"),
     },
-
     {
       title: "活动状态",
       dataIndex: "state",
@@ -269,7 +262,7 @@ export function buildEnrollColumns(
     {
       title: "操作",
       key: "actions",
-      width: 260,
+      width: 220,
       fixed: "right",
       render: (_: unknown, record: EnrollTableRow) => {
         const signOk = inSignWindow(record, nowMs);
@@ -279,26 +272,26 @@ export function buildEnrollColumns(
         const isCancel =
           text === "取消报名" || text === "取消候补" || text === "取消审核";
 
-        const primaryDisabled = !signOk || (isCancel && !cancelOk);
+        // ✅ 报名按钮不做前置禁用（让后端返回 msg，交给“报名结果弹窗”处理）
+        // ✅ 取消类动作才限制
+        const primaryDisabled = isCancel ? !signOk || !cancelOk : false;
 
-        const primaryLoading =
-          text === "报名"
-            ? isRegistering?.(record.id)
-            : isCanceling?.(record.id);
+        const primaryLoading = isCancel
+          ? isCanceling?.(record.id)
+          : isRegistering?.(record.id);
 
-        const primaryReason = !signOk
-          ? "不在报名时间范围内"
-          : isCancel && !cancelOk
-            ? "距离活动开始不足12小时"
-            : undefined;
+        const primaryReason = isCancel
+          ? !signOk
+            ? "不在报名时间范围内"
+            : !cancelOk
+              ? "距离活动开始不足12小时"
+              : undefined
+          : undefined;
 
         const primaryClick = () => {
-          if (text === "报名") return onRegister(record);
+          if (!isCancel) return onRegister(record);
           return onCancel(record);
         };
-
-        const candidateVisible = record.applyState === "NOT_APPLIED";
-        const candidateDisabled = !signOk;
 
         return (
           <ActionCell
@@ -312,7 +305,7 @@ export function buildEnrollColumns(
                 disabled: primaryDisabled,
                 confirm: isCancel
                   ? {
-                      title: "确认执行该操作？",
+                      title: `确认取消${text === "取消报名" ? "报名" : "候补"}？`,
                       content: primaryReason
                         ? `${primaryReason}（仍确认继续？）`
                         : `活动：${record.name}`,
@@ -322,17 +315,6 @@ export function buildEnrollColumns(
                   : undefined,
                 onClick: primaryClick,
               },
-              ...(candidateVisible
-                ? [
-                    {
-                      key: "candidate",
-                      label: "候补",
-                      loading: !!isCandidating?.(record.id),
-                      disabled: candidateDisabled,
-                      onClick: () => onCandidate(record),
-                    },
-                  ]
-                : []),
               {
                 key: "detail",
                 label: "详情",

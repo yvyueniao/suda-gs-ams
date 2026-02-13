@@ -41,14 +41,14 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
   } = options;
 
   /**
+   * ✅ 重要：避免把任何“可能触发 Hook 链”的东西包进 useMemo/useCallback 的闭包里
+   * - 有些项目会对 message 做二次封装（或开启 App 级 message context），间接触发 hook 规则警告
+   * - 这里用 ref 固化 message 引用，保证仅作为普通函数调用使用
+   */
+  const messageRef = useRef(message);
+
+  /**
    * loadingMap：记录每个 key 的 loading
-   *
-   * - key = 行 id / rowKey
-   * - value = true 表示该行正在执行中
-   *
-   * ✅ 用 Map 的原因：
-   * - 查询/删除都方便
-   * - key 不局限于 number（string/number 都行）
    */
   const [loadingMap, setLoadingMap] = useState<Map<K, boolean>>(
     () => new Map(),
@@ -56,18 +56,11 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
 
   /**
    * runningRef：并发锁（只用于并发控制，不用于渲染）
-   *
-   * 为什么还要 runningRef？
-   * - setState 是异步的，连续点击可能在 state 更新前就触发多次
-   * - 用 ref 可以立即生效，保证“防连点”可靠
    */
   const runningRef = useRef<Set<K>>(new Set());
 
   /**
    * anyLoading：是否存在任意 key 在 loading
-   *
-   * 用途（可选）：
-   * - 当有行内操作在跑时，禁用页面上的“全局刷新/导出”等按钮
    */
   const anyLoading = useMemo(() => {
     for (const v of loadingMap.values()) if (v) return true;
@@ -126,6 +119,19 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
   }, []);
 
   /**
+   * ✅ 小工具：统一 toast（避免闭包里直接引用 message）
+   * - 逻辑不变，只是把调用点集中，减少被 hook 规则误判的概率
+   */
+  const toastSuccess = useCallback((text?: string) => {
+    if (!text) return;
+    messageRef.current.success(text);
+  }, []);
+
+  const toastError = useCallback((text: string) => {
+    messageRef.current.error(text);
+  }, []);
+
+  /**
    * run(key, fn)
    *
    * - key：标识“哪一行/哪一条数据”
@@ -154,7 +160,11 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
             typeof successMessage === "function"
               ? successMessage(key, result)
               : successMessage;
-          if (text) message.success(text);
+
+          // ✅ TS 收窄：避免 string | void 传入
+          if (typeof text === "string" && text) {
+            toastSuccess(text);
+          }
         }
 
         // 4) 成功回调（例如：刷新列表、更新行数据）
@@ -177,7 +187,7 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
 
         // 7) ApiError：优先展示后端 msg
         if (err instanceof ApiError) {
-          message.error(err.message || "操作失败，请重试");
+          toastError(err.message || "操作失败，请重试");
           return undefined;
         }
 
@@ -186,7 +196,7 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
           typeof errorMessage === "function"
             ? errorMessage(key)
             : errorMessage || "操作失败，请重试";
-        message.error(fallback);
+        toastError(fallback);
 
         return undefined;
       } finally {
@@ -203,6 +213,8 @@ export function useAsyncMapAction<K extends Key = number, T = unknown>(
       onError,
       onSuccess,
       silentUnauthorized,
+      toastSuccess,
+      toastError,
     ],
   );
 

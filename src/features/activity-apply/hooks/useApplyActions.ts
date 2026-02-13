@@ -1,20 +1,4 @@
-// src/features/activity-apply/hooks/useApplyActions.ts
-
-/**
- * useApplyActions
- *
- * 职责：
- * - 聚合“报名 / 候补 / 取消”三个行内动作
- * - 统一行级 loading（useAsyncMapAction）
- * - 不做 UI：不弹窗、不 message/toast
- *
- * 说明：
- * - actions 层（useAsyncMapAction）默认会做错误提示
- * - 你如果希望“报名失败弹窗完全由页面层控制”，可以在这里 onError return true 禁止默认 toast
- */
-
-import { useCallback, useMemo, useRef } from "react";
-
+import { useCallback, useEffect, useRef } from "react";
 import { useAsyncMapAction } from "../../../shared/actions";
 import { ApiError } from "../../../shared/http/error";
 
@@ -26,57 +10,50 @@ export type ApplyActionResult = {
   ok: boolean;
   kind: ApplyActionKind;
   activityId: number;
-  /** 后端 msg 或捕获到的错误文案 */
   msg: string;
-  /** 成功时：接口返回的 data（多数是 string） */
   data?: unknown;
 };
 
 function errToMsg(err: unknown, fallback: string) {
   if (err instanceof ApiError) return err.message || fallback;
   if (err instanceof Error) return err.message || fallback;
+  if (typeof err === "string") return err;
   return fallback;
 }
 
 export type UseApplyActionsOptions = {
-  /** 任一动作成功后触发（例如：table.reload / detail.reload） */
   onChanged?: () => void | Promise<void>;
-
-  /**
-   * 是否禁用 actions 内置的错误 toast
-   * - 你要“统一报名失败弹窗”时建议设为 true
-   */
   muteActionErrorToast?: boolean;
 };
 
 export function useApplyActions(options: UseApplyActionsOptions = {}) {
   const { onChanged, muteActionErrorToast = true } = options;
 
+  // ✅ 存最近一次错误 msg（优先写入后端 msg）
+  const lastErrorMsgRef = useRef<string>("");
+
+  // ✅ 避免闭包拿到旧的 onChanged
+  const onChangedRef = useRef<UseApplyActionsOptions["onChanged"]>(onChanged);
+  useEffect(() => {
+    onChangedRef.current = onChanged;
+  }, [onChanged]);
+
   /**
-   * actions 的 run(key, fn) 在失败时通常返回 undefined，
-   * 我们需要把错误文案带回页面层，因此用 ref 暂存最近一次错误。
+   * ✅ 关键：Hook 必须顶层调用，不能放 useMemo 里！
    */
-  const lastErrorRef = useRef<{ key: number; msg: string } | null>(null);
+  const rowAction = useAsyncMapAction<number, unknown>({
+    onSuccess: async () => {
+      await Promise.resolve(onChangedRef.current?.());
+    },
+    onError: (err) => {
+      // eslint-disable-next-line no-console
+      console.log("[applyActions] onError err =", err);
 
-  // ✅ 让 rowAction 引用稳定：避免每次 render 都重新创建
-  const rowAction = useMemo(
-    () =>
-      useAsyncMapAction<number, unknown>({
-        onSuccess: async () => {
-          await Promise.resolve(onChanged?.());
-        },
-        onError: (err) => {
-          const msg = errToMsg(err, "操作失败");
-          // 这里的 key 在 wrapRun 里会先写入本次 activityId
-          if (lastErrorRef.current) lastErrorRef.current.msg = msg;
-          else lastErrorRef.current = { key: -1, msg };
-
-          // return true => 阻止 actions 默认 toast（由页面层弹窗统一处理）
-          return muteActionErrorToast;
-        },
-      }),
-    [onChanged, muteActionErrorToast],
-  );
+      // 注意：这里 err 可能是 undefined（你已经看到过）
+      // 所以不要用它覆盖 lastErrorMsgRef；真正的 msg 在 wrapRun.safeFn 里捕获并写入
+      return muteActionErrorToast;
+    },
+  });
 
   const wrapRun = useCallback(
     async (
@@ -86,38 +63,40 @@ export function useApplyActions(options: UseApplyActionsOptions = {}) {
       fallbackOkMsg: string,
       fallbackFailMsg: string,
     ): Promise<ApplyActionResult> => {
-      lastErrorRef.current = { key: activityId, msg: fallbackFailMsg };
+      // 先写兜底失败文案
+      lastErrorMsgRef.current = fallbackFailMsg;
 
-      const data = await rowAction.run(activityId, fn);
+      // ✅ 在这里抓住真实错误（ApiError.message 就是后端 msg）
+      const safeFn = async () => {
+        try {
+          return await fn();
+        } catch (e) {
+          const msg = errToMsg(e, fallbackFailMsg);
+          lastErrorMsgRef.current = msg;
+
+          // eslint-disable-next-line no-console
+          console.log("[applyActions] caught error msg =", msg, "raw =", e);
+
+          throw e; // 继续抛给 useAsyncMapAction 收尾 loading
+        }
+      };
+
+      const data = await rowAction.run(activityId, safeFn);
 
       if (data !== undefined) {
-        return {
-          ok: true,
-          kind,
-          activityId,
-          // ✅ 成功文案保持稳定（不要把 data stringify 成 msg）
-          msg: fallbackOkMsg,
-          data,
-        };
+        return { ok: true, kind, activityId, msg: fallbackOkMsg, data };
       }
-
-      // 失败：从 lastErrorRef 里取（onError 已覆盖 msg）
-      const msg =
-        lastErrorRef.current?.key === activityId
-          ? lastErrorRef.current.msg
-          : fallbackFailMsg;
 
       return {
         ok: false,
         kind,
         activityId,
-        msg,
+        msg: lastErrorMsgRef.current || fallbackFailMsg,
       };
     },
     [rowAction],
   );
 
-  /** 报名 */
   const register = useCallback(
     async (activityId: number) =>
       wrapRun(
@@ -130,7 +109,6 @@ export function useApplyActions(options: UseApplyActionsOptions = {}) {
     [wrapRun],
   );
 
-  /** 候补 */
   const candidate = useCallback(
     async (activityId: number) =>
       wrapRun(
@@ -143,7 +121,6 @@ export function useApplyActions(options: UseApplyActionsOptions = {}) {
     [wrapRun],
   );
 
-  /** 取消（取消报名 / 取消候补 / 取消审核） */
   const cancel = useCallback(
     async (activityId: number) =>
       wrapRun(
