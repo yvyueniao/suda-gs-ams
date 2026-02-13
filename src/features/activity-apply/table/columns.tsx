@@ -9,6 +9,9 @@ import type { ApplyActionState, EnrollTableRow } from "../types";
 type BuildColumnsParams = {
   nowMs?: number;
 
+  /** ✅ 新增：部门筛选项（建议由 hooks 从 rows 中 derive 后传进来） */
+  departmentFilters?: Array<{ text: string; value: string }>;
+
   isRegistering?: (id: number) => boolean;
   isCandidating?: (id: number) => boolean;
   isCanceling?: (id: number) => boolean;
@@ -49,6 +52,11 @@ function canCancelBy12h(row: EnrollTableRow, nowMs: number): boolean {
 
 function activityTypeLabel(type: 0 | 1) {
   return type === 0 ? "活动" : "讲座";
+}
+
+function scoreLabelByType(type: 0 | 1) {
+  // 0: 活动（分数） / 1: 讲座（次数）
+  return type === 0 ? "分数" : "次数";
 }
 
 function activityStateLabel(state: 0 | 1 | 2 | 3 | 4) {
@@ -106,6 +114,7 @@ export function buildEnrollColumns(
 ): ColumnsType<EnrollTableRow> {
   const {
     nowMs = Date.now(),
+    departmentFilters,
     onRegister,
     onCandidate,
     onCancel,
@@ -150,6 +159,20 @@ export function buildEnrollColumns(
       ],
       render: (v: 0 | 1) => <Tag>{activityTypeLabel(v)}</Tag>,
     },
+
+    // ✅ 新增：分数/次数（后端字段 score）
+    {
+      title: "分数/次数",
+      dataIndex: "score",
+      key: "score",
+      width: 120,
+      sorter: true,
+      render: (v: number | undefined) => {
+        if (typeof v !== "number") return "-";
+        return v;
+      },
+    },
+
     {
       title: "活动状态",
       dataIndex: "state",
@@ -287,7 +310,6 @@ export function buildEnrollColumns(
                 danger: isCancel,
                 loading: !!primaryLoading,
                 disabled: primaryDisabled,
-                // ✅ 取消类动作建议二次确认；报名一般不需要
                 confirm: isCancel
                   ? {
                       title: "确认执行该操作？",

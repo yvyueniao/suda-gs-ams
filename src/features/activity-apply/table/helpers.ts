@@ -21,7 +21,8 @@
  * - 本地搜索/筛选/排序：getSearchTexts / matchFilters / getSortValue
  *
  * ✅ 本次修改点（关键）：
- * - matchFilters：兼容 antd filters 的数组值（FilterValue 本质是 (string|number)[]）
+ * - EnrollTableFilters.department 支持 string | string[]（兼容 antd FilterValue）
+ * - matchFilters：兼容 antd filters 的数组值
  * - getSortValue：签名对齐 localQuery 约定 (row, sorter) => value
  */
 
@@ -149,8 +150,8 @@ export function mergeEnrollRows(
  * - 所以这里的字段类型允许：标量 或 标量数组
  */
 export type EnrollTableFilters = {
-  /** 发布部门（单选） */
-  department?: string;
+  /** 发布部门（单选/多选：兼容 antd 回传数组） */
+  department?: string | string[];
 
   /** 类型（0:活动 / 1:讲座） */
   type?: 0 | 1 | Array<0 | 1>;
@@ -177,7 +178,6 @@ export type EnrollTableFilters = {
 /**
  * 关键字搜索文本来源（给本地搜索用）
  * - 默认：name / department / location
- * - 这样你 Toolbar 里的 keyword 搜索能更符合用户预期
  */
 export function getSearchTexts(row: EnrollTableRow): string[] {
   return [row.name, row.department, row.location].filter(
@@ -192,7 +192,7 @@ function inRange(targetMs: number | null, range?: [number, number]) {
   return targetMs >= start && targetMs <= end;
 }
 
-/** filters 值可能是标量或数组，这里做统一判断 */
+/** filters 值可能是标量或数组，这里做统一判断（兼容 antd FilterValue） */
 function matchValue<T>(rowVal: T, filterVal: T | T[] | undefined): boolean {
   if (filterVal == null) return true;
   return Array.isArray(filterVal)
@@ -204,8 +204,7 @@ function matchValue<T>(rowVal: T, filterVal: T | T[] | undefined): boolean {
  * 过滤匹配（给本地过滤引擎用）
  *
  * 规则：
- * - department：严格相等
- * - type/state/applyState：支持标量或数组（兼容 antd FilterValue）
+ * - department/type/state/applyState：支持标量或数组
  * - 时间：字段值落在 range 内
  */
 export function matchFilters(
@@ -214,8 +213,7 @@ export function matchFilters(
 ): boolean {
   if (!filters) return true;
 
-  if (filters.department && row.department !== filters.department) return false;
-
+  if (!matchValue(row.department, filters.department as any)) return false;
   if (!matchValue(row.type, filters.type as any)) return false;
   if (!matchValue(row.state, filters.state as any)) return false;
   if (!matchValue(row.applyState, filters.applyState as any)) return false;
@@ -259,6 +257,9 @@ export function getSortValue(
     case "type":
       return row.type ?? 0;
 
+    case "score":
+      return row.score ?? 0;
+
     case "state":
       return row.state ?? 0;
 
@@ -287,7 +288,6 @@ export function getSortValue(
       return row.candidateNum ?? 0;
 
     case "applyState": {
-      // 我的状态：可控排序序（你可按产品偏好调整）
       const order: ApplyActionState[] = [
         "NOT_APPLIED",
         "REVIEWING",
