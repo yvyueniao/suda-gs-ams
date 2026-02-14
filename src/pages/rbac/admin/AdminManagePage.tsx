@@ -1,7 +1,6 @@
-// src/pages/rbac/admin/AdminManagePage.tsx
-
 import { useEffect, useMemo, useRef } from "react";
 import { Alert, Button, Card, Space, Typography, message } from "antd";
+import type { FilterValue } from "antd/es/table/interface";
 
 import {
   ColumnSettings,
@@ -10,7 +9,6 @@ import {
 } from "../../../shared/components/table";
 
 import { createAntdNotify } from "../../../shared/ui/notify";
-
 import { useAdminManagePage } from "../../../features/rbac/admin/hooks/useAdminManagePage";
 import AppointRoleModal from "./AppointRoleModal";
 
@@ -39,20 +37,15 @@ export default function AdminManagePage() {
     searchingSuggestion,
   } = useAdminManagePage({ onNotify: notify });
 
-  // ✅ 关键：只执行一次，彻底避免“依赖变动 → effect 反复跑”
+  // ✅ 关键：只执行一次
   const didInitRef = useRef(false);
   useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
 
-    // 页面首次加载：拉一次部门
     void loadDepartments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ✅ 故意空依赖：一次性执行
-
-  const antdColumns = useMemo(() => {
-    return columnPrefs.applyPresetsToAntdColumns(columns);
-  }, [columns, columnPrefs]);
+  }, []);
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
@@ -108,14 +101,19 @@ export default function AdminManagePage() {
         />
 
         <SmartTable
+          bizKey="rbac.admin.members"
           rowKey="username"
-          columns={antdColumns}
+          columns={columns}
           dataSource={table.rows}
           loading={table.loading}
           error={table.error}
           total={table.total}
           query={table.query}
           onQueryChange={table.onQueryChange}
+          /** ✅ 关键：把 filters 变化接住（否则筛选永远不进 q.query.filters） */
+          onFiltersChange={(filters: Record<string, FilterValue | null>) => {
+            table.onQueryChange({ filters });
+          }}
         />
       </Card>
 

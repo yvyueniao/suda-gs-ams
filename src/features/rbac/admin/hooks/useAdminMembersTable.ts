@@ -1,5 +1,8 @@
+// src/features/rbac/admin/hooks/useAdminMembersTable.ts
+
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { message } from "antd";
+import type { FilterValue } from "antd/es/table/interface";
 
 import type {
   TableFetcher,
@@ -24,10 +27,11 @@ import { getSearchTexts, matchFilters } from "../table/helpers";
 
 /**
  * ✅ 只保留最基本筛选：department
- * - invalid / role 全部移除
+ * 关键修复：
+ * - filters 在 antd 里是 FilterValue（数组或 null），不能写 string
  */
 export type AdminMemberFilters = {
-  department?: string;
+  department?: FilterValue; // ✅ (Key | boolean)[] | null
 };
 
 export function useAdminMembersTable(params: {
@@ -49,8 +53,11 @@ export function useAdminMembersTable(params: {
     initial: { page: 1, pageSize: 10 },
   });
 
+  // ✅ 解构：严格对齐“部门管理页成功写法”，避免依赖 [q] 导致回调抖动
+  const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
+
   const fetchAll: TableFetcher<DepartmentMemberItem, AdminMemberFilters> =
-    useCallback(async (_query) => {
+    useCallback(async () => {
       const rows = await getAllDepartmentMembers();
       const list = Array.isArray(rows) ? rows : [];
       return { list, total: list.length };
@@ -58,24 +65,23 @@ export function useAdminMembersTable(params: {
 
   // ✅ options 稳定
   const tableDataOptions = useMemo(() => ({ autoDeps: "reload" as const }), []);
-  const d = useTableData(q.query, fetchAll, tableDataOptions);
+  const d = useTableData(query, fetchAll, tableDataOptions);
 
   /**
    * ✅ 本地查询：分页/搜索/筛选
-   * - 只保留最基本筛选：department（matchFilters 内部只处理 department）
-   * - 为了进一步止血，这里不再传 getSortValue（本地排序彻底不参与）
+   * - matchFilters 只处理 department（FilterValue 数组）
+   * - 禁用本地排序：不传 getSortValue
    */
   const local = useMemo(() => {
     return applyLocalQuery<DepartmentMemberItem, AdminMemberFilters>(
       d.list,
-      q.query,
+      query,
       {
         getSearchTexts,
         matchFilters,
-        // 🚫 不传 getSortValue：禁用本地排序（更稳）
       },
     );
-  }, [d.list, q.query]);
+  }, [d.list, query]);
 
   const prefs = useColumnPrefs<DepartmentMemberItem>(
     "rbac.admin.members",
@@ -112,23 +118,35 @@ export function useAdminMembersTable(params: {
     exportOptions,
   );
 
+  /**
+   * ✅ onQueryChange：严格对齐“部门管理页成功写法”
+   * - filters 原样透传（FilterValue 数组）
+   */
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<AdminMemberFilters>>) => {
       // page / pageSize
-      if (typeof next.page === "number" || typeof next.pageSize === "number") {
-        q.setPage(next.page ?? q.query.page, next.pageSize ?? q.query.pageSize);
+      if (typeof next.page === "number") {
+        setPage(next.page, next.pageSize);
+      } else if (typeof next.pageSize === "number") {
+        setPage(query.page, next.pageSize);
       }
 
-      // sorter（仍然接，但本地排序已禁用；如果你也想彻底禁用排序，我可以再给你一版把这一段也删掉）
-      if ("sorter" in next) q.setSorter(next.sorter as TableSorter | undefined);
+      // sorter（你虽然禁用了本地排序，但 SmartTable 仍可能回传 sorter；保留不影响）
+      if ("sorter" in next) {
+        setSorter(next.sorter as TableSorter | undefined);
+      }
 
       // filters（只剩 department）
-      if ("filters" in next) q.setFilters(next.filters);
+      if ("filters" in next) {
+        setFilters(next.filters);
+      }
 
       // keyword
-      if ("keyword" in next) q.setKeyword(next.keyword);
+      if ("keyword" in next) {
+        setKeyword(next.keyword);
+      }
     },
-    [q],
+    [setPage, setSorter, setFilters, setKeyword, query.page],
   );
 
   return {
@@ -141,11 +159,11 @@ export function useAdminMembersTable(params: {
       error: d.error,
       reload: d.reload,
 
-      query: q.query,
+      query,
       onQueryChange,
 
-      setKeyword: q.setKeyword,
-      reset: q.reset,
+      setKeyword,
+      reset,
 
       exportCsv: exp.exportCsv,
       exporting: exp.exporting,
