@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Alert, Button, Card, Space, Typography, message } from "antd";
+import { Button, Card, Space, Typography, message } from "antd";
 import type { FilterValue } from "antd/es/table/interface";
 
 import {
@@ -58,14 +58,9 @@ export default function AdminManagePage() {
         }
         bodyStyle={{ paddingTop: 12 }}
       >
-        <Alert
-          type="info"
-          showIcon
-          message="展示所有部门成员；支持本地分页/搜索/筛选/排序/导出；任命职务会把用户加入成员列表。"
-          style={{ marginBottom: 12 }}
-        />
-
         <TableToolbar
+          /** ✅ 新增：左侧标题，避免左侧空旷（写法对齐 OrgPage） */
+          left={<strong style={{ fontSize: 14 }}>管理员列表</strong>}
           showSearch
           keyword={table.query.keyword}
           onKeywordChange={table.setKeyword}
@@ -102,6 +97,8 @@ export default function AdminManagePage() {
 
         <SmartTable
           bizKey="rbac.admin.members"
+          enableColumnResize // ✅ 开启拖拽调整列宽
+          sticky // 可选：表头吸顶（和部门页一致就加）
           rowKey="username"
           columns={columns}
           dataSource={table.rows}
