@@ -57,10 +57,12 @@ export function matchFilters(
   }
 
   // 2) invalid
+  // invalid：后端语义 true=正常 / false=封锁
   const invalidFilter = filters.invalid;
   if (Array.isArray(invalidFilter) && invalidFilter.length > 0) {
-    const allowed = invalidFilter.map((v) => v === true || v === "true");
-    if (!allowed.includes(!!row.invalid)) return false;
+    const allowed = invalidFilter.map((v) => v === true || v === "true"); // true => 正常
+    const current = !!row.invalid; // true => 正常
+    if (!allowed.includes(current)) return false;
   }
 
   return true;

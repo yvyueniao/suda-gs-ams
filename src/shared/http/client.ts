@@ -38,6 +38,11 @@ function isApiEnvelope(x: any): x is ApiResponse<any> {
   );
 }
 
+/** ✅ 判断 FormData：用于上传文件 */
+function isFormData(val: any): val is FormData {
+  return typeof FormData !== "undefined" && val instanceof FormData;
+}
+
 function toApiErrorFromAxios(error: AxiosError): ApiError {
   // 1) 超时
   if (error.code === "ECONNABORTED") {
@@ -113,18 +118,38 @@ function createHttpClient(): AxiosInstance {
   const instance = axios.create({
     baseURL: BASE_URL,
     timeout: 15000,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    // ✅ 不要在这里写死 Content-Type: application/json
+    //    否则 FormData 上传会被强行变成 JSON，后端解析失败
   });
 
   // ✅ 请求拦截：自动加 token（后端要求：Authorization: token值）
+  // ✅ 同时：识别 FormData，避免覆盖 Content-Type，让 axios 自动带 boundary
   instance.interceptors.request.use((config) => {
+    // 1) token 注入
     const token = getToken();
     if (token) {
       config.headers = config.headers ?? {};
       (config.headers as any).Authorization = token; // ✅ 不加 Bearer
     }
+
+    // 2) FormData：删除可能存在的 JSON Content-Type，交给 axios 自动生成 multipart/form-data; boundary=...
+    if (isFormData(config.data)) {
+      if (config.headers) {
+        delete (config.headers as any)["Content-Type"];
+        delete (config.headers as any)["content-type"];
+      }
+      return config;
+    }
+
+    // 3) 非 FormData：默认按 JSON（按需设置，不要全局写死）
+    config.headers = config.headers ?? {};
+    if (
+      !(config.headers as any)["Content-Type"] &&
+      !(config.headers as any)["content-type"]
+    ) {
+      (config.headers as any)["Content-Type"] = "application/json";
+    }
+
     return config;
   });
 

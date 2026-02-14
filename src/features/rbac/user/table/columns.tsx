@@ -22,8 +22,8 @@ const ROLE_FILTERS = Object.entries(ROLE_LABEL).map(([k, label]) => ({
 
 // 账号状态筛选
 const INVALID_FILTERS = [
-  { text: "正常", value: false },
-  { text: "封锁", value: true },
+  { text: "封锁", value: false },
+  { text: "正常", value: true },
 ];
 
 export function buildUserColumns(params: {
