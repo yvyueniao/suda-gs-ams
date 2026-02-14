@@ -27,13 +27,11 @@ import UserDetailDrawer from "./UserDetailDrawer";
 
 const { Title } = Typography;
 
-/** 把你们 ImportResultState 适配成 ImportResultModal 需要的 BatchInsertUserResult */
 function adaptImportResult(resultState: any): BatchInsertUserResult {
   if (!resultState) {
     return { successCount: 0, failCount: 0 };
   }
 
-  // 兼容不同字段命名（你后面统一后，这段就可以删掉 as any 逻辑）
   const successCount =
     Number(
       resultState.successCount ?? resultState.success ?? resultState.ok ?? 0,
@@ -56,9 +54,6 @@ function adaptImportResult(resultState: any): BatchInsertUserResult {
 export default function UserManagePage() {
   const notify = useMemo(() => createAntdNotify(message), []);
 
-  // ======================================================
-  // 1) 页面编排（table + batch + import + detail）
-  // ======================================================
   const {
     table,
     columns,
@@ -68,25 +63,20 @@ export default function UserManagePage() {
     selectedUsernames,
     setSelectedUsernames,
 
-    // batch
     deleting,
     locking,
     runBatchDelete,
     runBatchLock,
 
-    // detail
     detail,
     closeDetail,
 
-    // import
     importFlow,
   } = useUserManagePage({ onNotify: notify });
 
   const hasSelection = selectedUsernames.length > 0;
 
-  // ======================================================
-  // 2) 创建用户（页面层：弹窗 + 提交）
-  // ======================================================
+  // 创建用户操作
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -98,7 +88,7 @@ export default function UserManagePage() {
       await insertUser(payload);
       notify({ kind: "success", msg: "创建成功" });
       setCreateOpen(false);
-      table.reload();
+      table.reload(); // Ensure the table reloads
     } catch {
       notify({ kind: "error", msg: "创建失败，请稍后重试" });
     } finally {
@@ -106,9 +96,7 @@ export default function UserManagePage() {
     }
   };
 
-  // ======================================================
-  // 3) 批量动作（二次确认放页面层）
-  // ======================================================
+  // 批量删除操作
   const confirmBatchDelete = async () => {
     if (!hasSelection) return;
 
@@ -121,8 +109,10 @@ export default function UserManagePage() {
 
     if (!confirmed) return;
     await runBatchDelete();
+    table.reload(); // Ensure the table reloads after the operation
   };
 
+  // 批量封锁操作
   const confirmBatchLock = async () => {
     if (!hasSelection) return;
 
@@ -135,11 +125,10 @@ export default function UserManagePage() {
 
     if (!confirmed) return;
     await runBatchLock();
+    table.reload(); // Ensure the table reloads after the operation
   };
 
-  // ======================================================
-  // 4) importFlow：从 preview/result 状态里取数据（对齐你当前返回结构）
-  // ======================================================
+  // Import Flow
   const previewOpen = !!(importFlow.preview as any)?.open;
   const previewStats =
     (importFlow.preview as any)?.stats ??
@@ -166,33 +155,29 @@ export default function UserManagePage() {
           showSearch
           keyword={table.query.keyword}
           onKeywordChange={table.setKeyword}
-          onRefresh={table.reload}
+          onRefresh={() => table.reload()} // Refresh button triggers table.reload
           onReset={table.reset}
           right={
             <Space>
               <Button onClick={importFlow.openPreview}>批量导入</Button>
-
               <Button type="primary" onClick={() => setCreateOpen(true)}>
                 创建用户
               </Button>
-
               <Button
                 disabled={!hasSelection}
                 loading={!!locking}
-                onClick={() => void confirmBatchLock()}
+                onClick={() => confirmBatchLock()}
               >
                 批量封锁
               </Button>
-
               <Button
                 danger
                 disabled={!hasSelection}
                 loading={!!deleting}
-                onClick={() => void confirmBatchDelete()}
+                onClick={() => confirmBatchDelete()}
               >
                 批量删除
               </Button>
-
               <Button
                 loading={!!table.exporting}
                 onClick={() =>
@@ -204,7 +189,6 @@ export default function UserManagePage() {
               >
                 导出
               </Button>
-
               <ColumnSettings
                 presets={presets}
                 visibleKeys={columnPrefs.visibleKeys}
@@ -255,13 +239,9 @@ export default function UserManagePage() {
         submitting={!!(importFlow as any).submitting}
         previewStats={previewStats}
         onFileSelected={async (file) => {
-          // 你们 importFlow 一般会提供 parseFile / setFile 之类的入口
-          // 这里做一个兼容：优先 parseFile，没有就走 setFile
           const fn =
             (importFlow as any).parseFile ?? (importFlow as any).setFile;
-          if (typeof fn === "function") {
-            await fn(file);
-          }
+          if (typeof fn === "function") await fn(file);
         }}
         onConfirmImport={async () => {
           await importFlow.submitImportAndReload();

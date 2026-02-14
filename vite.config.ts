@@ -33,7 +33,7 @@ export default defineConfig(({ command, mode }) => {
         ? undefined // 如果启用了 mock 服务，则不需要代理
         : {
             "/api": {
-              target: "https://your-production-api.com", // 真实后端地址
+              target: "https://eda43d4.r26.cpolar.top", // 真实后端地址
               changeOrigin: true, // 修改请求头中的 origin 字段为目标地址
               secure: false, // 如果是 https 协议，是否验证 SSL 证书
               rewrite: (path) => path.replace(/^\/api/, ""), // 将路径中的 /api 替换为空，确保后端能正确识别

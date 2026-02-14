@@ -1,6 +1,6 @@
 // src/features/rbac/user/hooks/useUserMembersTable.ts
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { message } from "antd";
 import type { FilterValue } from "antd/es/table/interface";
 
@@ -53,13 +53,19 @@ export function useUserMembersTable(params: {
   }, [onDetail]);
 
   // ======================================================
+  // 0) ✅ 关键修复：强制刷新版本号（不动 shared，也能保证每次都重新请求）
+  // - 点击刷新 / 操作后刷新：bumpRefresh()
+  // - queryWithRefresh 变化 => useTableData 一定重新 fetch
+  // ======================================================
+  const [refreshSeq, bumpRefresh] = useReducer((x: number) => x + 1, 0);
+
+  // ======================================================
   // 1) query：唯一真相源（后端分页）
   // ======================================================
   const q = useTableQuery<UserFilters>({
     initial: { page: 1, pageSize: 10 },
   });
 
-  // ✅ 解构：避免依赖 [q] 导致回调抖动
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
 
   // ======================================================
@@ -80,15 +86,20 @@ export function useUserMembersTable(params: {
     [],
   );
 
-  // ✅ 后端分页：query 变更自动请求
+  // ✅ 把 refreshSeq 注入 query（只用于触发刷新，不参与接口参数）
+  const queryWithRefresh = useMemo(() => {
+    return { ...query, __refreshSeq: refreshSeq } as typeof query & {
+      __refreshSeq: number;
+    };
+  }, [query, refreshSeq]);
+
+  // ✅ 后端分页：query 变更自动请求（现在 refresh 也会触发）
   const tableDataOptions = useMemo(() => ({ autoDeps: "query" as const }), []);
-  const d = useTableData(query, fetchPage, tableDataOptions);
+  const d = useTableData(queryWithRefresh as any, fetchPage, tableDataOptions);
 
   // ======================================================
   // 3) 本地查询：仅对“当前页数据”做 keyword/filters/sorter
-  // ⚠️ 注意：
-  // - 因为分页在后端，这里不能再做二次分页
-  // - 所以我们把 page/pageSize 临时改成“全量展示当前页”
+  // ⚠️ 注意：后端分页下，不能再二次分页
   // ======================================================
   const local = useMemo(() => {
     const noPagingQuery = {
@@ -126,7 +137,6 @@ export function useUserMembersTable(params: {
 
   // ======================================================
   // 6) 导出：当前页（过滤/排序后的）结果导出
-  // - 后端分页“全量导出”后续可以换 useTableExport.exportAll()
   // ======================================================
   const exportOptions = useMemo(
     () => ({
@@ -148,28 +158,24 @@ export function useUserMembersTable(params: {
   );
 
   // ======================================================
-  // 7) onQueryChange：受控回写（对齐你们“成功写法”）
+  // 7) onQueryChange：受控回写
   // ======================================================
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<UserFilters>>) => {
-      // page / pageSize
       if (typeof next.page === "number") {
         setPage(next.page, next.pageSize);
       } else if (typeof next.pageSize === "number") {
         setPage(query.page, next.pageSize);
       }
 
-      // sorter（只影响当前页排序）
       if ("sorter" in next) {
         setSorter(next.sorter as TableSorter | undefined);
       }
 
-      // filters（只影响当前页筛选）
       if ("filters" in next) {
         setFilters(next.filters);
       }
 
-      // keyword（会触发后端重新分页查询 + 当前页本地筛选）
       if ("keyword" in next) {
         setKeyword(next.keyword);
       }
@@ -177,26 +183,42 @@ export function useUserMembersTable(params: {
     [setPage, setSorter, setFilters, setKeyword, query.page],
   );
 
+  // ======================================================
+  // ✅ 关键：业务层覆盖 reload
+  // - 以前：d.reload() 可能因为内部去重/依赖不变而“不请求”
+  // - 现在：bumpRefresh() 一定让 queryWithRefresh 变 => 一定重新请求
+  // ======================================================
+  const reload = useCallback(() => {
+    bumpRefresh();
+  }, []);
+
   return {
     table: {
       // 当前页经过本地筛选/排序后的 rows
       rows: local.list,
 
-      // ⚠️ total 使用后端 total（分页由后端决定）
+      // total 使用后端 total
       total: d.total,
 
-      // 可选：给页面层若要做“当前页过滤后数量提示”
+      // 当前页过滤后的集合（导出用）
       filtered: local.filtered,
 
       loading: d.loading,
       error: d.error,
-      reload: d.reload,
+
+      // ✅ 修复后的刷新（真正生效）
+      reload,
 
       query,
       onQueryChange,
 
       setKeyword,
-      reset,
+
+      // reset 之后也建议刷新一下（避免 reset 后仍旧是旧请求缓存）
+      reset: () => {
+        reset();
+        bumpRefresh();
+      },
 
       exportCsv: exp.exportCsv,
       exporting: exp.exporting,
