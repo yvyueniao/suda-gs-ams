@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { runConfirmedAction } from "../../../../shared/actions";
 import type { Notify } from "../../../../shared/ui";
 
 import type {
@@ -91,30 +90,24 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   );
 
   const { table, columns, columnPrefs, presets } = useAdminMembersTable({
-    onDelete: async (record) => {
-      const { confirmed } = await runConfirmedAction(
-        {
-          title: "确认删除该成员？",
-          content: `将从部门成员中移除：${record.name}（${record.username}）`,
-          okText: "删除",
-          cancelText: "取消",
-          danger: true,
-        },
-        async () => {
-          setDeletingMap((m) => ({ ...m, [record.username]: true }));
-          try {
-            await deleteDepartmentMember({ username: record.username });
-          } finally {
-            setDeletingMap((m) => ({ ...m, [record.username]: false }));
-          }
-        },
-      );
+    /**
+     * ✅ 关键修复：这里不要再 runConfirmedAction 了
+     * 因为 ActionCell 已经通过 confirm 弹过一次确认
+     */
+    onDelete: async (record: DepartmentMemberItem) => {
+      setDeletingMap((m) => ({ ...m, [record.username]: true }));
 
-      if (!confirmed) return;
-
-      notify({ kind: "success", msg: "已删除成员" });
-      table.reload();
+      try {
+        await deleteDepartmentMember({ username: record.username });
+        notify({ kind: "success", msg: "已删除成员" });
+        table.reload();
+      } catch {
+        notify({ kind: "error", msg: "删除失败，请稍后重试" });
+      } finally {
+        setDeletingMap((m) => ({ ...m, [record.username]: false }));
+      }
     },
+
     departmentFilters,
   });
 
