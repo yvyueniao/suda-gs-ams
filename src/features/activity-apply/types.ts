@@ -8,7 +8,7 @@
  * 设计原则：
  * - ✅ 后端字段保持原样，不做改名
  * - ✅ 前端派生状态单独定义（避免污染接口模型）
- * - ✅ 不包含 UI 类型
+ * - ✅ 不包含 UI 类型（⚠️ 不引入 antd UploadFile 等 UI 类型）
  *
  * 额外约定（为避免踩坑）：
  * - ActivityItem.state 仅表示“活动状态”
@@ -149,6 +149,14 @@ export interface EnrollTableRow extends ActivityItem {
 
 export interface ActivityIdPayload {
   id: number;
+}
+
+/** 补报名提交参数（后端：multipart/form-data） */
+export interface SupplementRegisterPayload {
+  activityId: number;
+
+  /** ✅ 必传：PDF 文件（页面层校验类型/大小） */
+  file: File;
 }
 
 /* =====================================================

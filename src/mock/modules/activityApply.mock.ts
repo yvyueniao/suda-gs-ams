@@ -179,6 +179,41 @@ function removeMyApp(activityId: number) {
   return idx;
 }
 
+/**
+ * ✅ 解析 multipart/form-data 中的 activityId
+ * - mock 场景：只需要抓字段，不做完整文件解析
+ * - 注意：dev middleware 下 Content-Type/stream 可能不稳定，所以不要“强卡 Content-Type”
+ */
+async function parseMultipartActivityId(
+  req: Connect.IncomingMessage,
+): Promise<number | null> {
+  try {
+    const ct = String(req.headers["content-type"] || "");
+    // 没有 multipart 信息就直接返回 null（让上层降级 parseJson）
+    if (!ct.includes("multipart/form-data")) return null;
+
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolve, reject) => {
+      req.on("data", (c) =>
+        chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)),
+      );
+      req.on("end", () => resolve());
+      req.on("error", reject);
+    });
+
+    const raw = Buffer.concat(chunks).toString("utf8");
+
+    // 简单抓：name="activityId"\r\n\r\n123\r\n
+    const m = raw.match(/name="activityId"\r\n\r\n([0-9]+)\r\n/);
+    if (!m) return null;
+
+    const n = Number(m[1]);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 /** ✅ 同一套 handler 同时挂到 /api 前缀与非前缀 */
 function mountDepartment(middlewares: Connect.Server, base: string) {
   middlewares.use(base, async (req, res: ServerResponse, next) => {
@@ -198,6 +233,7 @@ function mountActivity(middlewares: Connect.Server, base: string) {
     if (!requireAuth(req, res)) return;
     if (req.method !== "POST") return next();
 
+    // ✅ 默认按 JSON 读（multipart 的分支会自己读 raw body）
     const data = await parseJson(req);
 
     if (req.url === "/searchAll") {
@@ -205,7 +241,7 @@ function mountActivity(middlewares: Connect.Server, base: string) {
     }
 
     if (req.url === "/searchById") {
-      const act = activities.find((a) => a.id === Number(data.id));
+      const act = activities.find((a) => a.id === Number((data as any).id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
       return sendJson(res, 200, ok({ activity: act }));
     }
@@ -219,7 +255,7 @@ function mountActivity(middlewares: Connect.Server, base: string) {
      * ✅ 报名：只判断 “是否重复报名” + “名额是否满”
      */
     if (req.url === "/register") {
-      const act = activities.find((a) => a.id === Number(data.id));
+      const act = activities.find((a) => a.id === Number((data as any).id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
 
       if (findMyApp(act.id)) {
@@ -238,7 +274,7 @@ function mountActivity(middlewares: Connect.Server, base: string) {
       myApplications.push({
         activityId: act.id,
         username: MOCK_USERNAME,
-        state: 0, // 报名成功
+        state: 0,
         time: nowString(),
         attachment: null,
         checkIn: false,
@@ -253,10 +289,10 @@ function mountActivity(middlewares: Connect.Server, base: string) {
     }
 
     /**
-     * ✅ 候补：只有满员才能候补（你现在的前端是“失败弹窗里才给候补”，这正好匹配）
+     * ✅ 候补：只有满员才能候补
      */
     if (req.url === "/candidate") {
-      const act = activities.find((a) => a.id === Number(data.id));
+      const act = activities.find((a) => a.id === Number((data as any).id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
 
       if (findMyApp(act.id)) {
@@ -279,7 +315,7 @@ function mountActivity(middlewares: Connect.Server, base: string) {
       myApplications.push({
         activityId: act.id,
         username: MOCK_USERNAME,
-        state: 1, // 候补中
+        state: 1,
         time: nowString(),
         attachment: null,
         checkIn: false,
@@ -297,7 +333,7 @@ function mountActivity(middlewares: Connect.Server, base: string) {
      * ✅ 取消：只要存在记录就允许取消，不校验 12h
      */
     if (req.url === "/cancel") {
-      const act = activities.find((a) => a.id === Number(data.id));
+      const act = activities.find((a) => a.id === Number((data as any).id));
       if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
 
       const existed = findMyApp(act.id);
@@ -311,13 +347,63 @@ function mountActivity(middlewares: Connect.Server, base: string) {
 
       removeMyApp(act.id);
 
-      // state=0 报名成功：回退 registeredNum；state=1 候补：回退 candidateNum
       if (existed.state === 0)
         act.registeredNum = Math.max(0, act.registeredNum - 1);
       if (existed.state === 1)
         act.candidateNum = Math.max(0, act.candidateNum - 1);
 
       return sendJson(res, 200, ok("取消成功"));
+    }
+
+    /**
+     * ✅ 补报名（multipart/form-data）
+     * - mock 不强校验 Content-Type（dev 环境可能不稳定）
+     * - 优先从 multipart raw body 取 activityId；取不到则降级从 JSON 取 activityId
+     */
+    if (req.url === "/supplementRegister") {
+      let activityId = await parseMultipartActivityId(req);
+
+      if (!activityId) {
+        const n = Number((data as any)?.activityId);
+        activityId = Number.isFinite(n) ? n : null;
+      }
+
+      if (!activityId) {
+        return sendJson(res, 200, fail("缺少 activityId", 4021));
+      }
+
+      const act = activities.find((a) => a.id === Number(activityId));
+      if (!act) return sendJson(res, 200, fail("活动不存在", 4001));
+
+      if (findMyApp(act.id)) {
+        return sendJson(
+          res,
+          200,
+          fail("你已报名/候补/审核中，勿重复操作", 4003),
+        );
+      }
+
+      if (act.registeredNum >= act.fullNum) {
+        return sendJson(res, 200, fail("报名人数已满，补报名提交失败", 4022));
+      }
+
+      // mock：补报名成功 -> 视为“报名成功 + 附件有值”
+      act.registeredNum += 1;
+      myApplications.push({
+        activityId: act.id,
+        username: MOCK_USERNAME,
+        state: 0,
+        time: nowString(),
+        attachment: `/mock/attachments/supplement-${act.id}-${Date.now()}.pdf`,
+        checkIn: false,
+        getScore: false,
+        type: act.type,
+        score: act.score,
+        checkOut: false,
+        activityName: act.name,
+      });
+
+      return sendJson(res, 200, ok("补报名提交成功"));
     }
 
     next();

@@ -1,3 +1,4 @@
+// src/pages/activity-apply/EnrollPage.tsx
 import { useCallback } from "react";
 import { Button, Card, Space, Typography, message } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
@@ -12,8 +13,8 @@ import { useEnrollPage } from "../../features/activity-apply/hooks/useEnrollPage
 import type { EnrollTableRow } from "../../features/activity-apply/types";
 
 import { activityApplyTablePresets } from "../../features/activity-apply/table/presets";
-import SupplementApplyModal from "./SupplementApplyModal";
 import ApplyResultModal from "./ApplyResultModal";
+import SupplementApplyModal from "./SupplementApplyModal";
 
 const { Title, Text } = Typography;
 
@@ -42,7 +43,7 @@ export default function EnrollPage() {
           <Button
             type="primary"
             size="large"
-            onClick={() => supplement.openSupplement(0)}
+            onClick={() => supplement.openSupplement()}
           >
             补报名
           </Button>
@@ -137,13 +138,20 @@ export default function EnrollPage() {
         candidating={applyFlow.modal.candidateLoading}
       />
 
+      {/* ✅ 补报名弹窗（reason 已删除，对齐“无 reason”版本 hook + modal） */}
       <SupplementApplyModal
-        open={supplement.visible}
-        onCancel={supplement.closeSupplement}
-        onSubmit={async () => {
-          // 当前补报名未接后端：先仅关闭
-          supplement.closeSupplement();
-        }}
+        open={supplement.modal.open}
+        submitting={supplement.submitting}
+        activityId={supplement.form.activityId}
+        activityName={supplement.form.activityName}
+        suggestions={supplement.suggestions}
+        searching={supplement.searching}
+        onClose={supplement.closeSupplement}
+        onSearchName={supplement.searchByName}
+        onPickSuggestion={supplement.pickActivity}
+        onChangeName={supplement.setActivityName}
+        onChangeFileList={supplement.setFileList}
+        onSubmit={supplement.submit}
       />
     </Space>
   );

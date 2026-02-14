@@ -694,6 +694,33 @@ code 200是成功，其他的都有对应错误信息在msg
 
 #### 补报名(特殊情况报名，要提交附件)
 
+url：/activity/supplementRegister
+
+请求方式：POST
+
+请求格式：form-data
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+| KEY        | VALUE | DESCRIPTION                       |
+| ---------- | ----- | --------------------------------- |
+| activityId | 1     | 活动ID                            |
+| file       | FILE  | 附件文件，限制大小20MB，限pdf文件 |
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": "成功发送1条补报名条申请",
+    "timestamp": 1770475075826
+}
+code 200是成功，其他的都有对应错误信息在msg
+```
+
 ### 活动/讲座取消报名
 
 **注意：距离活动开始不足12h时，不能取消**
@@ -879,6 +906,63 @@ url：/user/batchDelete
     "timestamp": 1770625931598
 }
 code：200是插入成功，其他值弹出msg给用户提示
+```
+
+### 用户批量封锁
+
+url：/user/batchLock
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+["20224227089"]
+传入用户的username数组
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功封锁1个账户",
+  "timestamp": 1771036082530
+}
+```
+
+### 用户单个解封
+
+url：/user/unlock
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+  "username": "20224227089"
+}
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功解封1个账户",
+  "timestamp": 1771036586772
+}
 ```
 
 ### 获取用户信息
@@ -1097,9 +1181,55 @@ department：部门名称
 code：200是插入成功，其他值弹出msg给用户提示
 ```
 
-### 获取所有部门成员
+### 获取某个部门成员
 
 url：/department/members
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```
+{
+    "departmentId": 1
+}
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "username": "20254227087",
+      "name": "梁靖松",
+      "invalid": true,
+      "role": 0,
+      "menuPermission": null,
+      "email": "459802134@qq.com",
+      "major": "软件工程",
+      "grade": "1",
+      "createTime": "2026-02-01 12:00:30",
+      "lastLoginTime": "2026-02-10 19:45:05",
+      "serviceScore": 25,
+      "lectureNum": 22,
+      "department": "文体部"
+    }
+  ],
+  "timestamp": 1770786364723
+}
+```
+
+### 获取所有部门成员
+
+url：/department/allMembers
 
 请求方式：POST
 
@@ -1127,13 +1257,29 @@ url：/department/members
       "major": "软件工程",
       "grade": "1",
       "createTime": "2026-02-01 12:00:30",
-      "lastLoginTime": "2026-02-10 19:45:05",
+      "lastLoginTime": "2026-02-11 20:13:57",
       "serviceScore": 25,
       "lectureNum": 22,
       "department": "文体部"
+    },
+    {
+      "id": 10,
+      "username": "20234227087",
+      "name": "李四",
+      "invalid": true,
+      "role": 3,
+      "menuPermission": null,
+      "email": "459802134@qq.com",
+      "major": "计算机科学与技术",
+      "grade": "研一",
+      "createTime": "2026-02-02 13:30:44",
+      "lastLoginTime": "2026-02-06 17:03:13",
+      "serviceScore": 0,
+      "lectureNum": 0,
+      "department": "学术部"
     }
   ],
-  "timestamp": 1770786364723
+  "timestamp": 1770812049494
 }
 ```
 
