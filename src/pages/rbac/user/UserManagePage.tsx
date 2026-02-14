@@ -27,30 +27,6 @@ import UserDetailDrawer from "./UserDetailDrawer";
 
 const { Title } = Typography;
 
-function adaptImportResult(resultState: any): BatchInsertUserResult {
-  if (!resultState) {
-    return { successCount: 0, failCount: 0 };
-  }
-
-  const successCount =
-    Number(
-      resultState.successCount ?? resultState.success ?? resultState.ok ?? 0,
-    ) || 0;
-
-  const failCount =
-    Number(
-      resultState.failCount ?? resultState.fail ?? resultState.failed ?? 0,
-    ) || 0;
-
-  return {
-    successCount,
-    failCount,
-    failedUsernames: resultState.failedUsernames ?? resultState.failedUsers,
-    failedDetails: resultState.failedDetails ?? resultState.details,
-    failedFileUrl: resultState.failedFileUrl ?? resultState.fileUrl,
-  };
-}
-
 export default function UserManagePage() {
   const notify = useMemo(() => createAntdNotify(message), []);
 
@@ -137,6 +113,25 @@ export default function UserManagePage() {
 
   const resultOpen = !!(importFlow as any)?.result?.open;
   const rawResultState = (importFlow as any)?.result?.data ?? null;
+
+  const adaptImportResult = (resultState: any) => {
+    if (!resultState) {
+      return {
+        successCount: 0,
+        failCount: 0,
+        msg: "导入未返回结果",
+        data: "",
+      };
+    }
+
+    return {
+      successCount: resultState.successCount || 0,
+      failCount: resultState.failCount || 0,
+      msg: resultState.msg ?? "操作失败",
+      data: resultState.data ?? "",
+    };
+  };
+
   const adaptedResult = adaptImportResult(rawResultState);
 
   return (
@@ -249,11 +244,11 @@ export default function UserManagePage() {
         }}
       />
 
-      {/* 导入结果弹窗：你们是 result: { open, data }，这里做适配 */}
+      {/* 导入结果弹窗：动态使用后端返回的结果展示 */}
       <ImportResultModal
         open={resultOpen}
         onClose={importFlow.closeResult}
-        result={adaptedResult}
+        result={adaptedResult} // Adjust the result dynamically here
         onDownloadFailed={(url) => {
           notify({ kind: "info", msg: `失败名单下载：${url}` });
         }}
