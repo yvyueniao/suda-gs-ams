@@ -8,7 +8,7 @@ import { setupAuthMock } from "./modules/auth.mock";
 import { setupProfileMock } from "./modules/profile.mock";
 import { setupOrgDepartmentMock } from "./modules/orgDepartment.mock";
 import { setupActivityApplyMock } from "./modules/activityApply.mock"; // ⭐ 新增
-
+import { setupRbacAdminMock } from "./modules/rbacAdmin.mock";
 export function setupMock(middlewares: Connect.Server) {
   if (!mockConfig.enabled) return;
 
@@ -23,6 +23,8 @@ export function setupMock(middlewares: Connect.Server) {
 
   // ⭐ 活动报名模块
   setupActivityApplyMock(middlewares);
+
+  setupRbacAdminMock(middlewares);
 
   // 后续模块在这里注册即可（vite.config.ts 永远不动）
   // setupActivityAdminMock(middlewares);
