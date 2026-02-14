@@ -2,13 +2,27 @@
 
 import type { ColumnsType } from "antd/es/table";
 import { Tag } from "antd";
+
 import { ActionCell } from "../../../../shared/components/table";
+
 import type { AdminMemberTableRow, Role } from "../types";
 import { ROLE_LABEL } from "../types";
 
+// ✅ 职务筛选项
+const ROLE_FILTERS = Object.entries(ROLE_LABEL).map(([k, label]) => ({
+  text: label,
+  value: Number(k),
+}));
+
+// ✅ 账号状态筛选项
+const INVALID_FILTERS = [
+  { text: "正常", value: false },
+  { text: "封锁", value: true },
+];
+
 export function buildAdminMemberColumns(params: {
   onDelete: (record: AdminMemberTableRow) => void | Promise<unknown>;
-  /** ✅ 仅保留：部门筛选项 */
+  /** ✅ 部门筛选项（动态注入） */
   departmentFilters?: { text: string; value: string }[];
 }): ColumnsType<AdminMemberTableRow> {
   const { onDelete, departmentFilters } = params;
@@ -24,32 +38,33 @@ export function buildAdminMemberColumns(params: {
     },
     { title: "姓名", dataIndex: "name", key: "name", width: 120 },
 
-    // ✅ 只保留部门筛选
+    // ✅ 部门筛选（不写 onFilter：交给 localQuery.matchFilters）
     {
       title: "部门",
       dataIndex: "department",
       key: "department",
       width: 140,
       filters: departmentFilters,
-      // ❌ 不写 onFilter：交给 localQuery.matchFilters
     },
 
-    // ⛔ 职务筛选删掉（只展示，不筛选）
+    // ✅ 恢复：职务筛选（不写 onFilter：交给 localQuery.matchFilters）
     {
       title: "职务",
       dataIndex: "role",
       key: "role",
       width: 110,
       sorter: true,
+      filters: ROLE_FILTERS,
       render: (role: Role) => ROLE_LABEL[role] ?? "-",
     },
 
-    // ⛔ 账号状态筛选删掉（只展示，不筛选）
+    // ✅ 恢复：账号状态筛选（不写 onFilter：交给 localQuery.matchFilters）
     {
       title: "账号状态",
       dataIndex: "invalid",
       key: "invalid",
       width: 110,
+      filters: INVALID_FILTERS,
       render: (invalid: boolean) =>
         invalid ? <Tag color="red">封锁</Tag> : <Tag color="green">正常</Tag>,
     },

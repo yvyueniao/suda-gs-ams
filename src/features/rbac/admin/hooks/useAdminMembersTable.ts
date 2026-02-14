@@ -23,15 +23,18 @@ import type { DepartmentMemberItem } from "../types";
 
 import { ADMIN_MEMBER_COLUMN_PRESETS } from "../table/presets";
 import { buildAdminMemberColumns } from "../table/columns";
-import { getSearchTexts, matchFilters } from "../table/helpers";
+import { getSearchTexts, matchFilters, getSortValue } from "../table/helpers";
 
 /**
- * ✅ 只保留最基本筛选：department
- * 关键修复：
- * - filters 在 antd 里是 FilterValue（数组或 null），不能写 string
+ * ✅ 筛选字段口径必须对齐 antd：
+ * FilterValue = (Key | boolean)[] | null
+ *
+ * 恢复筛选：department / role / invalid
  */
 export type AdminMemberFilters = {
-  department?: FilterValue; // ✅ (Key | boolean)[] | null
+  department?: FilterValue;
+  role?: FilterValue;
+  invalid?: FilterValue;
 };
 
 export function useAdminMembersTable(params: {
@@ -40,9 +43,7 @@ export function useAdminMembersTable(params: {
 }) {
   const { onDelete, departmentFilters } = params;
 
-  // ======================================================
   // ✅ 用 ref 吸收 onDelete 的抖动，避免 columns 每次 render 重建
-  // ======================================================
   const onDeleteRef = useRef(onDelete);
   useEffect(() => {
     onDeleteRef.current = onDelete;
@@ -53,7 +54,7 @@ export function useAdminMembersTable(params: {
     initial: { page: 1, pageSize: 10 },
   });
 
-  // ✅ 解构：严格对齐“部门管理页成功写法”，避免依赖 [q] 导致回调抖动
+  // ✅ 解构：对齐“部门管理页成功写法”，避免依赖 [q] 导致回调抖动
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
 
   const fetchAll: TableFetcher<DepartmentMemberItem, AdminMemberFilters> =
@@ -63,14 +64,14 @@ export function useAdminMembersTable(params: {
       return { list, total: list.length };
     }, []);
 
-  // ✅ options 稳定
+  // ✅ options 稳定：全量模式仅首次 + reload 拉
   const tableDataOptions = useMemo(() => ({ autoDeps: "reload" as const }), []);
   const d = useTableData(query, fetchAll, tableDataOptions);
 
   /**
-   * ✅ 本地查询：分页/搜索/筛选
-   * - matchFilters 只处理 department（FilterValue 数组）
-   * - 禁用本地排序：不传 getSortValue
+   * ✅ 本地查询：分页 / 搜索 / 筛选 / 排序
+   * - matchFilters：department / role / invalid
+   * - getSortValue：本地排序（sorter:true 会回传 sorter.field）
    */
   const local = useMemo(() => {
     return applyLocalQuery<DepartmentMemberItem, AdminMemberFilters>(
@@ -79,6 +80,7 @@ export function useAdminMembersTable(params: {
       {
         getSearchTexts,
         matchFilters,
+        getSortValue,
       },
     );
   }, [d.list, query]);
@@ -131,12 +133,12 @@ export function useAdminMembersTable(params: {
         setPage(query.page, next.pageSize);
       }
 
-      // sorter（你虽然禁用了本地排序，但 SmartTable 仍可能回传 sorter；保留不影响）
+      // sorter
       if ("sorter" in next) {
         setSorter(next.sorter as TableSorter | undefined);
       }
 
-      // filters（只剩 department）
+      // filters
       if ("filters" in next) {
         setFilters(next.filters);
       }

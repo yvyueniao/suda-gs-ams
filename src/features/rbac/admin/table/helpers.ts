@@ -1,6 +1,8 @@
+//\features\rbac\admin\table\helpers.ts
 import type { TableSorter } from "../../../../shared/components/table";
 import { parseTimeMs } from "../../../../shared/utils/datetime";
-import type { AdminMemberTableRow } from "../types";
+
+import type { AdminMemberTableRow, Role } from "../types";
 
 /**
  * keyword 搜索文本
@@ -21,8 +23,12 @@ export function getSearchTexts(row: AdminMemberTableRow): string[] {
 }
 
 /**
- * ✅ 只保留 department 筛选
+ * ✅ 恢复列筛选：department / role / invalid
  * 口径对齐 antd：FilterValue = (Key | boolean)[] | null
+ *
+ * 注意：
+ * - filters 里每个字段永远是数组或 null/undefined
+ * - 我们不依赖 antd 的 onFilter，统一在这里做“本地筛选”
  */
 export function matchFilters(
   row: AdminMemberTableRow,
@@ -30,16 +36,26 @@ export function matchFilters(
 ): boolean {
   if (!filters) return true;
 
+  // 1) department
   const deptFilter = filters.department;
-
-  // antd 的 filters 永远是数组或 null
   if (Array.isArray(deptFilter) && deptFilter.length > 0) {
     const allowed = deptFilter.map((v) => String(v));
     const current = String(row.department ?? "");
+    if (!allowed.includes(current)) return false;
+  }
 
-    if (!allowed.includes(current)) {
-      return false;
-    }
+  // 2) role
+  const roleFilter = filters.role;
+  if (Array.isArray(roleFilter) && roleFilter.length > 0) {
+    const allowed = roleFilter.map((v) => Number(v) as Role);
+    if (!allowed.includes(row.role)) return false;
+  }
+
+  // 3) invalid（注意 antd 可能传 true/false 或 "true"/"false"）
+  const invalidFilter = filters.invalid;
+  if (Array.isArray(invalidFilter) && invalidFilter.length > 0) {
+    const allowed = invalidFilter.map((v) => v === true || v === "true");
+    if (!allowed.includes(!!row.invalid)) return false;
   }
 
   return true;
@@ -60,6 +76,9 @@ export function getSortValue(
 
     case "username":
       return String(row.username ?? "");
+
+    case "role":
+      return row.role ?? 0;
 
     case "serviceScore":
       return row.serviceScore ?? 0;
