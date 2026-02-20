@@ -17,6 +17,7 @@
 
 import { useMemo } from "react";
 import { Button, Card, Space, Typography } from "antd";
+import type { FilterValue } from "antd/es/table/interface";
 
 import {
   TableToolbar,
@@ -103,6 +104,21 @@ export default function ActivityAdminPage() {
         loading={t.loading}
         error={t.error}
         onQueryChange={t.onQueryChange}
+        /** ✅ 关键：把 antd filters 写回 query.filters，否则 applyLocalQuery 永远拿不到筛选条件 */
+        onFiltersChange={(filters: Record<string, FilterValue | null>) => {
+          // 1) 清洗：去掉 null / 空数组，避免“看似有 filters 实则无效”的情况
+          const cleaned = Object.fromEntries(
+            Object.entries(filters).filter(
+              ([, v]) => v != null && (!Array.isArray(v) || v.length > 0),
+            ),
+          );
+
+          // 2) 写回业务 query.filters（你们本地过滤逻辑只关心 type/state，但这里保持通用结构）
+          t.setFilters(cleaned as any);
+
+          // 3) 筛选变化时回到第一页（更符合用户预期）
+          t.onQueryChange({ page: 1 });
+        }}
       />
 
       {/* 新建/修改复用弹窗：useActivityAdminPage 已经把 open/mode/editing 聚合好了 */}
