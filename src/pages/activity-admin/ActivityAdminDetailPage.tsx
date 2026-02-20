@@ -1,0 +1,259 @@
+// src/pages/activity-admin/ActivityAdminDetailPage.tsx
+
+/**
+ * ActivityAdminDetailPage
+ *
+ * 职责：
+ * - 活动/讲座管理端详情页（隐藏路由）
+ * - 展示：活动/讲座完整信息（包含 description）
+ * - 提供：返回列表、（可选）编辑入口（复用 UpsertModal 的 edit 模式）
+ *
+ * 约定：
+ * - ✅ 页面层只做 UI + 交互
+ * - ✅ 数据请求/编排交给 features/activity-admin/hooks/useActivityAdminDetail（此文件内先做轻量实现，不引入新 hook 也可）
+ *
+ * 说明：
+ * - 详情数据来源接口：POST /activity/searchById
+ * - 列表数据来源接口：POST /activity/ownActivity
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  Button,
+  Card,
+  Descriptions,
+  Divider,
+  Empty,
+  Space,
+  Spin,
+  Typography,
+} from "antd";
+
+import { Can } from "../../shared/components/guard/Can";
+import { ApiError } from "../../shared/http/error";
+import { request } from "../../shared/http/client";
+
+import type {
+  ActivityState,
+  ActivityType,
+} from "../../features/activity-admin/types";
+
+const { Title, Text, Paragraph } = Typography;
+
+type ActivityDetail = {
+  id: number;
+  name: string;
+  description: string;
+  department: string;
+  time: string;
+  signStartTime: string;
+  signEndTime: string;
+  fullNum: number;
+  score: number;
+  location: string;
+  activityStime: string;
+  activityEtime: string;
+  type: ActivityType;
+  state: ActivityState;
+  registeredNum: number;
+  candidateNum: number;
+  candidateSuccNum: number;
+  candidateFailNum: number;
+};
+
+type SearchByIdResponse = {
+  activity: ActivityDetail;
+};
+
+function typeLabel(type: ActivityType) {
+  return type === 0 ? "活动" : "讲座";
+}
+
+function stateLabel(state: ActivityState) {
+  const map: Record<ActivityState, string> = {
+    0: "未开始",
+    1: "报名中",
+    2: "报名结束",
+    3: "进行中",
+    4: "已结束",
+  };
+  return map[state] ?? "-";
+}
+
+export default function ActivityAdminDetailPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+
+  const activityId = useMemo(() => Number(id), [id]);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [detail, setDetail] = useState<ActivityDetail | null>(null);
+
+  useEffect(() => {
+    if (!Number.isFinite(activityId) || activityId <= 0) {
+      setError(new Error("非法活动 ID"));
+      return;
+    }
+
+    let mounted = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const resp = await request<SearchByIdResponse>({
+          url: "/activity/searchById",
+          method: "POST",
+          data: { id: activityId },
+        });
+
+        if (!mounted) return;
+        setDetail(resp.activity);
+      } catch (e) {
+        if (!mounted) return;
+        setError(e);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [activityId]);
+
+  const back = () => navigate(-1);
+
+  return (
+    <Card>
+      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+        <Space style={{ width: "100%", justifyContent: "space-between" }}>
+          <Title level={4} style={{ margin: 0 }}>
+            活动/讲座详情
+          </Title>
+
+          <Space>
+            <Button onClick={back}>返回</Button>
+
+            {/* 这里预留：管理端也可在详情页点“修改”，复用 UpsertModal（edit 模式）
+               干事可见可操作（按你的需求：修改干事可见可操作） */}
+            <Can roles={[0, 1, 2, 3]}>
+              <Button type="primary" disabled>
+                修改（待接弹窗）
+              </Button>
+            </Can>
+          </Space>
+        </Space>
+
+        <Divider style={{ margin: "8px 0" }} />
+
+        {loading ? (
+          <Spin />
+        ) : error ? (
+          <Empty
+            description={
+              error instanceof ApiError
+                ? error.message
+                : error instanceof Error
+                  ? error.message
+                  : "加载失败"
+            }
+          />
+        ) : !detail ? (
+          <Empty description="暂无数据" />
+        ) : (
+          <>
+            <Descriptions
+              bordered
+              size="small"
+              column={2}
+              items={[
+                { key: "id", label: "ID", children: detail.id },
+                { key: "name", label: "名称", children: detail.name },
+                {
+                  key: "type",
+                  label: "类型",
+                  children: typeLabel(detail.type),
+                },
+                {
+                  key: "state",
+                  label: "状态",
+                  children: stateLabel(detail.state),
+                },
+
+                {
+                  key: "department",
+                  label: "部门",
+                  children: detail.department || "-",
+                },
+                {
+                  key: "location",
+                  label: "地点",
+                  children: detail.location || "-",
+                },
+                { key: "score", label: "分数", children: detail.score },
+                { key: "fullNum", label: "人数上限", children: detail.fullNum },
+
+                {
+                  key: "registeredNum",
+                  label: "已报名人数",
+                  children: detail.registeredNum,
+                },
+                {
+                  key: "candidateNum",
+                  label: "候补人数",
+                  children: detail.candidateNum,
+                },
+                {
+                  key: "candidateSuccNum",
+                  label: "候补成功人数",
+                  children: detail.candidateSuccNum,
+                },
+                {
+                  key: "candidateFailNum",
+                  label: "候补失败人数",
+                  children: detail.candidateFailNum,
+                },
+
+                { key: "time", label: "创建时间", children: detail.time },
+                {
+                  key: "signStartTime",
+                  label: "报名开始时间",
+                  children: detail.signStartTime,
+                },
+                {
+                  key: "signEndTime",
+                  label: "报名截止时间",
+                  children: detail.signEndTime,
+                },
+                {
+                  key: "activityStime",
+                  label: "活动开始时间",
+                  children: detail.activityStime,
+                },
+                {
+                  key: "activityEtime",
+                  label: "活动结束时间",
+                  children: detail.activityEtime,
+                },
+              ]}
+            />
+
+            <Divider style={{ margin: "12px 0" }} />
+
+            <Title level={5} style={{ margin: 0 }}>
+              描述
+            </Title>
+            <Paragraph style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
+              {detail.description || <Text type="secondary">-</Text>}
+            </Paragraph>
+          </>
+        )}
+      </Space>
+    </Card>
+  );
+}

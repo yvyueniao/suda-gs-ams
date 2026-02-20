@@ -1,42 +1,81 @@
 // src/shared/components/guard/Can.tsx
+
 /**
- * Can (skeleton)
+ * Can (按钮级权限控制)
  *
  * 职责：
- * - “按钮级/组件级”的权限显隐控制
- * - 与 RequireRole（页面级守卫）配合使用：
- *   - RequireRole：决定能不能进页面
- *   - Can：决定页面内某个按钮/操作能不能显示或可用
+ * - 根据当前登录用户的 role 决定是否渲染子节点
  *
- * 当前阶段（先搭骨架）：
- * - 不做真实权限判定（因为你们权限字段/权限模型可能还在变化）
- * - 先提供一个通用的 props 结构：
- *   1) allow：布尔条件（最通用，业务侧自己算）
- *   2) fallback：无权限时渲染什么（默认不渲染）
+ * 设计原则：
+ * - 只控制 UI 渲染
+ * - 不做接口权限校验（真正权限必须后端控制）
+ * - 页面级权限请使用 RequireRole
  *
- * 未来扩展（可选）：
- * - perm: string | string[] 让它直接读取用户权限集合进行判定
- * - 从 shared/session 读取 user、role、perms
+ * 使用示例：
+ *
+ * <Can roles={[0,1,2]}>
+ *   <Button>新建</Button>
+ * </Can>
+ *
+ * <Can roles={[0]} fallback={<span>-</span>}>
+ *   <Button danger>删除</Button>
+ * </Can>
  */
 
 import React from "react";
+import { getUser } from "../../session/session";
+
+type Role = 0 | 1 | 2 | 3 | 4;
 
 export type CanProps = {
   /**
-   * 是否允许
-   * - 推荐业务侧先计算好，再传给 Can
-   * - 这样 Can 不会绑定具体权限模型（不过度工程化）
+   * 允许的角色列表
    */
-  allow: boolean;
+  roles: Role[];
 
-  /** 无权限时的替代渲染（默认 null） */
+  /**
+   * 不满足权限时渲染的内容
+   * 默认：null
+   */
   fallback?: React.ReactNode;
 
-  /** 有权限时渲染内容 */
+  /**
+   * 控制模式：
+   * - "hide"（默认）：直接不渲染
+   * - "disable"：克隆子节点并添加 disabled
+   */
+  mode?: "hide" | "disable";
+
   children: React.ReactNode;
 };
 
-export function Can(props: CanProps) {
-  const { allow, fallback = null, children } = props;
-  return <>{allow ? children : fallback}</>;
+export function Can({
+  roles,
+  fallback = null,
+  mode = "hide",
+  children,
+}: CanProps) {
+  const user = getUser();
+
+  if (!user) {
+    return <>{fallback}</>;
+  }
+
+  const hasPermission = roles.includes(user.role as Role);
+
+  if (hasPermission) {
+    return <>{children}</>;
+  }
+
+  // 无权限
+  if (mode === "disable") {
+    if (React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement<any>, {
+        disabled: true,
+      });
+    }
+    return <>{fallback}</>;
+  }
+
+  return <>{fallback}</>;
 }

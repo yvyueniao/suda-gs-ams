@@ -12,7 +12,10 @@ import { ROLES } from "./app/routes/routeAccess";
 import LoginPage from "./pages/login/LoginPage";
 import EnrollPage from "./pages/activity-apply/EnrollPage";
 import ActivityDetailPage from "./pages/activity-apply/ActivityDetailPage";
+
 import ActivityAdminPage from "./pages/activity-admin/ActivityAdminPage";
+import ActivityAdminDetailPage from "./pages/activity-admin/ActivityAdminDetailPage";
+
 import FeedbackCenterPage from "./pages/feedback-center/FeedbackCenterPage";
 import FeedbackAdminPage from "./pages/feedback-admin/FeedbackAdminPage";
 import ProfilePage from "./pages/profile/ProfilePage";
@@ -51,7 +54,7 @@ export default function App() {
           {/* ===== 所有登录用户可访问 ===== */}
           <Route path="/enroll" element={<EnrollPage />} />
 
-          {/* ✅ 隐藏路由：活动/讲座详情（不挂菜单） */}
+          {/* ✅ 隐藏路由：报名侧活动/讲座详情（不挂菜单） */}
           <Route
             path="/activity-apply/detail/:id"
             element={<ActivityDetailPage />}
@@ -63,6 +66,13 @@ export default function App() {
           {/* ===== 活动管理 / 反馈处理：干事及以上 ===== */}
           <Route element={<RequireRole allow={ROLES.STAFF_AND_ABOVE} />}>
             <Route path="/activity-admin" element={<ActivityAdminPage />} />
+
+            {/* ✅ 隐藏路由：管理侧活动/讲座详情（不挂菜单） */}
+            <Route
+              path="/activity-admin/detail/:id"
+              element={<ActivityAdminDetailPage />}
+            />
+
             <Route path="/feedback-admin" element={<FeedbackAdminPage />} />
           </Route>
 

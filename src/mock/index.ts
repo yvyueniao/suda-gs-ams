@@ -3,13 +3,17 @@
 import type { Connect } from "vite";
 import { mockConfig } from "./core/config";
 
-// ✅ 各模块 mock
+// ======================================================
+// 各模块 mock
+// ======================================================
+
 import { setupAuthMock } from "./modules/auth.mock";
 import { setupProfileMock } from "./modules/profile.mock";
 import { setupOrgDepartmentMock } from "./modules/orgDepartment.mock";
 import { setupActivityApplyMock } from "./modules/activityApply.mock";
+import { setupActivityAdminMock } from "./modules/activityAdmin.mock"; // ⭐ 新增
 import { setupRbacAdminMock } from "./modules/rbacAdmin.mock";
-import { setupRbacUserMock } from "./modules/rbacUser.mock"; // ⭐ 新增
+import { setupRbacUserMock } from "./modules/rbacUser.mock";
 
 export function setupMock(middlewares: Connect.Server) {
   if (!mockConfig.enabled) return;
@@ -30,22 +34,28 @@ export function setupMock(middlewares: Connect.Server) {
   setupOrgDepartmentMock(middlewares);
 
   // ======================================================
+  // 5) 活动管理（⭐ 新增）
+  // ======================================================
+  setupActivityAdminMock(middlewares);
+
+  // ======================================================
   // 4) 活动报名
   // ======================================================
   setupActivityApplyMock(middlewares);
 
   // ======================================================
-  // 5) RBAC - 管理员管理
+  // 6) RBAC - 管理员管理
   // ======================================================
   setupRbacAdminMock(middlewares);
 
   // ======================================================
-  // 6) RBAC - 用户管理（⭐ 新增）
+  // 7) RBAC - 用户管理
   // ======================================================
   setupRbacUserMock(middlewares);
 
+  // ======================================================
   // 后续模块在这里注册即可（vite.config.ts 永远不动）
-  // setupActivityAdminMock(middlewares);
+  // ======================================================
   // setupFeedbackMock(middlewares);
   // setupAuditMock(middlewares);
 }
