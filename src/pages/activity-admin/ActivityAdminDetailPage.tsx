@@ -6,18 +6,10 @@
  * 职责：
  * - 活动/讲座管理端详情页（隐藏路由）
  * - 展示：活动/讲座完整信息（包含 description）
- * - 提供：返回列表、（可选）编辑入口（复用 UpsertModal 的 edit 模式）
- *
- * 约定：
- * - ✅ 页面层只做 UI + 交互
- * - ✅ 数据请求/编排交给 features/activity-admin/hooks/useActivityAdminDetail（此文件内先做轻量实现，不引入新 hook 也可）
- *
- * 说明：
- * - 详情数据来源接口：POST /activity/searchById
- * - 列表数据来源接口：POST /activity/ownActivity
+ * - 提供：返回列表、修改入口（复用 UpsertModal 的 edit 模式）
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -34,9 +26,13 @@ import { Can } from "../../shared/components/guard/Can";
 import { ApiError } from "../../shared/http/error";
 import { request } from "../../shared/http/client";
 
+import ActivityUpsertModal from "./ActivityUpsertModal";
+import { updateActivityInfo } from "../../features/activity-admin/api";
+
 import type {
   ActivityState,
   ActivityType,
+  UpdateActivityPayload,
 } from "../../features/activity-admin/types";
 
 const { Title, Text, Paragraph } = Typography;
@@ -91,40 +87,36 @@ export default function ActivityAdminDetailPage() {
   const [error, setError] = useState<unknown>(null);
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
 
-  useEffect(() => {
+  // ✅ 新增：弹窗状态
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const fetchDetail = useCallback(async () => {
     if (!Number.isFinite(activityId) || activityId <= 0) {
       setError(new Error("非法活动 ID"));
       return;
     }
 
-    let mounted = true;
+    try {
+      setLoading(true);
+      setError(null);
 
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      const resp = await request<SearchByIdResponse>({
+        url: "/activity/searchById",
+        method: "POST",
+        data: { id: activityId },
+      });
 
-        const resp = await request<SearchByIdResponse>({
-          url: "/activity/searchById",
-          method: "POST",
-          data: { id: activityId },
-        });
-
-        if (!mounted) return;
-        setDetail(resp.activity);
-      } catch (e) {
-        if (!mounted) return;
-        setError(e);
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
+      setDetail(resp.activity);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
   }, [activityId]);
+
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
 
   const back = () => navigate(-1);
 
@@ -133,17 +125,20 @@ export default function ActivityAdminDetailPage() {
       <Space direction="vertical" size={12} style={{ width: "100%" }}>
         <Space style={{ width: "100%", justifyContent: "space-between" }}>
           <Title level={4} style={{ margin: 0 }}>
-            活动/讲座详情
+            活动 / 讲座详情
           </Title>
 
           <Space>
             <Button onClick={back}>返回</Button>
 
-            {/* 这里预留：管理端也可在详情页点“修改”，复用 UpsertModal（edit 模式）
-               干事可见可操作（按你的需求：修改干事可见可操作） */}
+            {/* ✅ 修改按钮：打开弹窗 */}
             <Can roles={[0, 1, 2, 3]}>
-              <Button type="primary" disabled>
-                修改（待接弹窗）
+              <Button
+                type="primary"
+                onClick={() => setModalOpen(true)}
+                disabled={!detail}
+              >
+                修改
               </Button>
             </Can>
           </Space>
@@ -184,20 +179,14 @@ export default function ActivityAdminDetailPage() {
                   label: "状态",
                   children: stateLabel(detail.state),
                 },
-
                 {
                   key: "department",
                   label: "部门",
-                  children: detail.department || "-",
+                  children: detail.department,
                 },
-                {
-                  key: "location",
-                  label: "地点",
-                  children: detail.location || "-",
-                },
+                { key: "location", label: "地点", children: detail.location },
                 { key: "score", label: "分数", children: detail.score },
                 { key: "fullNum", label: "人数上限", children: detail.fullNum },
-
                 {
                   key: "registeredNum",
                   label: "已报名人数",
@@ -218,7 +207,6 @@ export default function ActivityAdminDetailPage() {
                   label: "候补失败人数",
                   children: detail.candidateFailNum,
                 },
-
                 { key: "time", label: "创建时间", children: detail.time },
                 {
                   key: "signStartTime",
@@ -245,15 +233,33 @@ export default function ActivityAdminDetailPage() {
 
             <Divider style={{ margin: "12px 0" }} />
 
-            <Title level={5} style={{ margin: 0 }}>
-              描述
-            </Title>
-            <Paragraph style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
+            <Title level={5}>描述</Title>
+            <Paragraph style={{ whiteSpace: "pre-wrap" }}>
               {detail.description || <Text type="secondary">-</Text>}
             </Paragraph>
           </>
         )}
       </Space>
+
+      {/* ✅ 复用 UpsertModal（edit 模式） */}
+      <ActivityUpsertModal
+        open={modalOpen}
+        mode="edit"
+        editing={detail}
+        onCancel={() => setModalOpen(false)}
+        // ✅ 兜底：edit 模式不会走 create，但 props 必填
+        onSubmitCreate={async () => {
+          // 理论上不会触发；写成 no-op，避免类型报错
+          return;
+        }}
+        onSubmitUpdate={async (payload: UpdateActivityPayload) => {
+          await updateActivityInfo(payload);
+        }}
+        onSuccess={async () => {
+          setModalOpen(false);
+          await fetchDetail(); // ✅ 修改成功后刷新详情
+        }}
+      />
     </Card>
   );
 }
