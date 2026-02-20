@@ -15,7 +15,7 @@
  */
 
 import { useMemo } from "react";
-import { Card, Space } from "antd";
+import { Card, Space, Button } from "antd";
 import type { FilterValue } from "antd/es/table/interface";
 
 import {
@@ -59,13 +59,10 @@ export default function CandidateListPanel(props: CandidateListPanelProps) {
         loading={t.loading}
         right={
           <Space>
-            <button
-              className="ant-btn ant-btn-default"
-              onClick={() => void t.exportCsv()}
-              disabled={t.exporting}
-            >
-              {t.exporting ? "导出中..." : "导出 CSV"}
-            </button>
+            {/* ✅ 统一导出按钮样式：对齐 SupplementListPanel */}
+            <Button onClick={() => t.exportCsv()} loading={t.exporting}>
+              导出 CSV
+            </Button>
 
             <ColumnSettings
               presets={activityAdminCandidatesColumnPresets}
