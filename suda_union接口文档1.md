@@ -719,6 +719,221 @@ url：/activity/supplementRegister
     "timestamp": 1770475075826
 }
 code 200是成功，其他的都有对应错误信息在msg
+注意：当且仅当报名人数未满时，才能候补
+```
+
+#### 查看活动补报名申请
+
+url：/activity/activitySupplements
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "activityId": 2
+}
+activityId：活动id
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "activityId": 1,
+            "username": "20254227087",
+            "name": "梁靖松",
+            "state": 4,
+            "time": "2026-02-12 19:31:30",
+            "attachment": "http://localhost:8088/plik-proxy/file/CS5cY4VG9XMy7tFG/ItOAxZm2yyo6c78d/upload_1840043727058844012_古诗背诵.pdf",
+            "checkIn": false,
+            "getScore": true,
+            "type": 0,
+            "score": 30,
+            "checkOut": false
+        },
+        {
+            "activityId": 1,
+            "username": "20234227033",
+            "name": "徐鹏飞",
+            "state": 5,
+            "time": "2026-02-14 23:11:15",
+            "attachment": "http://localhost:8088/plik-proxy/file/wYUF4cRYoCGP1nbj/d9JL2lQ5fNZLxHNv/upload_4150920851766624322_未命名1.pdf",
+            "checkIn": false,
+            "getScore": true,
+            "type": 0,
+            "score": 0,
+            "checkOut": false
+        }
+    ],
+    "timestamp": 1771568293486
+}
+state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败/4:审核中/5:审核失败)，这个接口查出来的都是4和5的
+checkIn：是否签到
+checkOut：是否签退
+```
+
+#### 查看活动报名申请
+
+url：/activity/activityRegisters
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "activityId": 2
+}
+activityId：活动id
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "activityId": 2,
+            "username": "20244227087",
+            "name": "梁靖松",
+            "state": 0,
+            "time": "2026-02-14 22:49:03",
+            "attachment": null,
+            "checkIn": false,
+            "getScore": true,
+            "type": 0,
+            "score": 20,
+            "checkOut": false
+        },
+        {
+            "activityId": 2,
+            "username": "20254227033",
+            "name": "徐鹏飞",
+            "state": 0,
+            "time": "2026-02-14 23:11:36",
+            "attachment": null,
+            "checkIn": false,
+            "getScore": true,
+            "type": 0,
+            "score": 20,
+            "checkOut": false
+        }
+    ],
+    "timestamp": 1771566173865
+}
+state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败/4:审核中/5:审核失败)，这个接口查出来的都是0和2的
+checkIn：是否签到
+checkOut：是否签退
+```
+
+#### 查看活动候补申请
+
+url：/activity/activityCandidates
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "activityId": 1
+}
+activityId：活动id
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "activityId": 1,
+            "username": "20244227087",
+            "name": "梁靖松",
+            "state": 1,
+            "time": "2026-02-08 14:19:10",
+            "attachment": null,
+            "checkIn": true,
+            "getScore": true,
+            "type": 0,
+            "score": 3,
+            "checkOut": true
+        },
+        {
+            "activityId": 1,
+            "username": "20254227033",
+            "name": "徐鹏飞",
+            "state": 1,
+            "time": "2026-02-14 23:09:56",
+            "attachment": null,
+            "checkIn": false,
+            "getScore": true,
+            "type": 0,
+            "score": 30,
+            "checkOut": false
+        }
+    ],
+    "timestamp": 1771566458034
+}
+state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败/4:审核中/5:审核失败)，这个接口查出来的都是1和3的
+checkIn：是否签到
+checkOut：是否签退
+```
+
+#### 补报名审核
+
+url：/activity/examineSupplement
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "activityId": 1,
+    "username": "20234227033",
+    "view": 0
+}
+activityId：活动id
+username：该申请的用户名
+view：意见（0:审核通过/5:审核不通过，只能给这两个值，其他值不合法）
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功审核1条申请",
+  "timestamp": 1771569583248
+}
 ```
 
 ### 活动/讲座取消报名
@@ -1347,14 +1562,303 @@ url：/department/deleteMember
 
 ### 创建反馈
 
+url：/session/createFeedback
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+  "title": "社会活动分数出错问题"
+}
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功创建1条反馈",
+  "timestamp": 1771581121381
+}
+```
+
 ### 获取所有反馈
+
+url：/session/allFeedback
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：无参数
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "username": "20254227087",
+            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+            "title": "社会活动分数出错问题",
+            "time": "2026-02-20 17:52:56",
+            "state": 0
+        }
+    ],
+    "timestamp": 1771581841500
+}
+
+username：反馈所属用户
+sessionID：反馈ID
+title：反馈主题
+state：问题处理进度(0:待受理/1:处理中/2:已解决)
+```
+
+### 通过处理进度查询反馈
+
+url：/session/feedbacksState
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "state": 0
+}
+state：问题处理进度(0:待受理/1:处理中/2:已解决)
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "username": "20254227087",
+      "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
+      "title": "社会活动分数出错问题2",
+      "time": "2026-02-20 18:12:18",
+      "state": 0
+    }
+  ],
+  "timestamp": 1771589365285
+}
+```
 
 ### 获取自己的反馈
 
-### 查看反馈信息
+url：/session/myFeedbacks
 
-### 回复反馈
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：无参数
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "username": "20254227087",
+      "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+      "title": "社会活动分数出错问题",
+      "time": "2026-02-20 17:52:56",
+      "state": 0
+    }
+  ],
+  "timestamp": 1771582282962
+}
+```
+
+### 通过用户名获取反馈
+
+url：/session/feedbacksUsername
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "username": "20254227087"
+}
+username：用户名
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "username": "20254227087",
+      "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+      "title": "社会活动分数出错问题",
+      "time": "2026-02-20 17:52:56",
+      "state": 0
+    }
+  ],
+  "timestamp": 1771582282962
+}
+```
+
+### 对话
+
+url：/activity/upload
+
+请求方式：POST
+
+请求格式：form-data
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+| KEY       | VALUE                                | DESCRIPTION                                 |
+| --------- | ------------------------------------ | ------------------------------------------- |
+| sessionId | 0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f | （必要）反馈的ID                            |
+| content   | 你好                                 | （必要）消息的内容                          |
+| file      | FILE                                 | （非必要）附件文件，限制大小20MB，限pdf文件 |
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": "成功发送1条消息",
+    "timestamp": 1771586485339
+}
+code 200是成功，其他的都有对应错误信息在msg
+注意：当反馈结束时（state为2时），无法进行对话
+```
 
 ### 结束反馈
+
+url：/session/close
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+  "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f"
+}
+```
+
+返回值说明：
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功关闭1条反馈",
+  "timestamp": 1771588020955
+}
+```
+
+### 查看反馈信息
+
+url：/session/content
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+  "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f"
+}
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+            "content": "你好",
+            "fileUrl": null,
+            "time": "2026-02-20 19:21:25",
+            "username": "20254227087",
+            "type": 0
+        },
+        {
+            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+            "content": "你好",
+            "fileUrl": "http://localhost:8088/plik-proxy/file/f2dRhBCfcR9GYgZC/6UUbtnQiRRUtwDH9/upload_13567737447206725077_古诗背诵.pdf",
+            "time": "2026-02-20 19:27:14",
+            "username": "20254227087",
+            "type": 0
+        },
+        {
+            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+            "content": "你好，你的问题已受理，正在解决，如果需要其他补充材料会回复给你，注意查看",
+            "fileUrl": null,
+            "time": "2026-02-20 19:35:25",
+            "username": "20224227087",
+            "type": 1
+        },
+        {
+            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+            "content": "您的反馈已解决",
+            "fileUrl": null,
+            "time": "2026-02-20 19:47:00",
+            "username": "20224227087",
+            "type": 1
+        }
+    ],
+    "timestamp": 1771588584021
+}
+
+sessionId：反馈ID
+content：反馈对话内容
+fileUrl：反馈对话附件
+time：反馈对话消息时间
+username：发送消息的用户
+type：对话的标识(0:反馈用户的发言/1:系统人员的发言)
+```
 
 ## 日志

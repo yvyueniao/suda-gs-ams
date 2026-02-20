@@ -11,7 +11,8 @@ import { setupAuthMock } from "./modules/auth.mock";
 import { setupProfileMock } from "./modules/profile.mock";
 import { setupOrgDepartmentMock } from "./modules/orgDepartment.mock";
 import { setupActivityApplyMock } from "./modules/activityApply.mock";
-import { setupActivityAdminMock } from "./modules/activityAdmin.mock"; // ⭐ 新增
+import { setupActivityAdminMock } from "./modules/activityAdmin.mock";
+import { setupActivityApplicationsMock } from "./modules/activityApplications.mock"; // ⭐ 新增（详情页三列表）
 import { setupRbacAdminMock } from "./modules/rbacAdmin.mock";
 import { setupRbacUserMock } from "./modules/rbacUser.mock";
 
@@ -34,22 +35,31 @@ export function setupMock(middlewares: Connect.Server) {
   setupOrgDepartmentMock(middlewares);
 
   // ======================================================
-  // 5) 活动管理（⭐ 新增）
+  // 5) 活动管理（列表 + 详情）
   // ======================================================
   setupActivityAdminMock(middlewares);
 
   // ======================================================
-  // 4) 活动报名
+  // 6) 活动管理 · 详情页三列表（⭐ 新增）
+  // - /activity/activityRegisters
+  // - /activity/activityCandidates
+  // - /activity/activitySupplements
+  // - /activity/examineSupplement
+  // ======================================================
+  setupActivityApplicationsMock(middlewares);
+
+  // ======================================================
+  // 4) 活动报名（学生侧）
   // ======================================================
   setupActivityApplyMock(middlewares);
 
   // ======================================================
-  // 6) RBAC - 管理员管理
+  // 7) RBAC - 管理员管理
   // ======================================================
   setupRbacAdminMock(middlewares);
 
   // ======================================================
-  // 7) RBAC - 用户管理
+  // 8) RBAC - 用户管理
   // ======================================================
   setupRbacUserMock(middlewares);
 

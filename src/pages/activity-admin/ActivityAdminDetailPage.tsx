@@ -7,6 +7,8 @@
  * - 活动/讲座管理端详情页（隐藏路由）
  * - 展示：活动/讲座完整信息（包含 description）
  * - 提供：返回列表、修改入口（复用 UpsertModal 的 edit 模式）
+ * - ✅ 新增：详情页下方三列表（Tab 切换）
+ *   - 报名人员列表 / 候补人员列表 / 补报名人员列表
  */
 
 import { useEffect, useMemo, useState, useCallback } from "react";
@@ -20,6 +22,7 @@ import {
   Space,
   Spin,
   Typography,
+  Tabs,
 } from "antd";
 
 import { Can } from "../../shared/components/guard/Can";
@@ -28,6 +31,10 @@ import { request } from "../../shared/http/client";
 
 import ActivityUpsertModal from "./ActivityUpsertModal";
 import { updateActivityInfo } from "../../features/activity-admin/api";
+
+import RegisterListPanel from "./applications/RegisterListPanel";
+import CandidateListPanel from "./applications/CandidateListPanel";
+import SupplementListPanel from "./applications/SupplementListPanel";
 
 import type {
   ActivityState,
@@ -87,8 +94,13 @@ export default function ActivityAdminDetailPage() {
   const [error, setError] = useState<unknown>(null);
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
 
-  // ✅ 新增：弹窗状态
+  // ✅ 弹窗状态
   const [modalOpen, setModalOpen] = useState(false);
+
+  // ✅ 三列表 Tab
+  const [activeTab, setActiveTab] = useState<
+    "registers" | "candidates" | "supplements"
+  >("registers");
 
   const fetchDetail = useCallback(async () => {
     if (!Number.isFinite(activityId) || activityId <= 0) {
@@ -237,6 +249,33 @@ export default function ActivityAdminDetailPage() {
             <Paragraph style={{ whiteSpace: "pre-wrap" }}>
               {detail.description || <Text type="secondary">-</Text>}
             </Paragraph>
+
+            <Divider style={{ margin: "12px 0" }} />
+
+            {/* ✅ 三列表（Tab 切换） */}
+            <Tabs
+              activeKey={activeTab}
+              onChange={(k) =>
+                setActiveTab(k as "registers" | "candidates" | "supplements")
+              }
+              items={[
+                {
+                  key: "registers",
+                  label: "报名人员列表",
+                  children: <RegisterListPanel activityId={detail.id} />,
+                },
+                {
+                  key: "candidates",
+                  label: "候补人员列表",
+                  children: <CandidateListPanel activityId={detail.id} />,
+                },
+                {
+                  key: "supplements",
+                  label: "补报名人员列表",
+                  children: <SupplementListPanel activityId={detail.id} />,
+                },
+              ]}
+            />
           </>
         )}
       </Space>
