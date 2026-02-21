@@ -1,0 +1,185 @@
+/* =========================================================
+   Profile Page Styles
+   src/app/styles/profile.css
+
+   设计目标：
+   - 更现代：头像 + 信息布局更清晰
+   - 更清爽：减少拥挤，增加留白
+   - 更统一：符合 layout.css / feedback.css / auth.css 风格
+   - 更稳定：不影响其它页面，只作用于 profile-page
+   ========================================================= */
+
+/* =========================================================
+   页面整体容器
+   ========================================================= */
+
+.profile-page {
+  padding: 16px;
+}
+
+.profile-container {
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* =========================================================
+   用户信息卡片
+   ========================================================= */
+
+.profile-user-card {
+  border-radius: 16px !important;
+}
+
+.profile-user-card .ant-card-body {
+  padding: 24px !important;
+}
+
+/* =========================================================
+   用户信息区域布局
+   ========================================================= */
+
+.profile-user-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* =========================================================
+   头像区域
+   ========================================================= */
+
+.profile-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.profile-avatar {
+  border-radius: 50%;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+
+  border: 3px solid #fff;
+}
+
+/* =========================================================
+   用户基础信息区域
+   ========================================================= */
+
+.profile-user-meta {
+  flex: 1;
+  min-width: 260px;
+}
+
+.profile-user-name {
+  margin-bottom: 6px !important;
+}
+
+.profile-user-role {
+  font-size: 14px;
+}
+
+/* =========================================================
+   用户统计区域（服务分 / 讲座次数）
+   ========================================================= */
+
+.profile-user-stats {
+  display: flex;
+  gap: 32px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.profile-stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.profile-stat-label {
+  font-size: 14px;
+  color: #8c8c8c;
+}
+
+/* =========================================================
+   Descriptions 优化（避免拥挤）
+   ========================================================= */
+
+.profile-user-meta .ant-descriptions {
+  margin-top: 12px;
+}
+
+.profile-user-meta .ant-descriptions-item-label {
+  color: #8c8c8c;
+}
+
+.profile-user-meta .ant-descriptions-item-content {
+  font-weight: 500;
+}
+
+/* =========================================================
+   活动表格卡片
+   ========================================================= */
+
+.profile-activities-card {
+  border-radius: 16px !important;
+}
+
+.profile-activities-card .ant-card-body {
+  padding-top: 12px !important;
+}
+
+/* =========================================================
+   TableToolbar 优化
+   ========================================================= */
+
+.profile-activities-card .ant-input {
+  border-radius: 8px;
+}
+
+.profile-activities-card .ant-btn {
+  border-radius: 8px;
+}
+
+/* =========================================================
+   Table 优化
+   ========================================================= */
+
+.profile-activities-card .ant-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.profile-activities-card .ant-table-thead > tr > th {
+  background: #f7f9fd;
+  font-weight: 600;
+}
+
+.profile-activities-card .ant-table-tbody > tr:hover > td {
+  background: #fafcff;
+}
+
+/* =========================================================
+   响应式适配
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .profile-user-info {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .profile-user-meta {
+    width: 100%;
+  }
+
+  .profile-user-stats {
+    justify-content: center;
+  }
+}
