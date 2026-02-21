@@ -1,7 +1,7 @@
 // src/features/rbac/user/table/columns.tsx
 
 import type { ColumnsType } from "antd/es/table";
-import { Tag } from "antd";
+import { Tag, Tooltip } from "antd";
 
 import { ActionCell } from "../../../../shared/components/table";
 
@@ -20,7 +20,8 @@ const ROLE_FILTERS = Object.entries(ROLE_LABEL).map(([k, label]) => ({
   value: Number(k),
 }));
 
-// 账号状态筛选（✅ 口径：invalid=true => 正常，invalid=false => 封锁）
+// 账号状态筛选
+// ✅ 口径：invalid=true => 正常，invalid=false => 封锁
 const INVALID_FILTERS = [
   { text: "正常", value: true },
   { text: "封锁", value: false },
@@ -29,7 +30,7 @@ const INVALID_FILTERS = [
 export function buildUserColumns(params: {
   /** 行内解封（固定显示） */
   onUnlock: (record: UserTableRow) => void | Promise<unknown>;
-  /** 行内详情（打开 Drawer/Modal/跳转均可，由页面层决定） */
+  /** 行内详情 */
   onDetail: (record: UserTableRow) => void | Promise<unknown>;
 }): ColumnsType<UserTableRow> {
   const { onUnlock, onDetail } = params;
@@ -64,7 +65,6 @@ export function buildUserColumns(params: {
       key: "invalid",
       width: 100,
       filters: INVALID_FILTERS,
-      // ✅ 口径：true => 正常，false => 封锁
       render: (invalid: boolean) =>
         invalid ? <Tag color="green">正常</Tag> : <Tag color="red">封锁</Tag>,
     },
@@ -127,30 +127,46 @@ export function buildUserColumns(params: {
     },
 
     // =========================
-    // 操作列（只保留：解封 + 详情）
+    // 操作列（解封 + 详情）
     // =========================
     {
       title: "操作",
       key: "actions",
-      width: 160,
+      width: 180,
       fixed: "right",
-      render: (_: unknown, record) => (
-        <ActionCell
-          record={record}
-          actions={[
-            {
-              key: "unlock",
-              label: "解封",
-              onClick: () => onUnlock(record),
-            },
-            {
-              key: "detail",
-              label: "详情",
-              onClick: () => onDetail(record),
-            },
-          ]}
-        />
-      ),
+      render: (_: unknown, record) => {
+        const isNormal = record.invalid === true; // 正常
+        const isLocked = record.invalid === false; // 封锁
+
+        return (
+          <ActionCell
+            record={record}
+            actions={[
+              {
+                key: "unlock",
+                label: (
+                  <Tooltip
+                    title={isNormal ? "该用户当前为正常状态" : "点击解封该用户"}
+                  >
+                    <span>解封</span>
+                  </Tooltip>
+                ),
+                onClick: () => {
+                  if (!isNormal) {
+                    onUnlock(record);
+                  }
+                },
+                disabled: isNormal, // ✅ 正常状态时灰色不可点
+              },
+              {
+                key: "detail",
+                label: "详情",
+                onClick: () => onDetail(record),
+              },
+            ]}
+          />
+        );
+      },
     },
   ];
 }
