@@ -21,7 +21,6 @@ import type {
   BatchLockUserPayload,
   UnlockUserPayload,
   UserInfo,
-  UserInfoForUsernameResult,
   SpecialScorePayload,
   SpecialScoreResult,
 } from "./types";

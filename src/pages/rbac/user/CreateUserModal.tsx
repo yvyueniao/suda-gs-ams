@@ -9,7 +9,7 @@
  * - password：按你要求“不加密”，直接原样提交
  */
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Modal, Form, Input } from "antd";
 
 import type { UserCreatePayload } from "../../../features/rbac/user/types";

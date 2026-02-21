@@ -136,7 +136,6 @@ export function buildUserColumns(params: {
       fixed: "right",
       render: (_: unknown, record) => {
         const isNormal = record.invalid === true; // 正常
-        const isLocked = record.invalid === false; // 封锁
 
         return (
           <ActionCell

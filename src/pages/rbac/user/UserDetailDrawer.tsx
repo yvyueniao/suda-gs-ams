@@ -12,7 +12,6 @@
  * - 提示文案不再写死 /user/info（你说不用它了）
  */
 
-import React from "react";
 import {
   Drawer,
   Descriptions,
