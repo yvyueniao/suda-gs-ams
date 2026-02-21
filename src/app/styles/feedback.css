@@ -1,0 +1,215 @@
+/* src/app/styles/feedback.css
+ * 反馈详情页（聊天界面）专用样式
+ * 目标：标题不挤角落、聊天更像气泡、信息层级更清晰
+ */
+
+/* ===== 页面容器 ===== */
+.feedback-page {
+  padding: 24px;
+}
+
+@media (max-width: 1768px) {
+  .feedback-page {
+    padding: 12px;
+  }
+}
+
+/* 居中容器（可选但强烈推荐：避免内容贴边/过宽） */
+.feedback-container {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ===== Card 标题区（不贴边、更有呼吸感） ===== */
+.feedback-header {
+  padding: 8px 0;
+}
+
+.feedback-title {
+  margin: 0 !important;
+  line-height: 1.25;
+}
+
+.feedback-subtitle {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* 已结束提示（可选：你可以在页面里渲染一条提示条） */
+.feedback-closed-hint {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(250, 173, 20, 0.12); /* warning 浅底 */
+  border: 1px solid rgba(250, 173, 20, 0.25);
+  color: rgba(0, 0, 0, 0.78);
+  font-size: 13px;
+}
+
+/* ===== 聊天内容区容器 ===== */
+.chat-panel {
+  height: 60vh;
+  overflow: auto;
+
+  padding: 12px;
+  border-radius: 12px;
+
+  /* 更像聊天背景：轻灰+细边框 */
+  background: rgba(17, 24, 39, 0.02);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+/* 消息列表整体间距 */
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 每条消息一行：左/右对齐 */
+.chat-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.chat-row.is-me {
+  justify-content: flex-end;
+}
+
+.chat-row.is-other {
+  justify-content: flex-start;
+}
+
+/* ===== 气泡 ===== */
+.chat-bubble {
+  max-width: 78%;
+  min-width: 180px;
+
+  padding: 12px;
+  border-radius: 12px;
+
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
+}
+
+/* 我方气泡：主色浅底 */
+.chat-bubble.is-me {
+  background: rgba(91, 143, 249, 0.12);
+  border-color: rgba(91, 143, 249, 0.18);
+}
+
+/* 头部：姓名/时间 */
+.chat-bubble__meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-bubble__name {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.chat-bubble__time {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  flex: 0 0 auto;
+}
+
+/* 内容 */
+.chat-bubble__content {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  color: rgba(0, 0, 0, 0.86);
+}
+
+/* ===== 附件块（比纯链接更像“文件消息”） ===== */
+.chat-attach {
+  margin-top: 10px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 10px;
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.chat-attach__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255, 77, 79, 0.12); /* pdf 红色浅底 */
+  color: rgba(255, 77, 79, 0.95);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.chat-attach__name {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(0, 0, 0, 0.86);
+}
+
+.chat-attach__link {
+  color: #1677ff;
+  white-space: nowrap;
+}
+
+/* 小屏时附件名更短 */
+@media (max-width: 768px) {
+  .chat-bubble {
+    max-width: 92%;
+    min-width: 0;
+  }
+
+  .chat-attach__name {
+    max-width: 180px;
+  }
+}
+
+/* ===== 发送区 ===== */
+.chat-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 底部按钮行：左右分布 */
+.chat-composer__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chat-composer__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chat-filehint {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* 结束后置灰（页面层给容器加这个 class 即可） */
+.chat-disabled {
+  opacity: 0.75;
+}

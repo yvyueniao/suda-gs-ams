@@ -9,6 +9,7 @@ import { appTheme } from "./app/theme/theme";
 import "antd/dist/reset.css";
 import "./app/styles/auth.css";
 import "./app/styles/layout.css";
+import "./app/styles/feedback.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

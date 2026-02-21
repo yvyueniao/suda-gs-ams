@@ -200,158 +200,154 @@ export default function FeedbackDetailPage() {
   );
 
   return (
-    <div style={{ padding: 16 }}>
-      <Card
-        title={
-          <Space direction="vertical" size={0}>
-            <Title level={4} style={{ margin: 0 }}>
-              {pageTitle}
-            </Title>
-            <Text type="secondary">
-              会话 ID：{sessionId || "-"} {isClosed ? "（已结束）" : ""}
-            </Text>
-          </Space>
-        }
-        extra={headerExtra}
-      >
-        {/* 内容区 */}
-        <div
-          style={{
-            height: "60vh",
-            overflow: "auto",
-            padding: 12,
-            background: "rgba(0,0,0,0.02)",
-            borderRadius: 8,
-          }}
+    <div className="feedback-page">
+      <div className="feedback-container">
+        <Card
+          title={
+            <div className="feedback-header">
+              <Title level={4} className="feedback-title">
+                {pageTitle}
+              </Title>
+
+              <Text className="feedback-subtitle">
+                会话 ID：{sessionId || "-"} {isClosed ? "（已结束）" : ""}
+              </Text>
+
+              {isClosed ? (
+                <div className="feedback-closed-hint">
+                  该反馈已结束，无法继续发送消息
+                </div>
+              ) : null}
+            </div>
+          }
+          extra={headerExtra}
         >
-          {loading ? (
-            <div style={{ padding: 24, textAlign: "center" }}>
-              <Spin />
-            </div>
-          ) : error ? (
-            <div style={{ padding: 24 }}>
-              <Text type="danger">加载失败</Text>
-              <Divider />
-              <Button onClick={reload}>重试</Button>
-            </div>
-          ) : messages.length === 0 ? (
-            <Empty description="暂无对话内容" />
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {messages.map((m, idx) => {
-                const isMe = myUsername && m.username === myUsername;
+          {/* 内容区 */}
+          <div className="chat-panel">
+            {loading ? (
+              <div style={{ padding: 24, textAlign: "center" }}>
+                <Spin />
+              </div>
+            ) : error ? (
+              <div style={{ padding: 24 }}>
+                <Text type="danger">加载失败</Text>
+                <Divider />
+                <Button onClick={reload}>重试</Button>
+              </div>
+            ) : messages.length === 0 ? (
+              <Empty description="暂无对话内容" />
+            ) : (
+              <div className="chat-list">
+                {messages.map((m, idx) => {
+                  const isMe = myUsername && m.username === myUsername;
 
-                return (
-                  <div
-                    key={`${m.sessionId}-${m.time}-${idx}`}
-                    style={{
-                      display: "flex",
-                      justifyContent: isMe ? "flex-end" : "flex-start",
-                    }}
-                  >
+                  return (
                     <div
-                      style={{
-                        maxWidth: "78%",
-                        minWidth: 180,
-                        padding: 12,
-                        borderRadius: 10,
-                        background: "#fff",
-                        border: "1px solid rgba(0,0,0,0.06)",
-                      }}
+                      key={`${m.sessionId}-${m.time}-${idx}`}
+                      className={`chat-row ${isMe ? "is-me" : "is-other"}`}
                     >
-                      <Space
-                        style={{
-                          width: "100%",
-                          justifyContent: "space-between",
-                        }}
-                        size="small"
+                      <div
+                        className={`chat-bubble ${isMe ? "is-me" : "is-other"}`}
                       >
-                        <Text strong>
-                          {/* ✅ 聊天条用 name */}
-                          {m.name || m.username || (isMe ? "我" : "对方")}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {m.time}
-                        </Text>
-                      </Space>
-
-                      <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
-                        {m.content || "-"}
-                      </div>
-
-                      {m.fileUrl ? (
-                        <div style={{ marginTop: 8 }}>
-                          <a href={m.fileUrl} target="_blank" rel="noreferrer">
-                            查看附件：{fileNameFromUrl(m.fileUrl)}
-                          </a>
+                        <div className="chat-bubble__meta">
+                          <Text className="chat-bubble__name">
+                            {m.name || m.username || (isMe ? "我" : "对方")}
+                          </Text>
+                          <Text className="chat-bubble__time">{m.time}</Text>
                         </div>
-                      ) : null}
+
+                        <div className="chat-bubble__content">
+                          {m.content || "-"}
+                        </div>
+
+                        {m.fileUrl ? (
+                          <div className="chat-attach">
+                            <span className="chat-attach__icon">PDF</span>
+                            <span className="chat-attach__name">
+                              {fileNameFromUrl(m.fileUrl)}
+                            </span>
+                            <a
+                              className="chat-attach__link"
+                              href={m.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              打开
+                            </a>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </div>
+                  );
+                })}
 
-        <Divider style={{ margin: "16px 0" }} />
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </div>
 
-        {/* 发送区 */}
-        <div>
-          <Space direction="vertical" style={{ width: "100%" }} size="small">
-            <Input.TextArea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={
-                isClosed ? "该反馈已结束，无法继续发送" : "输入消息..."
-              }
-              autoSize={{ minRows: 2, maxRows: 4 }}
-              disabled={isClosed}
-            />
+          <Divider style={{ margin: "16px 0" }} />
 
-            <Space style={{ width: "100%", justifyContent: "space-between" }}>
-              <Space>
-                <Upload
-                  beforeUpload={handlePickFile}
-                  onRemove={handleRemoveFile}
-                  maxCount={1}
-                  showUploadList
-                  accept=".pdf,application/pdf"
-                  fileList={
-                    file
-                      ? ([
-                          {
-                            uid: "picked",
-                            name: file.name,
-                            status: "done",
-                          },
-                        ] as any)
-                      : []
-                  }
-                >
-                  <Button disabled={isClosed}>上传附件（PDF，可选）</Button>
-                </Upload>
-
-                {file ? (
-                  <Text type="secondary">已选择：{file.name}</Text>
-                ) : (
-                  <Text type="secondary">附件可选，最多 20MB</Text>
-                )}
-              </Space>
-
-              <Button
-                type="primary"
-                onClick={handleSend}
-                loading={sending}
+          {/* 发送区 */}
+          <div className={`chat-composer ${isClosed ? "chat-disabled" : ""}`}>
+            <Space direction="vertical" style={{ width: "100%" }} size="small">
+              <Input.TextArea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={
+                  isClosed ? "该反馈已结束，无法继续发送" : "输入消息..."
+                }
+                autoSize={{ minRows: 2, maxRows: 4 }}
                 disabled={isClosed}
-              >
-                发送
-              </Button>
+              />
+
+              <div className="chat-composer__row">
+                <div className="chat-composer__left">
+                  <Upload
+                    beforeUpload={handlePickFile}
+                    onRemove={handleRemoveFile}
+                    maxCount={1}
+                    showUploadList
+                    accept=".pdf,application/pdf"
+                    fileList={
+                      file
+                        ? ([
+                            {
+                              uid: "picked",
+                              name: file.name,
+                              status: "done",
+                            },
+                          ] as any)
+                        : []
+                    }
+                  >
+                    <Button disabled={isClosed}>上传附件（PDF，可选）</Button>
+                  </Upload>
+
+                  {file ? (
+                    <Text type="secondary" className="chat-filehint">
+                      已选择：{file.name}
+                    </Text>
+                  ) : (
+                    <Text type="secondary" className="chat-filehint">
+                      附件可选，最多 20MB
+                    </Text>
+                  )}
+                </div>
+
+                <Button
+                  type="primary"
+                  onClick={handleSend}
+                  loading={sending}
+                  disabled={isClosed}
+                >
+                  发送
+                </Button>
+              </div>
             </Space>
-          </Space>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
