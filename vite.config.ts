@@ -23,10 +23,14 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const USE_MOCK = env.VITE_USE_MOCK === "true"; // 通过环境变量控制 mock 的开关
 
+  // ✅ 新增：允许用环境变量覆盖 base（用于本地 preview/不同部署环境）
+  // - 未设置 VITE_BASE 时：保持你原来的逻辑（build -> /suda-gs-ams/，否则 -> /）
+  const BASE = env.VITE_BASE || (command === "build" ? "/suda-gs-ams/" : "/");
+
   return {
     plugins: [react(), mockPlugin(USE_MOCK)], // 在开发模式中启用 mock 数据
 
-    base: command === "build" ? "/suda-gs-ams/" : "/",
+    base: BASE,
 
     server: {
       host: true, // ✅ 允许局域网访问（等价于 0.0.0.0）
