@@ -24,9 +24,15 @@ const FEEDBACK_STATE_LABEL: Record<FeedbackState, string> = {
 
 function stateTag(state: FeedbackState) {
   const label = FEEDBACK_STATE_LABEL[state] ?? "-";
-  // 不指定颜色也能用；若你想更直观可启用下面颜色：
-  // const color = state === 2 ? "success" : state === 1 ? "processing" : "default";
-  return <Tag>{label}</Tag>;
+
+  // ✅ 统一：给状态 Tag 加颜色（更直观）
+  // 0 待受理：default（灰）
+  // 1 处理中：processing（蓝）
+  // 2 已解决：success（绿）
+  const color =
+    state === 2 ? "success" : state === 1 ? "processing" : "default";
+
+  return <Tag color={color}>{label}</Tag>;
 }
 
 function shortId(id?: string) {
@@ -73,7 +79,7 @@ export function buildFeedbackColumns(
 
     // ✅ 管理端你希望直接展示 username；用户端也有但默认会在 presets 里 hidden
     {
-      title: "用户名",
+      title: "学号",
       dataIndex: "username",
       key: "username",
       width: 150,

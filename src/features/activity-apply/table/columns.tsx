@@ -15,36 +15,33 @@ import {
 
 type BuildColumnsParams = {
   nowMs?: number;
-
-  /** （你目前不打算做部门筛选的话，这个可以先留着不传） */
   departmentFilters?: Array<{ text: string; value: string }>;
-
   isRegistering?: (id: number) => boolean;
   isCanceling?: (id: number) => boolean;
-
   onRegister: (record: EnrollTableRow) => void | Promise<unknown>;
   onCancel: (record: EnrollTableRow) => void | Promise<unknown>;
   onDetail: (record: EnrollTableRow) => void;
 };
 
 /* =====================================================
- * 映射（UI 轻量展示）
- * - 这俩是“列表列显示”所需，不属于动作逻辑
+ * 映射（UI 展示 + 颜色）
  * ===================================================== */
 
-function activityTypeLabel(type: 0 | 1) {
-  return type === 0 ? "活动" : "讲座";
+function activityTypeMeta(type: 0 | 1) {
+  return type === 0
+    ? { label: "活动", color: "blue" }
+    : { label: "讲座", color: "purple" };
 }
 
-function activityStateLabel(state: 0 | 1 | 2 | 3 | 4) {
-  const map: Record<number, string> = {
-    0: "未开始",
-    1: "报名中",
-    2: "报名结束",
-    3: "进行中",
-    4: "已结束",
+function activityStateMeta(state: 0 | 1 | 2 | 3 | 4) {
+  const map: Record<number, { label: string; color: string }> = {
+    0: { label: "未开始", color: "default" },
+    1: { label: "报名中", color: "processing" },
+    2: { label: "报名结束", color: "warning" },
+    3: { label: "进行中", color: "blue" },
+    4: { label: "已结束", color: "success" },
   };
-  return map[state] ?? "-";
+  return map[state] ?? { label: "-", color: "default" };
 }
 
 /* =====================================================
@@ -65,22 +62,24 @@ export function buildEnrollColumns(
 
   return [
     { title: "编号", dataIndex: "id", key: "id", width: 96, sorter: true },
+
     {
-      title: "活动 / 讲座名称",
+      title: "名称",
       dataIndex: "name",
       key: "name",
       width: 240,
       sorter: true,
       ellipsis: true,
     },
+
     {
       title: "发布部门",
       dataIndex: "department",
       key: "department",
       width: 160,
       sorter: true,
-      // filters: departmentFilters,
     },
+
     {
       title: "类型",
       dataIndex: "type",
@@ -91,8 +90,12 @@ export function buildEnrollColumns(
         { text: "活动", value: 0 },
         { text: "讲座", value: 1 },
       ],
-      render: (v: 0 | 1) => <Tag>{activityTypeLabel(v)}</Tag>,
+      render: (v: 0 | 1) => {
+        const meta = activityTypeMeta(v);
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
     },
+
     {
       title: "分数/次数",
       dataIndex: "score",
@@ -101,6 +104,7 @@ export function buildEnrollColumns(
       sorter: true,
       render: (v: number | undefined) => (typeof v === "number" ? v : "-"),
     },
+
     {
       title: "活动状态",
       dataIndex: "state",
@@ -114,8 +118,12 @@ export function buildEnrollColumns(
         { text: "进行中", value: 3 },
         { text: "已结束", value: 4 },
       ],
-      render: (v: 0 | 1 | 2 | 3 | 4) => <Tag>{activityStateLabel(v)}</Tag>,
+      render: (v: 0 | 1 | 2 | 3 | 4) => {
+        const meta = activityStateMeta(v);
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
     },
+
     {
       title: "报名开始时间",
       dataIndex: "signStartTime",
@@ -123,6 +131,7 @@ export function buildEnrollColumns(
       width: 180,
       sorter: true,
     },
+
     {
       title: "报名结束时间",
       dataIndex: "signEndTime",
@@ -130,6 +139,7 @@ export function buildEnrollColumns(
       width: 180,
       sorter: true,
     },
+
     {
       title: "活动开始时间",
       dataIndex: "activityStime",
@@ -137,6 +147,7 @@ export function buildEnrollColumns(
       width: 180,
       sorter: true,
     },
+
     {
       title: "活动结束时间",
       dataIndex: "activityEtime",
@@ -144,6 +155,7 @@ export function buildEnrollColumns(
       width: 180,
       sorter: true,
     },
+
     {
       title: "地点",
       dataIndex: "location",
@@ -152,6 +164,7 @@ export function buildEnrollColumns(
       sorter: true,
       ellipsis: true,
     },
+
     {
       title: "总人数",
       dataIndex: "fullNum",
@@ -159,6 +172,7 @@ export function buildEnrollColumns(
       width: 100,
       sorter: true,
     },
+
     {
       title: "已报名",
       dataIndex: "registeredNum",
@@ -166,6 +180,7 @@ export function buildEnrollColumns(
       width: 100,
       sorter: true,
     },
+
     {
       title: "候补数",
       dataIndex: "candidateNum",
@@ -201,15 +216,11 @@ export function buildEnrollColumns(
       width: 220,
       fixed: "right",
       render: (_: unknown, record: EnrollTableRow) => {
-        // ✅ 现在只保留“报名时间窗限制”（12h 已删）
         const signOk = inSignWindow(record, nowMs);
-
         const primary = getPrimaryActionMeta(record.applyState);
         const isCancel = primary.isCancel;
 
-        // ✅ 报名不前置禁用；取消只看是否在报名窗内
         const primaryDisabled = isCancel ? !signOk : false;
-
         const primaryLoading = isCancel
           ? isCanceling?.(record.id)
           : isRegistering?.(record.id);
@@ -220,7 +231,6 @@ export function buildEnrollColumns(
           ? getCancelConfirmMeta({
               primaryText: primary.text,
               activityName: record.name,
-              // helpers 里目前是可选的 reason：有就展示“仍确认继续？”
               reason,
             } as any)
           : undefined;

@@ -76,7 +76,7 @@ export function buildActivityAdminColumns(
       ),
     },
     {
-      title: "状态",
+      title: "活动状态",
       dataIndex: "state",
       key: "state",
       width: 120,
@@ -93,7 +93,7 @@ export function buildActivityAdminColumns(
       ),
     },
     {
-      title: "部门",
+      title: "发布部门",
       dataIndex: "department",
       key: "department",
       width: 140,
@@ -106,7 +106,7 @@ export function buildActivityAdminColumns(
       width: 160,
     },
     {
-      title: "分数",
+      title: "分数/次数",
       dataIndex: "score",
       key: "score",
       width: 100,
@@ -121,7 +121,7 @@ export function buildActivityAdminColumns(
       render: (v: string) => v,
     },
     {
-      title: "报名开始",
+      title: "报名开始时间",
       dataIndex: "signStartTime",
       key: "signStartTime",
       width: 180,
@@ -129,7 +129,7 @@ export function buildActivityAdminColumns(
       render: (v: string) => v,
     },
     {
-      title: "报名截止",
+      title: "报名截止时间",
       dataIndex: "signEndTime",
       key: "signEndTime",
       width: 180,
@@ -137,7 +137,7 @@ export function buildActivityAdminColumns(
       render: (v: string) => v,
     },
     {
-      title: "活动开始",
+      title: "活动开始时间",
       dataIndex: "activityStime",
       key: "activityStime",
       width: 180,
@@ -145,7 +145,7 @@ export function buildActivityAdminColumns(
       render: (v: string) => v,
     },
     {
-      title: "活动结束",
+      title: "活动结束时间",
       dataIndex: "activityEtime",
       key: "activityEtime",
       width: 180,
@@ -153,7 +153,7 @@ export function buildActivityAdminColumns(
       render: (v: string) => v,
     },
     {
-      title: "人数上限",
+      title: "总人数",
       dataIndex: "fullNum",
       key: "fullNum",
       width: 120,

@@ -36,7 +36,7 @@ export const feedbackMineTablePresets: TableColumnPreset<FeedbackSessionItem>[] 
 
     // mine 不展示
     { key: "name", title: "姓名", width: 120, hidden: true },
-    { key: "username", title: "用户名", width: 150, hidden: true },
+    { key: "username", title: "学号", width: 150, hidden: true },
   ];
 
 /* =========================================================
@@ -49,7 +49,7 @@ export const feedbackAllTablePresets: TableColumnPreset<FeedbackSessionItem>[] =
 
     { key: "name", title: "姓名", width: 120 },
 
-    { key: "username", title: "用户名", width: 150 },
+    { key: "username", title: "学号", width: 150 },
 
     { key: "state", title: "状态", width: 120 },
 

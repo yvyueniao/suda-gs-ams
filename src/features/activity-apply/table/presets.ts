@@ -17,7 +17,7 @@ import type { EnrollTableRow } from "../types";
 export const activityApplyTablePresets: TableColumnPreset<EnrollTableRow>[] = [
   { key: "id", title: "编号", width: 90 },
 
-  { key: "name", title: "活动 / 讲座名称", width: 240 },
+  { key: "name", title: "名称", width: 240 },
   { key: "department", title: "发布部门", width: 160 },
   { key: "type", title: "类型", width: 100 },
   { key: "state", title: "活动状态", width: 120 },
