@@ -14,10 +14,10 @@ const ROLE_FILTERS = Object.entries(ROLE_LABEL).map(([k, label]) => ({
   value: Number(k),
 }));
 
-// ✅ 账号状态筛选项
+// ✅ 账号状态筛选项（口径：invalid=true => 正常，invalid=false => 封锁）
 const INVALID_FILTERS = [
-  { text: "封锁", value: false },
   { text: "正常", value: true },
+  { text: "封锁", value: false },
 ];
 
 export function buildAdminMemberColumns(params: {
@@ -38,7 +38,6 @@ export function buildAdminMemberColumns(params: {
     },
     { title: "姓名", dataIndex: "name", key: "name", width: 120 },
 
-    // ✅ 部门筛选（不写 onFilter：交给 localQuery.matchFilters）
     {
       title: "部门",
       dataIndex: "department",
@@ -47,7 +46,6 @@ export function buildAdminMemberColumns(params: {
       filters: departmentFilters,
     },
 
-    // ✅ 恢复：职务筛选（不写 onFilter：交给 localQuery.matchFilters）
     {
       title: "职务",
       dataIndex: "role",
@@ -58,15 +56,15 @@ export function buildAdminMemberColumns(params: {
       render: (role: Role) => ROLE_LABEL[role] ?? "-",
     },
 
-    // ✅ 恢复：账号状态筛选（不写 onFilter：交给 localQuery.matchFilters）
     {
       title: "账号状态",
       dataIndex: "invalid",
       key: "invalid",
       width: 110,
       filters: INVALID_FILTERS,
+      // ✅ 口径：true => 正常，false => 封锁
       render: (invalid: boolean) =>
-        invalid ? <Tag color="red">封锁</Tag> : <Tag color="green">正常</Tag>,
+        invalid ? <Tag color="green">正常</Tag> : <Tag color="red">封锁</Tag>,
     },
 
     { title: "专业", dataIndex: "major", key: "major", width: 160 },

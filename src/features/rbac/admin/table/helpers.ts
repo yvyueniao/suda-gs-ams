@@ -1,4 +1,5 @@
-//\features\rbac\admin\table\helpers.ts
+// src/features/rbac/admin/table/helpers.ts
+
 import type { TableSorter } from "../../../../shared/components/table";
 import { parseTimeMs } from "../../../../shared/utils/datetime";
 
@@ -23,12 +24,8 @@ export function getSearchTexts(row: AdminMemberTableRow): string[] {
 }
 
 /**
- * ✅ 恢复列筛选：department / role / invalid
- * 口径对齐 antd：FilterValue = (Key | boolean)[] | null
- *
- * 注意：
- * - filters 里每个字段永远是数组或 null/undefined
- * - 我们不依赖 antd 的 onFilter，统一在这里做“本地筛选”
+ * ✅ 列筛选：department / role / invalid
+ * 口径：invalid = true => 正常，false => 封锁
  */
 export function matchFilters(
   row: AdminMemberTableRow,
@@ -51,8 +48,9 @@ export function matchFilters(
     if (!allowed.includes(row.role)) return false;
   }
 
-  // 3) invalid（注意 antd 可能传 true/false 或 "true"/"false"）
-  // invalid：后端语义 true=正常 / false=封锁
+  // 3) invalid
+  // antd 可能传 true/false 或 "true"/"false"
+  // ✅ 口径：true = 正常，false = 封锁
   const invalidFilter = filters.invalid;
   if (Array.isArray(invalidFilter) && invalidFilter.length > 0) {
     const allowed = invalidFilter.map((v) => v === true || v === "true"); // true => 正常

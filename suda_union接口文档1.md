@@ -2,8 +2,6 @@
 
 baseURL:
 
-
-
 ### 登录
 
 url：/suda_login
@@ -16,8 +14,8 @@ url：/suda_login
 
 ```json
 {
-    "username": "20254227087",
-    "password": "123"
+  "username": "20254227087",
+  "password": "123"
 }
 /**
  username是可以是用户的账号
@@ -66,8 +64,6 @@ url：/suda_login
 "timestamp":      当前时间戳
 ```
 
-
-
 ### 验证token的有效性
 
 url：/token
@@ -82,26 +78,24 @@ url：/token
 
 ```json
 {
-    "code": 200,
-    "msg": "token有效",
-    "data": {
-        "id": 1,
-        "username": "20254227087",
-        "name": "梁靖松",
-        "invalid": true,
-        "role": 2,
-        "menuPermission": null,
-        "email": "123@qq.com",
-        "major": "软件工程",
-        "grade": "1",
-        "createTime": "2026-02-01 12:00:30",
-        "lastLoginTime": "2026-02-01 18:13:38"
-    },
-    "timestamp": 1769940841469
+  "code": 200,
+  "msg": "token有效",
+  "data": {
+    "id": 1,
+    "username": "20254227087",
+    "name": "梁靖松",
+    "invalid": true,
+    "role": 2,
+    "menuPermission": null,
+    "email": "123@qq.com",
+    "major": "软件工程",
+    "grade": "1",
+    "createTime": "2026-02-01 12:00:30",
+    "lastLoginTime": "2026-02-01 18:13:38"
+  },
+  "timestamp": 1769940841469
 }
 ```
-
-
 
 ### 用户修改邮箱
 
@@ -115,7 +109,7 @@ url：/user/updateEmail
 
 ```json
 {
-    "email": "44556677@gmail.com"
+  "email": "44556677@gmail.com"
 }
 ```
 
@@ -123,14 +117,12 @@ url：/user/updateEmail
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功修改1条数据",
-    "timestamp": 1770538503284
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功修改1条数据",
+  "timestamp": 1770538503284
 }
 ```
-
-
 
 ### 用户修改密码
 
@@ -155,14 +147,12 @@ url：/user/modifyPassword
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功修改1条数据",
-    "timestamp": 1770539369808
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功修改1条数据",
+  "timestamp": 1770539369808
 }
 ```
-
-
 
 ### 用户忘记密码
 
@@ -176,7 +166,7 @@ url：/user/send-verify-code
 
 ```json
 {
-    "username": "20254227087"
+  "username": "20254227087"
 }
 ```
 
@@ -184,14 +174,12 @@ url：/user/send-verify-code
 
 ```json
 {
-    "code": 200,
-    "msg": "发送成功",
-    "data": null,
-    "timestamp": 1770557147431
+  "code": 200,
+  "msg": "发送成功",
+  "data": null,
+  "timestamp": 1770557147431
 }
 ```
-
-
 
 #### 修改密码
 
@@ -203,9 +191,9 @@ url：/user/forget-password
 
 ```json
 {
-    "username": "20254227087",
-    "verifyCode": "440202",
-    "newPassword": "123"
+  "username": "20254227087",
+  "verifyCode": "440202",
+  "newPassword": "123"
 }
 ```
 
@@ -213,16 +201,12 @@ url：/user/forget-password
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功修改1条数据",
-    "timestamp": 1770557428034
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功修改1条数据",
+  "timestamp": 1770557428034
 }
 ```
-
-
-
-
 
 ### 获取菜单
 
@@ -240,48 +224,46 @@ url：/menuList
 
 ```json
 {
-    "code": 200,
-    "msg": "获取成功",
-    "data": [
+  "code": 200,
+  "msg": "获取成功",
+  "data": [
+    {
+      "key": "apply",
+      "label": "活动/讲座报名",
+      "children": [
         {
-            "key": "apply",
-            "label": "活动/讲座报名",
-            "children": [
-                {
-                    "key": "apply_list",
-                    "label": "活动/讲座列表",
-                    "children": []
-                }
-            ]
-        },
-        {
-            "key": "feedback",
-            "label": "反馈中心",
-            "children": [
-                {
-                    "key": "my_feedback",
-                    "label": "我的反馈",
-                    "children": []
-                }
-            ]
-        },
-        {
-            "key": "profile",
-            "label": "个人中心",
-            "children": [
-                {
-                    "key": "profile_info",
-                    "label": "我的信息",
-                    "children": []
-                }
-            ]
+          "key": "apply_list",
+          "label": "活动/讲座列表",
+          "children": []
         }
-    ],
-    "timestamp": 1770020430667
+      ]
+    },
+    {
+      "key": "feedback",
+      "label": "反馈中心",
+      "children": [
+        {
+          "key": "my_feedback",
+          "label": "我的反馈",
+          "children": []
+        }
+      ]
+    },
+    {
+      "key": "profile",
+      "label": "个人中心",
+      "children": [
+        {
+          "key": "profile_info",
+          "label": "我的信息",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "timestamp": 1770020430667
 }
 ```
-
-
 
 ## 活动/讲座相关接口
 
@@ -352,7 +334,7 @@ url：/activity/searchById
 
 ```json
 {
-    "id": 1
+  "id": 1
 }
 ```
 
@@ -421,51 +403,51 @@ url：/activity/searchAll
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "id": 1,
-            "name": "夜跑活动",
-            "description": "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
-            "department": "文体部",
-            "time": "2026-02-04 14:57:57",
-            "signStartTime": "2026-02-04 14:00:00",
-            "signEndTime": "2026-02-06 14:00:00",
-            "fullNum": 200,
-            "score": 20,
-            "location": "东区操场",
-            "activityStime": "2026-02-08 08:00:00",
-            "activityEtime": "2026-03-15 22:00:00",
-            "type": 0,
-            "state": 1,
-            "registeredNum": 1,
-            "candidateNum": 0,
-            "candidateSuccNum": 0,
-            "candidateFailNum": 0
-        },
-        {
-            "id": 2,
-            "name": "夜跑活动2",
-            "description": "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
-            "department": "文体部",
-            "time": "2026-02-04 18:49:26",
-            "signStartTime": "2026-02-04 14:00:00",
-            "signEndTime": "2026-02-06 14:00:00",
-            "fullNum": 200,
-            "score": 20,
-            "location": "东区操场",
-            "activityStime": "2026-02-08 08:00:00",
-            "activityEtime": "2026-03-15 22:00:00",
-            "type": 0,
-            "state": 1,
-            "registeredNum": 1,
-            "candidateNum": 0,
-            "candidateSuccNum": 0,
-            "candidateFailNum": 0
-        }
-    ],
-    "timestamp": 1770202413517
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "name": "夜跑活动",
+      "description": "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
+      "department": "文体部",
+      "time": "2026-02-04 14:57:57",
+      "signStartTime": "2026-02-04 14:00:00",
+      "signEndTime": "2026-02-06 14:00:00",
+      "fullNum": 200,
+      "score": 20,
+      "location": "东区操场",
+      "activityStime": "2026-02-08 08:00:00",
+      "activityEtime": "2026-03-15 22:00:00",
+      "type": 0,
+      "state": 1,
+      "registeredNum": 1,
+      "candidateNum": 0,
+      "candidateSuccNum": 0,
+      "candidateFailNum": 0
+    },
+    {
+      "id": 2,
+      "name": "夜跑活动2",
+      "description": "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
+      "department": "文体部",
+      "time": "2026-02-04 18:49:26",
+      "signStartTime": "2026-02-04 14:00:00",
+      "signEndTime": "2026-02-06 14:00:00",
+      "fullNum": 200,
+      "score": 20,
+      "location": "东区操场",
+      "activityStime": "2026-02-08 08:00:00",
+      "activityEtime": "2026-03-15 22:00:00",
+      "type": 0,
+      "state": 1,
+      "registeredNum": 1,
+      "candidateNum": 0,
+      "candidateSuccNum": 0,
+      "candidateFailNum": 0
+    }
+  ],
+  "timestamp": 1770202413517
 }
 ```
 
@@ -546,35 +528,33 @@ url：/activity/ownActivity
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "id": 1,
-            "name": "夜跑活动",
-            "description": "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
-            "department": "文体部",
-            "time": "2026-02-04 14:57:57",
-            "signStartTime": "2026-02-01 10:00:00",
-            "signEndTime": "2026-02-04 10:00:00",
-            "fullNum": 100,
-            "score": 3,
-            "location": "东区操场",
-            "activityStime": "2026-02-04 20:00:00",
-            "activityEtime": "2026-02-04 21:00:00",
-            "type": 0,
-            "state": 4,
-            "registeredNum": 1,
-            "candidateNum": 0,
-            "candidateSuccNum": 0,
-            "candidateFailNum": 0
-        }
-    ],
-    "timestamp": 1770368981026
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "name": "夜跑活动",
+      "description": "夜跑有利于身心健康，能够让我们第二天的学习更加精力充沛",
+      "department": "文体部",
+      "time": "2026-02-04 14:57:57",
+      "signStartTime": "2026-02-01 10:00:00",
+      "signEndTime": "2026-02-04 10:00:00",
+      "fullNum": 100,
+      "score": 3,
+      "location": "东区操场",
+      "activityStime": "2026-02-04 20:00:00",
+      "activityEtime": "2026-02-04 21:00:00",
+      "type": 0,
+      "state": 4,
+      "registeredNum": 1,
+      "candidateNum": 0,
+      "candidateSuccNum": 0,
+      "candidateFailNum": 0
+    }
+  ],
+  "timestamp": 1770368981026
 }
 ```
-
-
 
 ### 修改活动/讲座信息
 
@@ -609,14 +589,12 @@ url：/activity/updateActivityInfo
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": null,
-    "timestamp": 1770349391501
+  "code": 200,
+  "msg": "操作成功",
+  "data": null,
+  "timestamp": 1770349391501
 }
 ```
-
-
 
 ### 删除活动/讲座
 
@@ -648,8 +626,6 @@ id：活动id
 }
 code 200是成功，其他的都有对应错误信息在msg
 ```
-
-
 
 ### 活动/讲座报名
 
@@ -683,8 +659,6 @@ id：活动id
 }
 code 200是成功，其他的都有对应错误信息在msg
 ```
-
-
 
 #### 候补
 
@@ -748,8 +722,6 @@ code 200是成功，其他的都有对应错误信息在msg
 注意：当且仅当报名人数未满时，才能候补
 ```
 
-
-
 #### 查看活动补报名申请
 
 url：/activity/activitySupplements
@@ -796,8 +768,6 @@ state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败/4:
 checkIn：是否签到
 checkOut：是否签退
 ```
-
-
 
 #### 查看活动报名申请
 
@@ -859,8 +829,6 @@ checkIn：是否签到
 checkOut：是否签退
 ```
 
-
-
 #### 查看活动候补申请
 
 url：/activity/activityCandidates
@@ -921,8 +889,6 @@ checkIn：是否签到
 checkOut：是否签退
 ```
 
-
-
 #### 补报名审核
 
 url：/activity/examineSupplement
@@ -950,14 +916,12 @@ view：意见（0:审核通过/5:审核不通过，只能给这两个值，其�
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功审核1条申请",
-    "timestamp": 1771569583248
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功审核1条申请",
+  "timestamp": 1771569583248
 }
 ```
-
-
 
 ### 活动/讲座取消报名
 
@@ -994,15 +958,11 @@ id：活动id
 code 200是成功，其他的都有对应错误信息在msg
 ```
 
-
-
 ### 活动/讲座签到（不写）
 
 ### 活动/讲座签退（不写）
 
 ### 活动/讲座全部签退(无需签退的情况)（不写）
-
-
 
 ### 录入加分信息(特殊加分情况，admin&主席权限)
 
@@ -1039,10 +999,6 @@ score：分数/次数
 code 200是成功，其他的都有对应错误信息在msg
 ```
 
-
-
-
-
 ## 成员管理
 
 ### 批量插入用户(admin权限)
@@ -1059,22 +1015,22 @@ url：/user/batchInsertUser
 
 ```json
 [
-    {
-        "username": "20234227087",
-        "password": "PSLJAH==9238KISJ",
-        "name": "李四",
-        "email": "123456@qq.com",
-        "major": "计算机科学与技术",
-        "grade": "研一"
-    },
-    {
-        "username": "20224227089",
-        "password": "PSLJAH==9238KISJ",
-        "name": "王二",
-        "email": "1234567@qq.com",
-        "major": "计算机科学与技术",
-        "grade": "博一"
-    }
+  {
+    "username": "20234227087",
+    "password": "PSLJAH==9238KISJ",
+    "name": "李四",
+    "email": "123456@qq.com",
+    "major": "计算机科学与技术",
+    "grade": "研一"
+  },
+  {
+    "username": "20224227089",
+    "password": "PSLJAH==9238KISJ",
+    "name": "王二",
+    "email": "1234567@qq.com",
+    "major": "计算机科学与技术",
+    "grade": "博一"
+  }
 ]
 ```
 
@@ -1090,8 +1046,6 @@ url：/user/batchInsertUser
 code：200是插入成功，其他值弹出msg给用户提示
 ```
 
-
-
 ### 创建单个用户(admin权限)
 
 url：/user/insert
@@ -1106,12 +1060,12 @@ url：/user/insert
 
 ```json
 {
-    "username": "20214227087",
-    "password": "123456",
-    "name": "李四思",
-    "email": "123456@qq.com",
-    "major": "计算机科学与技术",
-    "grade": "研三"
+  "username": "20214227087",
+  "password": "123456",
+  "name": "李四思",
+  "email": "123456@qq.com",
+  "major": "计算机科学与技术",
+  "grade": "研三"
 }
 ```
 
@@ -1126,8 +1080,6 @@ url：/user/insert
 }
 code：200是插入成功，其他值弹出msg给用户提示
 ```
-
-
 
 ### 批量删除用户(admin权限)
 
@@ -1158,8 +1110,6 @@ url：/user/batchDelete
 code：200是插入成功，其他值弹出msg给用户提示
 ```
 
-
-
 ### 用户批量封锁
 
 url：/user/batchLock
@@ -1181,14 +1131,12 @@ url：/user/batchLock
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功封锁1个账户",
-    "timestamp": 1771036082530
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功封锁1个账户",
+  "timestamp": 1771036082530
 }
 ```
-
-
 
 ### 用户单个解封
 
@@ -1204,7 +1152,7 @@ url：/user/unlock
 
 ```json
 {
-    "username": "20224227089"
+  "username": "20224227089"
 }
 ```
 
@@ -1212,14 +1160,12 @@ url：/user/unlock
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功解封1个账户",
-    "timestamp": 1771036586772
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功解封1个账户",
+  "timestamp": 1771036586772
 }
 ```
-
-
 
 ### 获取用户信息
 
@@ -1278,8 +1224,6 @@ url：/user/info
 "lectureNum":     学术讲座次数
 "department":     部门
 ```
-
-
 
 ### 获取所有用户简要信息
 
@@ -1342,8 +1286,6 @@ pageNum：第几页，和传入的pageNum一致，仅作同值返回
 users：分页查询条件下，当前页的数据信息
 ```
 
-
-
 ## 部门管理
 
 ### 创建部门
@@ -1360,7 +1302,7 @@ url：/department/create
 
 ```json
 {
-    "department": "社会实践部"
+  "department": "社会实践部"
 }
 ```
 
@@ -1376,8 +1318,6 @@ url：/department/create
 code：200是插入成功，其他值弹出msg给用户提示
 ```
 
-
-
 ### 删除部门
 
 url：/department/delete
@@ -1392,7 +1332,7 @@ url：/department/delete
 
 ```json
 {
-    "departmentId": 3
+  "departmentId": 3
 }
 ```
 
@@ -1407,8 +1347,6 @@ url：/department/delete
 }
 code：200是插入成功，其他值弹出msg给用户提示
 ```
-
-
 
 ### 获取所有部门
 
@@ -1445,8 +1383,6 @@ department：部门名称
 code：200是插入成功，其他值弹出msg给用户提示
 ```
 
-
-
 ### 获取某个部门成员
 
 url：/department/members
@@ -1469,31 +1405,29 @@ url：/department/members
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "id": 1,
-            "username": "20254227087",
-            "name": "梁靖松",
-            "invalid": true,
-            "role": 0,
-            "menuPermission": null,
-            "email": "459802134@qq.com",
-            "major": "软件工程",
-            "grade": "1",
-            "createTime": "2026-02-01 12:00:30",
-            "lastLoginTime": "2026-02-10 19:45:05",
-            "serviceScore": 25,
-            "lectureNum": 22,
-            "department": "文体部"
-        }
-    ],
-    "timestamp": 1770786364723
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "username": "20254227087",
+      "name": "梁靖松",
+      "invalid": true,
+      "role": 0,
+      "menuPermission": null,
+      "email": "459802134@qq.com",
+      "major": "软件工程",
+      "grade": "1",
+      "createTime": "2026-02-01 12:00:30",
+      "lastLoginTime": "2026-02-10 19:45:05",
+      "serviceScore": 25,
+      "lectureNum": 22,
+      "department": "文体部"
+    }
+  ],
+  "timestamp": 1770786364723
 }
 ```
-
-
 
 ### 获取所有部门成员
 
@@ -1511,49 +1445,45 @@ url：/department/allMembers
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "id": 1,
-            "username": "20254227087",
-            "name": "梁靖松",
-            "invalid": true,
-            "role": 0,
-            "menuPermission": null,
-            "email": "459802134@qq.com",
-            "major": "软件工程",
-            "grade": "1",
-            "createTime": "2026-02-01 12:00:30",
-            "lastLoginTime": "2026-02-11 20:13:57",
-            "serviceScore": 25,
-            "lectureNum": 22,
-            "department": "文体部"
-        },
-        {
-            "id": 10,
-            "username": "20234227087",
-            "name": "李四",
-            "invalid": true,
-            "role": 3,
-            "menuPermission": null,
-            "email": "459802134@qq.com",
-            "major": "计算机科学与技术",
-            "grade": "研一",
-            "createTime": "2026-02-02 13:30:44",
-            "lastLoginTime": "2026-02-06 17:03:13",
-            "serviceScore": 0,
-            "lectureNum": 0,
-            "department": "学术部"
-        }
-    ],
-    "timestamp": 1770812049494
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "username": "20254227087",
+      "name": "梁靖松",
+      "invalid": true,
+      "role": 0,
+      "menuPermission": null,
+      "email": "459802134@qq.com",
+      "major": "软件工程",
+      "grade": "1",
+      "createTime": "2026-02-01 12:00:30",
+      "lastLoginTime": "2026-02-11 20:13:57",
+      "serviceScore": 25,
+      "lectureNum": 22,
+      "department": "文体部"
+    },
+    {
+      "id": 10,
+      "username": "20234227087",
+      "name": "李四",
+      "invalid": true,
+      "role": 3,
+      "menuPermission": null,
+      "email": "459802134@qq.com",
+      "major": "计算机科学与技术",
+      "grade": "研一",
+      "createTime": "2026-02-02 13:30:44",
+      "lastLoginTime": "2026-02-06 17:03:13",
+      "serviceScore": 0,
+      "lectureNum": 0,
+      "department": "学术部"
+    }
+  ],
+  "timestamp": 1770812049494
 }
 ```
-
-
-
-
 
 ### 任命职务
 
@@ -1569,9 +1499,9 @@ url：/department/appointRole
 
 ```json
 {
-    "username": "20224227089",
-    "departmentId": 2,
-    "role": 3
+  "username": "20224227089",
+  "departmentId": 2,
+  "role": 3
 }
 ```
 
@@ -1579,14 +1509,12 @@ url：/department/appointRole
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功添加1个角色",
-    "timestamp": 1770787721657
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功添加1个角色",
+  "timestamp": 1770787721657
 }
 ```
-
-
 
 ### 删除部门成员
 
@@ -1602,7 +1530,7 @@ url：/department/deleteMember
 
 ```json
 {
-    "username": "20224227089"
+  "username": "20224227089"
 }
 ```
 
@@ -1610,16 +1538,12 @@ url：/department/deleteMember
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功删除1个成员",
-    "timestamp": 1770791819065
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功删除1个成员",
+  "timestamp": 1770791819065
 }
 ```
-
-
-
-
 
 ## 反馈
 
@@ -1637,7 +1561,7 @@ url：/session/createFeedback
 
 ```json
 {
-    "title": "社会活动分数出错问题"
+  "title": "社会活动分数出错问题"
 }
 ```
 
@@ -1645,14 +1569,12 @@ url：/session/createFeedback
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功创建1条反馈",
-    "timestamp": 1771581121381
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功创建1条反馈",
+  "timestamp": 1771581121381
 }
 ```
-
-
 
 ### 获取所有反馈
 
@@ -1699,8 +1621,6 @@ title：反馈主题
 state：问题处理进度(0:待受理/1:处理中/2:已解决)
 ```
 
-
-
 ### 通过处理进度查询反馈
 
 url：/session/feedbacksState
@@ -1724,23 +1644,21 @@ state：问题处理进度(0:待受理/1:处理中/2:已解决)
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "username": "20254227087",
-            "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
-            "title": "社会活动分数出错问题2",
-            "time": "2026-02-20 18:12:18",
-            "state": 0,
-            "name": "梁靖松"
-        }
-    ],
-    "timestamp": 1771649049747
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "username": "20254227087",
+      "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
+      "title": "社会活动分数出错问题2",
+      "time": "2026-02-20 18:12:18",
+      "state": 0,
+      "name": "梁靖松"
+    }
+  ],
+  "timestamp": 1771649049747
 }
 ```
-
-
 
 ### 获取自己的反馈
 
@@ -1758,31 +1676,29 @@ url：/session/myFeedbacks
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "username": "20254227087",
-            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
-            "title": "社会活动分数出错问题",
-            "time": "2026-02-20 17:52:56",
-            "state": 2,
-            "name": "梁靖松"
-        },
-        {
-            "username": "20254227087",
-            "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
-            "title": "社会活动分数出错问题2",
-            "time": "2026-02-20 18:12:18",
-            "state": 0,
-            "name": "梁靖松"
-        }
-    ],
-    "timestamp": 1771648999524
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "username": "20254227087",
+      "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+      "title": "社会活动分数出错问题",
+      "time": "2026-02-20 17:52:56",
+      "state": 2,
+      "name": "梁靖松"
+    },
+    {
+      "username": "20254227087",
+      "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
+      "title": "社会活动分数出错问题2",
+      "time": "2026-02-20 18:12:18",
+      "state": 0,
+      "name": "梁靖松"
+    }
+  ],
+  "timestamp": 1771648999524
 }
 ```
-
-
 
 ### 通过用户名获取反馈
 
@@ -1807,35 +1723,33 @@ username：用户名
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": [
-        {
-            "username": "20254227087",
-            "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
-            "title": "社会活动分数出错问题",
-            "time": "2026-02-20 17:52:56",
-            "state": 2,
-            "name": "梁靖松"
-        },
-        {
-            "username": "20254227087",
-            "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
-            "title": "社会活动分数出错问题2",
-            "time": "2026-02-20 18:12:18",
-            "state": 0,
-            "name": "梁靖松"
-        }
-    ],
-    "timestamp": 1771649021667
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {
+      "username": "20254227087",
+      "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f",
+      "title": "社会活动分数出错问题",
+      "time": "2026-02-20 17:52:56",
+      "state": 2,
+      "name": "梁靖松"
+    },
+    {
+      "username": "20254227087",
+      "sessionId": "fc4ae928-c682-4ece-9ec7-846044aa5ec5",
+      "title": "社会活动分数出错问题2",
+      "time": "2026-02-20 18:12:18",
+      "state": 0,
+      "name": "梁靖松"
+    }
+  ],
+  "timestamp": 1771649021667
 }
 ```
 
-
-
 ### 对话
 
-url：/activity/upload
+url：/session/upload
 
 请求方式：POST
 
@@ -1851,8 +1765,6 @@ url：/activity/upload
 | content   | 你好                                 | （必要）消息的内容                          |
 | file      | FILE                                 | （非必要）附件文件，限制大小20MB，限pdf文件 |
 
-
-
 返回值说明：
 
 ```json
@@ -1865,8 +1777,6 @@ url：/activity/upload
 code 200是成功，其他的都有对应错误信息在msg
 注意：当反馈结束时（state为2时），无法进行对话
 ```
-
-
 
 ### 结束反馈
 
@@ -1882,7 +1792,7 @@ url：/session/close
 
 ```json
 {
-    "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f"
+  "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f"
 }
 ```
 
@@ -1890,14 +1800,12 @@ url：/session/close
 
 ```json
 {
-    "code": 200,
-    "msg": "操作成功",
-    "data": "成功关闭1条反馈",
-    "timestamp": 1771588020955
+  "code": 200,
+  "msg": "操作成功",
+  "data": "成功关闭1条反馈",
+  "timestamp": 1771588020955
 }
 ```
-
-
 
 ### 查看反馈信息
 
@@ -1913,7 +1821,7 @@ url：/session/content
 
 ```json
 {
-    "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f"
+  "sessionId": "0c4fb6eb-1e71-414d-ac39-e6e8bcabd40f"
 }
 ```
 
@@ -1971,7 +1879,5 @@ time：反馈对话消息时间
 username：发送消息的用户
 type：对话的标识(0:反馈用户的发言/1:系统人员的发言)
 ```
-
-
 
 ## 日志

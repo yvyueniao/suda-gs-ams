@@ -89,7 +89,7 @@ export function sendFeedbackMessage(payload: SendFeedbackMessagePayload) {
   if (payload.file) fd.append("file", payload.file);
 
   return request<string>({
-    url: "/activity/upload",
+    url: "/session/upload",
     method: "POST",
     data: fd,
     // ✅ 不手动写 Content-Type；让浏览器自动带 boundary

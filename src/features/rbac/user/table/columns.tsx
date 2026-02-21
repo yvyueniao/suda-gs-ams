@@ -20,10 +20,10 @@ const ROLE_FILTERS = Object.entries(ROLE_LABEL).map(([k, label]) => ({
   value: Number(k),
 }));
 
-// 账号状态筛选
+// 账号状态筛选（✅ 口径：invalid=true => 正常，invalid=false => 封锁）
 const INVALID_FILTERS = [
-  { text: "封锁", value: false },
   { text: "正常", value: true },
+  { text: "封锁", value: false },
 ];
 
 export function buildUserColumns(params: {
@@ -64,8 +64,9 @@ export function buildUserColumns(params: {
       key: "invalid",
       width: 100,
       filters: INVALID_FILTERS,
+      // ✅ 口径：true => 正常，false => 封锁
       render: (invalid: boolean) =>
-        invalid ? <Tag color="red">封锁</Tag> : <Tag color="green">正常</Tag>,
+        invalid ? <Tag color="green">正常</Tag> : <Tag color="red">封锁</Tag>,
     },
 
     // =========================

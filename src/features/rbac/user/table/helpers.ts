@@ -7,8 +7,7 @@ import type { Role, UserTableRow } from "../types";
 
 /**
  * keyword 搜索文本
- * - 你要求：邮箱/年级/专业都展示
- * - 所以这里把常用可搜字段都纳入（实现“模糊一搜就能命中”）
+ * - 支持：ID / 学号 / 姓名 / 角色 / 年级 / 专业 / 邮箱 / 分数 / 时间
  */
 export function getSearchTexts(row: UserTableRow): string[] {
   const texts = [
@@ -36,12 +35,10 @@ export function getSearchTexts(row: UserTableRow): string[] {
 }
 
 /**
- * ✅ 筛选：
- * - invalid：账号状态（正常/封锁）
- * - role：角色
- *
- * 口径对齐 antd：FilterValue = (Key | boolean)[] | null
- * 注意：invalid 可能是 true/false 或 "true"/"false"
+ * ✅ 筛选逻辑
+ * 口径：
+ *   invalid = true  => 正常
+ *   invalid = false => 封锁
  */
 export function matchFilters(
   row: UserTableRow,
@@ -49,19 +46,20 @@ export function matchFilters(
 ): boolean {
   if (!filters) return true;
 
-  // 1) role
+  // 1️⃣ role 筛选
   const roleFilter = filters.role;
   if (Array.isArray(roleFilter) && roleFilter.length > 0) {
     const allowed = roleFilter.map((v) => Number(v) as Role);
     if (!allowed.includes(row.role)) return false;
   }
 
-  // 2) invalid
-  // invalid：后端语义 true=正常 / false=封锁
+  // 2️⃣ invalid 筛选
   const invalidFilter = filters.invalid;
   if (Array.isArray(invalidFilter) && invalidFilter.length > 0) {
+    // antd 可能传 true/false 或 "true"/"false"
     const allowed = invalidFilter.map((v) => v === true || v === "true"); // true => 正常
     const current = !!row.invalid; // true => 正常
+
     if (!allowed.includes(current)) return false;
   }
 
@@ -70,8 +68,6 @@ export function matchFilters(
 
 /**
  * 本地排序值提取
- * - sorter.field 来自 columns.tsx 的 dataIndex/key
- * - 时间字段使用 parseTimeMs
  */
 export function getSortValue(
   row: UserTableRow,
