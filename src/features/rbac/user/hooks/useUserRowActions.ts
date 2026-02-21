@@ -53,6 +53,7 @@ export function useUserRowActions(options?: { onNotify?: Notify }) {
 
   // ======================================================
   // 2) 行内详情（按 username 管理 loading）
+  // - ✅ 现在改为调用 /user/infoforUsername（已在 api.ts 的 getUserInfo 里适配）
   // - 只负责拉详情并返回
   // - 打开 Modal/Drawer 交给页面层
   // ======================================================

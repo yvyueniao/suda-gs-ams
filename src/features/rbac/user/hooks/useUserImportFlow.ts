@@ -4,11 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
 import type { Notify } from "../../../../shared/ui";
-import type {
-  BatchInsertUserResult,
-  UserCreatePayload,
-  UserImportPreviewRow,
-} from "../types";
+import type { UserCreatePayload, UserImportPreviewRow } from "../types";
 import { batchInsertUser } from "../api";
 
 /** ✅ 稳定 noop，避免 callback 抖动 */
@@ -31,9 +27,22 @@ type ImportPreviewState = {
   invalidRowIndexes: number[];
 };
 
+/**
+ * ✅ 后端统一返回壳（你们接口文档口径）
+ * { code, msg, data, timestamp }
+ *
+ * 这里把 result 统一存成这个壳，页面层 ImportResultModal 也正好吃这个结构
+ */
+export type ApiShellResult = {
+  code?: number;
+  msg?: string;
+  data?: unknown;
+  timestamp?: number;
+};
+
 type ImportResultState = {
   open: boolean;
-  result?: BatchInsertUserResult;
+  result?: ApiShellResult;
 };
 
 function normalizeText(v: unknown): string {
@@ -73,7 +82,8 @@ function mapSheetRowsToPreview(
     pickFirstMatch(headers, ["学号", "用户名", "账号", "username"]) ?? "学号";
   const hPassword = pickFirstMatch(headers, ["密码", "password"]) ?? "密码";
   const hName = pickFirstMatch(headers, ["姓名", "name"]) ?? "姓名";
-  const hEmail = pickFirstMatch(headers, ["邮箱", "email"]) ?? "邮箱";
+  const hEmail =
+    pickFirstMatch(headers, ["邮箱", "邮箱地址", "email"]) ?? "邮箱";
   const hMajor = pickFirstMatch(headers, ["专业", "major"]) ?? "专业";
   const hGrade = pickFirstMatch(headers, ["年级", "grade"]) ?? "年级";
 
@@ -170,6 +180,27 @@ function previewToPayload(rows: UserImportPreviewRow[]): UserCreatePayload[] {
   }));
 }
 
+function toShellResult(x: unknown): ApiShellResult {
+  // ✅ request() 里通常已经“解壳”了 data，但你们批量导入接口很可能返回的是统一壳
+  // 所以这里做一个兼容：如果长得像壳就原样用，否则包成 { code: 200, data: x }
+  if (x && typeof x === "object") {
+    const anyX = x as any;
+    const hasCode = "code" in anyX;
+    const hasMsg = "msg" in anyX;
+    const hasData = "data" in anyX;
+    if (hasCode || hasMsg || hasData) {
+      return {
+        code: typeof anyX.code === "number" ? anyX.code : undefined,
+        msg: typeof anyX.msg === "string" ? anyX.msg : undefined,
+        data: anyX.data,
+        timestamp:
+          typeof anyX.timestamp === "number" ? anyX.timestamp : undefined,
+      };
+    }
+  }
+  return { code: 200, msg: "操作成功", data: x };
+}
+
 export function useUserImportFlow(options?: { onNotify?: Notify }) {
   const notify = useMemo<Notify>(
     () => options?.onNotify ?? noopNotify,
@@ -214,7 +245,7 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
     result: undefined,
   });
 
-  const openResult = useCallback((r: BatchInsertUserResult) => {
+  const openResult = useCallback((r: ApiShellResult) => {
     setResult({ open: true, result: r });
   }, []);
 
@@ -295,7 +326,7 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       return;
     }
 
-    // 有必填缺失 / 重复：不强行阻断（你说模板默认规范），但给提醒更稳
+    // 有必填缺失 / 重复：不强行阻断，但给提醒更稳
     if (preview.stats.emptyRequiredCount > 0) {
       notify({
         kind: "info",
@@ -316,11 +347,20 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
 
     try {
       const r = await batchInsertUser(payload);
-      // ✅ 打开“结果弹窗”的状态交给页面层渲染
-      openResult(r);
+
+      // ✅ 不再假设 successCount/failCount，直接把“后端返回壳”交给页面展示
+      const shell = toShellResult(r);
+      openResult(shell);
+
       // ✅ 关闭预览（也可以不关，看你页面交互）
       closePreview();
-      notify({ kind: "success", msg: "导入请求已提交" });
+
+      // code===200 走 success，否则走 error 提示更符合你接口文档
+      if (shell.code === 200) {
+        notify({ kind: "success", msg: shell.msg ?? "导入请求已提交" });
+      } else {
+        notify({ kind: "error", msg: shell.msg ?? "导入失败" });
+      }
     } catch {
       notify({ kind: "error", msg: "导入失败，请稍后重试" });
       throw new Error("import failed");

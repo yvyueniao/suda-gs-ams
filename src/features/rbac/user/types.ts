@@ -18,6 +18,20 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 /**
  * ======================================
+ * ✅ 后端统一返回壳（通用）
+ * - 你们接口文档统一：{ code, msg, data, timestamp }
+ * - shared/http 若“解壳只返回 data”，这里依然可以用在需要保留壳的接口链路里（比如导入结果弹窗）
+ * ======================================
+ */
+export type ApiEnvelope<T> = {
+  code: number;
+  msg: string;
+  data: T;
+  timestamp: number;
+};
+
+/**
+ * ======================================
  * 用户列表行（/user/pages 返回 users[]）
  * ======================================
  */
@@ -31,13 +45,14 @@ export interface UserListItem {
   major: string;
   grade: string;
 
-  /** 账号是否封锁 */
+  /**
+   * ✅ 口径统一：invalid = true => 正常；false => 封锁
+   * （你已明确：true=正常）
+   */
   invalid: boolean;
 
-  /** 角色：你页面要展示/筛选/排序，所以这里建议改成必填 Role */
   role: Role;
 
-  /** 业务统计：你页面要展示/排序，所以这里建议改成必填 number */
   serviceScore: number;
   lectureNum: number;
 
@@ -93,25 +108,14 @@ export interface UserCreatePayload {
 export type BatchInsertUserPayload = UserCreatePayload[];
 
 /**
- * 导入结果（根据后端返回结构建模）
- * 如果后端返回更多字段，可再扩展
+ * ✅ 导入结果（按你后端现状：统一返回壳，data 通常是字符串提示）
+ * 示例：
+ * { code: 200, msg: "操作成功", data: "成功添加2条数据", timestamp: 1770010244887 }
+ *
+ * 如果未来后端把 data 改成结构化对象，也能兼容：
+ * ApiEnvelope<string | { successCount: number; ... } | null>
  */
-export interface BatchInsertUserResult {
-  successCount: number;
-  failCount: number;
-
-  /** 失败用户名列表（可选） */
-  failedUsernames?: string[];
-
-  /** 失败明细（可选） */
-  failedDetails?: Array<{
-    username: string;
-    reason: string;
-  }>;
-
-  /** 若后端返回失败文件下载地址 */
-  failedFileUrl?: string;
-}
+export type BatchInsertUserResult = ApiEnvelope<unknown>;
 
 /**
  * ======================================
@@ -145,12 +149,9 @@ export interface UnlockUserPayload {
 /**
  * ======================================
  * 用户详情
- * POST /user/info
+ * ✅ 改为：POST /user/infoforUsername
+ * 返回壳：{ code, msg, data: { ...UserInfo }, timestamp }
  * ======================================
- *
- * 注意：/user/info 返回里有 user + token（你接口文档里是这种结构）
- * 但你们 shared/http 可能已经把 data 解壳了
- * 这里先按 “详情 user 本体” 建模
  */
 
 export interface UserInfo {
@@ -158,21 +159,29 @@ export interface UserInfo {
   username: string;
   name: string;
 
+  invalid: boolean; // ✅ true=正常，false=封锁
+  role: Role;
+
+  menuPermission?: unknown | null;
+
   email: string;
   major: string;
   grade: string;
 
-  invalid: boolean;
-  role: Role;
-
   createTime: string;
   lastLoginTime: string;
 
-  serviceScore: number;
-  lectureNum: number;
+  /** 详情接口里可能有，也可能没有（建议兼容可选） */
+  serviceScore?: number;
+  lectureNum?: number;
 
   department?: string | null;
 }
+
+/**
+ * 详情接口返回壳（用于 /user/infoforUsername）
+ */
+export type UserInfoForUsernameResult = ApiEnvelope<UserInfo>;
 
 /**
  * ======================================

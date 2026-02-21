@@ -6,6 +6,10 @@
  * ✅ 页面层 UI 组件
  * - 只负责展示 Drawer + Descriptions
  * - 不请求数据：detail 由父层（useUserManagePage/useUserRowActions）传入
+ *
+ * ✅ 修复点：
+ * - invalid 口径修正：true = 正常，false = 封锁
+ * - 提示文案不再写死 /user/info（你说不用它了）
  */
 
 import React from "react";
@@ -30,17 +34,27 @@ export type UserDetailDrawerProps = {
 
   loading?: boolean;
   detail?: UserInfo | null;
+
+  /**
+   * ✅ 可选：标注“详情来源接口”
+   * 例如："/user/pages"、"/department/allMembers" 等
+   * 不传则不展示来源提示
+   */
+  sourceApi?: string;
 };
 
 function roleText(role?: Role | number) {
   if (role === undefined || role === null) return "-";
-  // 兼容后端可能给 number
   const r = Number(role) as Role;
   return ROLE_LABEL[r] ?? String(role);
 }
 
 export default function UserDetailDrawer(props: UserDetailDrawerProps) {
-  const { open, onClose, loading, detail } = props;
+  const { open, onClose, loading, detail, sourceApi } = props;
+
+  // ✅ 口径：invalid=true => 正常；invalid=false => 封锁
+  const renderStatus = (invalid: boolean) =>
+    invalid ? <Tag color="green">正常</Tag> : <Tag color="red">封锁</Tag>;
 
   return (
     <Drawer
@@ -70,20 +84,12 @@ export default function UserDetailDrawer(props: UserDetailDrawerProps) {
               },
 
               { key: "name", label: "姓名", children: detail.name ?? "-" },
-              {
-                key: "role",
-                label: "角色",
-                children: roleText(detail.role),
-              },
+              { key: "role", label: "角色", children: roleText(detail.role) },
 
               {
                 key: "status",
                 label: "账号状态",
-                children: detail.invalid ? (
-                  <Tag color="red">封锁</Tag>
-                ) : (
-                  <Tag color="green">正常</Tag>
-                ),
+                children: renderStatus(!!detail.invalid),
               },
               {
                 key: "department",
@@ -103,7 +109,6 @@ export default function UserDetailDrawer(props: UserDetailDrawerProps) {
                     ? detail.serviceScore
                     : "-",
               },
-
               {
                 key: "lectureNum",
                 label: "讲座次数",
@@ -112,12 +117,12 @@ export default function UserDetailDrawer(props: UserDetailDrawerProps) {
                     ? detail.lectureNum
                     : "-",
               },
+
               {
                 key: "createTime",
                 label: "创建时间",
                 children: detail.createTime ?? "-",
               },
-
               {
                 key: "lastLoginTime",
                 label: "上次登录",
@@ -126,9 +131,12 @@ export default function UserDetailDrawer(props: UserDetailDrawerProps) {
             ]}
           />
 
-          <Text type="secondary">
-            提示：详情数据来自 <Text code>/user/info</Text>，用于展示完整信息。
-          </Text>
+          {sourceApi ? (
+            <Text type="secondary">
+              提示：详情数据来源 <Text code>{sourceApi}</Text>（本页面不再调用
+              /user/info）。
+            </Text>
+          ) : null}
         </Space>
       )}
     </Drawer>

@@ -21,6 +21,7 @@ import type {
   BatchLockUserPayload,
   UnlockUserPayload,
   UserInfo,
+  UserInfoForUsernameResult,
 } from "./types";
 
 /**
@@ -54,8 +55,9 @@ export async function getUserPages(
  * 2) 批量插入用户
  * POST /user/batchInsertUser
  * ======================================
+ *
+ * ✅ 注意：你们后端是“统一返回壳”，这里直接返回壳（给结果弹窗用）
  */
-
 export async function batchInsertUser(
   payload: BatchInsertUserPayload,
 ): Promise<BatchInsertUserResult> {
@@ -132,15 +134,29 @@ export async function unlockUser(payload: UnlockUserPayload): Promise<void> {
 
 /**
  * ======================================
- * 7) 用户详情
- * POST /user/info
+ * 7) 用户详情（✅ 按你截图改接口）
+ * POST /user/infoforUsername
+ * 请求体：{ username }
+ * 返回：{ code, msg, data: UserInfo, timestamp }
+ *
+ * ✅ 注意：你们 shared/http 的 request 通常会“解壳只返回 data”
+ * 但为了稳妥兼容两种情况，这里做一次适配：
+ * - 若 request 已解壳：res 就是 UserInfo
+ * - 若 request 未解壳：res 是 UserInfoForUsernameResult，需要取 res.data
  * ======================================
  */
 
 export async function getUserInfo(username: string): Promise<UserInfo> {
-  return request<UserInfo>({
-    url: "/user/info",
+  const res = await request<UserInfo | UserInfoForUsernameResult>({
+    url: "/user/inforUsername",
     method: "POST",
     data: { username },
   });
+
+  // 兼容：request 已解壳 / 未解壳
+  const anyRes = res as any;
+  if (anyRes && typeof anyRes === "object" && "data" in anyRes) {
+    return (anyRes.data ?? {}) as UserInfo;
+  }
+  return res as UserInfo;
 }

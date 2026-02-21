@@ -13,10 +13,7 @@ import {
 import { confirmAsync, createAntdNotify } from "../../../shared/ui";
 
 import { insertUser } from "../../../features/rbac/user/api";
-import type {
-  UserCreatePayload,
-  BatchInsertUserResult,
-} from "../../../features/rbac/user/types";
+import type { UserCreatePayload } from "../../../features/rbac/user/types";
 
 import { useUserManagePage } from "../../../features/rbac/user/hooks/useUserManagePage";
 
@@ -26,6 +23,46 @@ import ImportResultModal from "./ImportResultModal";
 import UserDetailDrawer from "./UserDetailDrawer";
 
 const { Title } = Typography;
+
+/**
+ * ✅ 导入结果适配：
+ * - 你当前 useUserImportFlow.result.result 是结构化结果（successCount/failCount...）
+ * - 但 ImportResultModal 的展示模型是统一返回壳（code/msg/data/timestamp）
+ * - 所以这里做一层“展示适配”，不改 hooks 也能跑
+ */
+function adaptImportResult(result: any) {
+  if (!result) return null;
+
+  const successCount = Number(result.successCount ?? 0);
+  const failCount = Number(result.failCount ?? 0);
+
+  const lines: string[] = [];
+  lines.push(`成功：${successCount} 条`);
+  lines.push(`失败：${failCount} 条`);
+
+  if (Array.isArray(result.failedUsernames) && result.failedUsernames.length) {
+    lines.push(`失败学号：${result.failedUsernames.join(", ")}`);
+  }
+
+  if (Array.isArray(result.failedDetails) && result.failedDetails.length) {
+    const detailText = result.failedDetails
+      .slice(0, 20)
+      .map((x: any) => `- ${x.username ?? "-"}：${x.reason ?? "-"}`)
+      .join("\n");
+    lines.push(`失败明细（最多展示 20 条）：\n${detailText}`);
+  }
+
+  if (result.failedFileUrl) {
+    lines.push(`失败名单下载：${String(result.failedFileUrl)}`);
+  }
+
+  return {
+    code: failCount > 0 ? 500 : 200,
+    msg: failCount > 0 ? "部分导入失败" : "导入成功",
+    data: lines.join("\n"),
+    timestamp: Date.now(),
+  };
+}
 
 export default function UserManagePage() {
   const notify = useMemo(() => createAntdNotify(message), []);
@@ -64,7 +101,7 @@ export default function UserManagePage() {
       await insertUser(payload);
       notify({ kind: "success", msg: "创建成功" });
       setCreateOpen(false);
-      table.reload(); // Ensure the table reloads
+      table.reload();
     } catch {
       notify({ kind: "error", msg: "创建失败，请稍后重试" });
     } finally {
@@ -85,7 +122,7 @@ export default function UserManagePage() {
 
     if (!confirmed) return;
     await runBatchDelete();
-    table.reload(); // Ensure the table reloads after the operation
+    table.reload();
   };
 
   // 批量封锁操作
@@ -101,38 +138,18 @@ export default function UserManagePage() {
 
     if (!confirmed) return;
     await runBatchLock();
-    table.reload(); // Ensure the table reloads after the operation
+    table.reload();
   };
 
-  // Import Flow
-  const previewOpen = !!(importFlow.preview as any)?.open;
-  const previewStats =
-    (importFlow.preview as any)?.stats ??
-    (importFlow.preview as any)?.previewStats ??
-    null;
+  // Import Flow（✅ 不再 any-乱取字段，按 hooks 的真实结构拿）
+  const previewOpen = !!importFlow.preview.open;
+  const previewStats = importFlow.preview.stats ?? null;
 
-  const resultOpen = !!(importFlow as any)?.result?.open;
-  const rawResultState = (importFlow as any)?.result?.data ?? null;
-
-  const adaptImportResult = (resultState: any) => {
-    if (!resultState) {
-      return {
-        successCount: 0,
-        failCount: 0,
-        msg: "导入未返回结果",
-        data: "",
-      };
-    }
-
-    return {
-      successCount: resultState.successCount || 0,
-      failCount: resultState.failCount || 0,
-      msg: resultState.msg ?? "操作失败",
-      data: resultState.data ?? "",
-    };
-  };
-
-  const adaptedResult = adaptImportResult(rawResultState);
+  const resultOpen = !!importFlow.result.open;
+  const adaptedResult = useMemo(
+    () => adaptImportResult(importFlow.result.result),
+    [importFlow.result.result],
+  );
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
@@ -150,29 +167,33 @@ export default function UserManagePage() {
           showSearch
           keyword={table.query.keyword}
           onKeywordChange={table.setKeyword}
-          onRefresh={() => table.reload()} // Refresh button triggers table.reload
+          onRefresh={table.reload}
           onReset={table.reset}
           right={
             <Space>
               <Button onClick={importFlow.openPreview}>批量导入</Button>
+
               <Button type="primary" onClick={() => setCreateOpen(true)}>
                 创建用户
               </Button>
+
               <Button
                 disabled={!hasSelection}
                 loading={!!locking}
-                onClick={() => confirmBatchLock()}
+                onClick={confirmBatchLock}
               >
                 批量封锁
               </Button>
+
               <Button
                 danger
                 disabled={!hasSelection}
                 loading={!!deleting}
-                onClick={() => confirmBatchDelete()}
+                onClick={confirmBatchDelete}
               >
                 批量删除
               </Button>
+
               <Button
                 loading={!!table.exporting}
                 onClick={() =>
@@ -184,6 +205,7 @@ export default function UserManagePage() {
               >
                 导出
               </Button>
+
               <ColumnSettings
                 presets={presets}
                 visibleKeys={columnPrefs.visibleKeys}
@@ -226,40 +248,37 @@ export default function UserManagePage() {
         onSubmit={submitCreate}
       />
 
-      {/* 导入用户：预览弹窗（open/close 直接走 importFlow.preview 状态机） */}
+      {/* 导入用户：预览弹窗 */}
       <ImportUsersModal
         open={previewOpen}
         onClose={importFlow.closePreview}
         parsing={!!importFlow.parsing}
-        submitting={!!(importFlow as any).submitting}
+        submitting={!!importFlow.submitting}
         previewStats={previewStats}
-        onFileSelected={async (file) => {
-          const fn =
-            (importFlow as any).parseFile ?? (importFlow as any).setFile;
-          if (typeof fn === "function") await fn(file);
-        }}
+        onFileSelected={importFlow.parseFile}
         onConfirmImport={async () => {
           await importFlow.submitImportAndReload();
-          importFlow.closePreview();
+          // submitImport 内部已 closePreview，这里不重复关也行
         }}
       />
 
-      {/* 导入结果弹窗：动态使用后端返回的结果展示 */}
+      {/* 导入结果弹窗：用“展示适配”后的壳结构 */}
       <ImportResultModal
         open={resultOpen}
         onClose={importFlow.closeResult}
-        result={adaptedResult} // Adjust the result dynamically here
+        result={adaptedResult}
         onDownloadFailed={(url) => {
           notify({ kind: "info", msg: `失败名单下载：${url}` });
         }}
       />
 
-      {/* 详情 Drawer */}
+      {/* 详情 Drawer（✅ 不再写死 /user/info；来源你按实际改成你截图里的接口） */}
       <UserDetailDrawer
         open={detail.open}
         onClose={closeDetail}
         loading={detail.loading}
         detail={detail.data ?? null}
+        sourceApi="/department/allMembers"
       />
     </Space>
   );
