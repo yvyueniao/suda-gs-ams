@@ -29,6 +29,10 @@ export default defineConfig(({ command, mode }) => {
     base: command === "build" ? "/suda-gs-ams/" : "/",
 
     server: {
+      host: true, // ✅ 允许局域网访问（等价于 0.0.0.0）
+      port: 5173, // ✅ 固定端口（建议固定，方便内网访问）
+      strictPort: true, // ✅ 端口被占用直接报错，不自动换端口
+
       proxy: USE_MOCK
         ? undefined // 如果启用了 mock 服务，则不需要代理
         : {
