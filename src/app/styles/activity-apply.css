@@ -1,0 +1,59 @@
+/* =========================================================
+   Activity Apply Styles
+   报名端详情页样式（ActivityDetailPage）
+   ========================================================= */
+
+.activity-apply-page {
+  padding: 16px;
+}
+
+.activity-apply-container {
+  max-width: 1900px;
+  margin: 0 auto;
+}
+
+/* Header */
+.activity-apply-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 分区 */
+.activity-apply-section {
+  margin-top: 12px;
+}
+
+.activity-apply-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  margin-bottom: 10px;
+}
+
+/* 内容块 */
+.activity-apply-panel {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+/* 描述块 */
+.activity-apply-desc {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.activity-apply-desc-content {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* 收紧 Divider */
+.activity-apply-page .ant-divider-horizontal {
+  margin: 12px 0;
+}
