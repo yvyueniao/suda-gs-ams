@@ -1,6 +1,6 @@
 // src/pages/activity-apply/ActivityDetailPage.tsx
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -11,7 +11,6 @@ import {
   Tag,
   Typography,
   message,
-  Modal,
   Divider,
 } from "antd";
 
@@ -26,10 +25,8 @@ import {
 
 import {
   deriveApplyActionState,
-  inSignWindow,
   getPrimaryActionMeta,
   getApplyStateTagMeta,
-  getCancelConfirmMeta,
 } from "../../features/activity-apply/table/helpers";
 
 import { useApplyActions } from "../../features/activity-apply/hooks/useApplyActions";
