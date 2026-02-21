@@ -28,6 +28,13 @@ import { InboxOutlined } from "@ant-design/icons";
  * 约定：
  * - ✅ 纯 UI：不拉接口、不写业务逻辑
  * - ✅ 业务逻辑全部由 features/activity-apply/hooks/useSupplementApply 提供
+ *
+ * ✅ 本次修改点（对齐 antd v5 warning）
+ * - Modal: destroyOnClose -> destroyOnHidden
+ * - Space: direction -> orientation
+ * - 修复 useForm 未连接：确保 <Form form={form} ... />
+ * - 受控/表单双写问题：AutoComplete 不再手动 value={activityName}，交给 Form.Item 管控
+ *   （避免 “Form 值” 和 “受控 props” 打架导致显示/校验不同步）
  */
 
 export type SupplementApplySuggestion = {
@@ -145,11 +152,11 @@ export default function SupplementApplyModal(props: SupplementApplyModalProps) {
       onCancel={onClose}
       okText="提交"
       cancelText="取消"
-      destroyOnClose
+      destroyOnHidden
       maskClosable={false}
       confirmLoading={!!submitting}
     >
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+      <Space orientation="vertical" style={{ width: "100%" }} size="middle">
         <Alert
           type="info"
           showIcon
@@ -184,11 +191,12 @@ export default function SupplementApplyModal(props: SupplementApplyModalProps) {
             ]}
           >
             <AutoComplete
-              value={activityName}
+              // ✅ 不再显式传 value，让 Form.Item 接管受控
               options={options as any}
               onSearch={(kw) => {
-                onChangeName(kw);
-                onSearchName(kw);
+                const next = String(kw ?? "");
+                onChangeName(next);
+                onSearchName(next);
               }}
               onChange={(v) => {
                 const next = String(v ?? "");
@@ -203,11 +211,12 @@ export default function SupplementApplyModal(props: SupplementApplyModalProps) {
 
                 onPickSuggestion(raw);
 
-                // ✅ 表单联动：立即回填 ID + 名称
+                // ✅ 表单联动：立即回填 ID + 名称（并同步到受控状态）
                 form.setFieldsValue({
                   activityId: raw.id,
                   activityName: raw.name,
                 });
+                onChangeName(raw.name);
               }}
               placeholder="输入活动名称（下拉会出现模糊匹配结果）"
               allowClear
