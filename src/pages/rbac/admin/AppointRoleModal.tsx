@@ -54,7 +54,7 @@ export type AppointRoleModalProps = {
 
 function roleOptions() {
   // 固定：管理员/主席/部长/干事（通常任命不会给“普通学生”，但你也可保留）
-  const allow: Role[] = [0, 1, 2, 3];
+  const allow: Role[] = [1, 2, 3];
   return allow.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
 }
 
