@@ -276,10 +276,6 @@ export function ColumnSettings<T extends object = any>(
               );
             })}
           </div>
-
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            提示：列显示/顺序偏好由 useColumnPrefs 负责记住（localStorage）。
-          </Typography.Text>
         </Space>
       </Modal>
     </>

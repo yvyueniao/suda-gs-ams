@@ -198,10 +198,6 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
         >
           <Select placeholder="请选择职务" options={roleOptions()} />
         </Form.Item>
-
-        <Text type="secondary">
-          提示：姓名联想使用分页接口兜底搜索；请先选择联想项再提交。
-        </Text>
       </Form>
     </Modal>
   );
