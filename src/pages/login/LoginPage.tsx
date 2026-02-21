@@ -1,6 +1,7 @@
 // src/pages/login/LoginPage.tsx
-import { useState } from "react";
-import { Card, Form, Input, Button, Typography } from "antd";
+import { useMemo, useState } from "react";
+import { Button, Card, Form, Input, Typography } from "antd";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLogin } from "../../features/auth/hooks/useLogin";
@@ -51,62 +52,109 @@ export default function LoginPage() {
     form.getFieldValue("username") ?? "",
   ).trim();
 
+  const featureList = useMemo(
+    () => [
+      "活动/讲座报名与候补全流程",
+      "管理员端活动管理与审核闭环",
+      "反馈中心：对话 + 附件 + 结束反馈",
+    ],
+    [],
+  );
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#f5f5f5",
-      }}
-    >
-      <Card style={{ width: 380 }}>
-        <Typography.Title level={4} style={{ textAlign: "center" }}>
-          苏州大学计算机学院
-          <br />
-          研究生会活动管理系统
-        </Typography.Title>
+    <div className="auth-page">
+      <div className="auth-container">
+        {/* 左侧品牌区 */}
+        <section className="auth-brand">
+          <img
+            className="auth-brand-logo"
+            src="/logo.ico"
+            alt="苏州大学计算机学院"
+          />
 
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="username"
-            label="账号"
-            rules={[
-              { required: true, message: "请输入账号" },
-              { pattern: /^\d{11}$/, message: "账号必须为 11 位数字" },
-            ]}
-          >
-            <Input
-              placeholder="请输入 11 位账号"
-              maxLength={11}
-              inputMode="numeric"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="密码"
-            rules={[{ required: true, message: "请输入密码" }]}
-          >
-            <Input.Password placeholder="请输入密码" />
-          </Form.Item>
-
-          <Button
-            type="primary"
-            block
-            loading={loginAction.loading}
-            onClick={handleSubmit}
-            style={{ marginTop: 8 }}
-          >
-            登录
-          </Button>
-
-          <div style={{ textAlign: "right", marginTop: 12 }}>
-            <Typography.Link onClick={openForgot}>忘记密码？</Typography.Link>
+          <div className="auth-brand-title">研究生会活动管理系统</div>
+          <div className="auth-brand-subtitle">
+            苏州大学计算机学院研究生会 · 活动管理平台
           </div>
-        </Form>
-      </Card>
+
+          <ul className="auth-brand-features">
+            {featureList.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 右侧登录卡 */}
+        <section className="auth-card-wrapper">
+          <Card className="auth-card" bordered={false}>
+            <div className="auth-card-title">
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                登录
+              </Typography.Title>
+              <div className="auth-card-desc">
+                账号为 11 位学号；如无法登录请联系管理员
+              </div>
+            </div>
+
+            <Form
+              form={form}
+              layout="vertical"
+              requiredMark={false}
+              onFinish={handleSubmit}
+            >
+              <Form.Item
+                name="username"
+                label="账号"
+                rules={[
+                  { required: true, message: "请输入账号" },
+                  { pattern: /^\d{11}$/, message: "账号必须为 11 位数字" },
+                ]}
+              >
+                <Input
+                  prefix={<UserOutlined />}
+                  placeholder="请输入 11 位账号"
+                  maxLength={11}
+                  inputMode="numeric"
+                  autoComplete="username"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="password"
+                label="密码"
+                rules={[{ required: true, message: "请输入密码" }]}
+              >
+                <Input.Password
+                  prefix={<LockOutlined />}
+                  placeholder="请输入密码"
+                  autoComplete="current-password"
+                  onPressEnter={handleSubmit}
+                />
+              </Form.Item>
+
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={loginAction.loading}
+                className="auth-login-btn"
+              >
+                {loginAction.loading ? "登录中..." : "登录"}
+              </Button>
+
+              <div className="auth-forgot">
+                <Typography.Link onClick={openForgot}>
+                  忘记密码？
+                </Typography.Link>
+              </div>
+
+              <div className="auth-footer">
+                © 2026 苏州大学计算机学院研究生会
+              </div>
+            </Form>
+          </Card>
+        </section>
+      </div>
 
       <ForgotPasswordModal
         open={forgotOpen}
