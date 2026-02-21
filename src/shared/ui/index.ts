@@ -1,3 +1,5 @@
+// src/shared/ui/index.ts
+
 /**
  * ============================================
  * shared/ui
@@ -23,6 +25,18 @@ export { confirmAsync, type ConfirmAsyncOptions } from "./confirmAsync";
 /* =========================
  * notify
  * ========================= */
+
+import { message } from "antd";
+import { createAntdNotify } from "./notify";
+
+/**
+ * 默认 notify 实例（基于 antd message）
+ *
+ * 说明：
+ * - 统一封装 message.success / error / info
+ * - 未来如果切换 UI 库，只需要改这里
+ */
+export const notify = createAntdNotify(message);
 
 export {
   type Notify,

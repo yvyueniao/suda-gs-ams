@@ -18,6 +18,8 @@ import ActivityAdminDetailPage from "./pages/activity-admin/ActivityAdminDetailP
 
 import FeedbackCenterPage from "./pages/feedback-center/FeedbackCenterPage";
 import FeedbackAdminPage from "./pages/feedback-admin/FeedbackAdminPage";
+import FeedbackDetailPage from "./pages/feedback/FeedbackDetailPage";
+
 import ProfilePage from "./pages/profile/ProfilePage";
 import UserManagePage from "./pages/rbac/user/UserManagePage";
 import AdminManagePage from "./pages/rbac/admin/AdminManagePage";
@@ -60,7 +62,18 @@ export default function App() {
             element={<ActivityDetailPage />}
           />
 
+          {/* ✅ 反馈中心（普通用户列表页） */}
           <Route path="/feedback-center" element={<FeedbackCenterPage />} />
+
+          {/* ✅ 隐藏路由：反馈详情（聊天页，不挂菜单）
+              - 普通用户从 /feedback-center 进入
+              - 管理员也可能从 /feedback-admin 进入
+           */}
+          <Route
+            path="/feedback/detail/:sessionId"
+            element={<FeedbackDetailPage />}
+          />
+
           <Route path="/profile" element={<ProfilePage />} />
 
           {/* ===== 活动管理 / 反馈处理：干事及以上 ===== */}
@@ -73,6 +86,7 @@ export default function App() {
               element={<ActivityAdminDetailPage />}
             />
 
+            {/* ✅ 反馈处理（管理员列表页） */}
             <Route path="/feedback-admin" element={<FeedbackAdminPage />} />
           </Route>
 
