@@ -84,7 +84,8 @@ export default function FeedbackDetailPage() {
 
   const me = getUser();
   const myUsername = me?.username ?? "";
-  const canClose = me?.role === 0; // ✅ 结束按钮只有管理员能看到
+  const role = Number(me?.role);
+  const canClose = !!me && role !== 4; // ✅ 只要不是普通学生，都显示结束按钮
 
   const pageTitle = useMemo(() => {
     return stateFromList.title ? stateFromList.title : "反馈详情";
