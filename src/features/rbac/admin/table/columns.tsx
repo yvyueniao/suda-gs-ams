@@ -101,7 +101,7 @@ export function buildAdminMemberColumns(params: {
     {
       title: "操作",
       key: "actions",
-      width: 140,
+      width: 100,
       fixed: "right",
       render: (_: unknown, record) => (
         <ActionCell

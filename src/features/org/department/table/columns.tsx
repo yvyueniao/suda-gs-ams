@@ -32,7 +32,7 @@ export function buildDepartmentColumns(
     {
       title: "操作",
       key: "actions",
-      width: 140,
+      width: 80,
       fixed: "right",
       render: (_: unknown, record: DepartmentItem) => (
         <ActionCell

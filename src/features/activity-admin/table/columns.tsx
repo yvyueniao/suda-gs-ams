@@ -188,7 +188,7 @@ export function buildActivityAdminColumns(
     {
       title: "操作",
       key: "actions",
-      width: 200,
+      width: 140,
       fixed: "right",
       render: (_: unknown, record: ManageableActivityItem) => (
         <ActionCell

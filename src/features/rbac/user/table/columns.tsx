@@ -132,7 +132,7 @@ export function buildUserColumns(params: {
     {
       title: "操作",
       key: "actions",
-      width: 180,
+      width: 130,
       fixed: "right",
       render: (_: unknown, record) => {
         const isNormal = record.invalid === true; // 正常

@@ -216,7 +216,7 @@ export function buildEnrollColumns(
     {
       title: "操作",
       key: "actions",
-      width: 220,
+      width: 140,
       fixed: "right",
       render: (_: unknown, record: EnrollTableRow) => {
         const signOk = inSignWindow(record, nowMs);
