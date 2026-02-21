@@ -9,6 +9,8 @@ import {
   ColumnSettings,
 } from "../../shared/components/table";
 
+import { useAsyncMapAction } from "../../shared/actions";
+
 import { useDepartmentManage } from "../../features/org/department/hooks/useDepartmentManage";
 import { buildDepartmentColumns } from "../../features/org/department/table/columns";
 import { departmentColumnPresets } from "../../features/org/department/table/presets";
@@ -23,13 +25,28 @@ export default function OrgPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
 
+  /**
+   * ✅ 删除行内动作：按 id 独立 loading + 成功/失败提示
+   * - 成功：展示后端返回的 data（string，比如“成功删除1条数据”）
+   * - 失败：ApiError.message（后端 msg）由 useAsyncMapAction 内部统一 toast
+   */
+  const del = useAsyncMapAction<number, string>({
+    successMessage: (_id, result) => String(result ?? "").trim() || "删除成功",
+    errorMessage: "删除失败",
+  });
+
   const columns = useMemo(() => {
     const base = buildDepartmentColumns({
-      onDelete: (record) => m.submitDelete({ departmentId: record.id }), // ✅ 按接口 payload
+      /** ✅ 行级 loading */
+      isDeleting: (id) => del.isLoading(id),
+
+      /** ✅ 点击“删除” -> ActionCell confirm -> 执行异步删除 + toast */
+      onDelete: (record) =>
+        del.run(record.id, () => m.submitDelete({ departmentId: record.id })), // ✅ 按接口 payload
     });
 
     return t.applyPresetsToAntdColumns(base);
-  }, [m, t]);
+  }, [m, t, del]);
 
   return (
     <Card>

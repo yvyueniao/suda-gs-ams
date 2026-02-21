@@ -11,6 +11,7 @@
  * - ✅ 只做业务编排，不做 UI（不 message、不 Modal）
  * - ✅ 不维护按钮 loading（交给 shared/actions）
  * - ✅ 创建/删除成功后，触发 table.reload() 刷新列表
+ * - ✅ 返回后端 data（通常为 string），供页面层提示使用
  */
 
 import { useCallback } from "react";
@@ -25,18 +26,28 @@ import { useDepartmentTable } from "./useDepartmentTable";
 export function useDepartmentManage() {
   const table = useDepartmentTable();
 
+  /**
+   * 创建部门
+   * - 返回后端 data（string）
+   */
   const submitCreate = useCallback(
     async (payload: CreateDepartmentPayload) => {
-      await createDepartment(payload);
+      const serverMsg = await createDepartment(payload); // data: string
       await table.reload();
+      return serverMsg;
     },
     [table],
   );
 
+  /**
+   * 删除部门
+   * - 返回后端 data（string）
+   */
   const submitDelete = useCallback(
     async (payload: DeleteDepartmentPayload) => {
-      await deleteDepartment(payload);
+      const serverMsg = await deleteDepartment(payload); // data: string
       await table.reload();
+      return serverMsg;
     },
     [table],
   );
