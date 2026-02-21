@@ -11,6 +11,7 @@ import {
   getPrimaryActionMeta,
   getApplyStateTagMeta,
   getCancelConfirmMeta,
+  type CancelConfirmMetaPayload, // ✅ 新增：消灭 as any
 } from "./helpers";
 
 type BuildColumnsParams = {
@@ -220,22 +221,31 @@ export function buildEnrollColumns(
         const primary = getPrimaryActionMeta(record.applyState);
         const isCancel = primary.isCancel;
 
-        const primaryDisabled = isCancel ? !signOk : false;
+        /**
+         * ✅ 关键改动：报名/取消统一受报名时间窗控制
+         * - 取消：窗外禁用（你原本就这么做）
+         * - 报名：窗外也禁用（你新增的需求）
+         */
+        const primaryDisabled = !signOk;
+
+        // ✅ 给禁用原因（给 confirm 文案用；你也可以扩展到 tooltip/extra 文案）
+        const reason = !signOk ? "不在报名时间范围内" : undefined;
+
         const primaryLoading = isCancel
           ? isCanceling?.(record.id)
           : isRegistering?.(record.id);
 
-        const reason = isCancel && !signOk ? "不在报名时间范围内" : undefined;
-
+        // ✅ 取消动作二次确认（保留原逻辑）
         const confirm = isCancel
           ? getCancelConfirmMeta({
               primaryText: primary.text,
               activityName: record.name,
               reason,
-            } as any)
+            } satisfies CancelConfirmMetaPayload)
           : undefined;
 
         const onClick = () => {
+          if (primaryDisabled) return; // ✅ 双保险：即使某些场景 disabled 没生效，也不执行
           if (!isCancel) return onRegister(record);
           return onCancel(record);
         };

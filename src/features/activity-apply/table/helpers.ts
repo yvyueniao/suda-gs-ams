@@ -25,8 +25,9 @@
  * - 取消报名 12 小时限制逻辑
  *
  * ✅ 本次修复点：
- * - getCancelConfirmMeta 支持 reason?: string（用于“报名时间窗外”提示）
- *   解决：页面传入 reason 报 TS 错误的问题
+ * 1) 导出 CancelConfirmMetaPayload（让 columns.tsx 不需要 as any）
+ * 2) matchFilters 去掉 as any：用“按字段匹配”的类型安全实现
+ * 3) 新增 getSignWindowReason：统一生成“报名时间窗外”的禁用原因（可选用）
  */
 
 import type {
@@ -55,6 +56,17 @@ export function inSignWindow(
   nowMs: number,
 ) {
   return isInTimeWindow(activity.signStartTime, activity.signEndTime, nowMs);
+}
+
+/**
+ * ✅ 可选复用：统一的“报名时间窗”禁用原因
+ * - 在窗外返回文案，在窗内返回 undefined
+ */
+export function getSignWindowReason(
+  activity: Pick<ActivityItem, "signStartTime" | "signEndTime">,
+  nowMs: number,
+): string | undefined {
+  return inSignWindow(activity, nowMs) ? undefined : "不在报名时间范围内";
 }
 
 /* =====================================================
@@ -274,10 +286,8 @@ function inRange(targetMs: number | null, range?: [number, number]) {
   return targetMs >= start && targetMs <= end;
 }
 
-/** filters 值可能是标量或数组，这里做统一判断（兼容 antd FilterValue） */
-function matchValue<T>(rowVal: T, filterVal: T | T[] | undefined): boolean {
+function matchScalarOrArray<T>(rowVal: T, filterVal?: T | T[]) {
   if (filterVal == null) return true;
-
   return Array.isArray(filterVal)
     ? filterVal.includes(rowVal)
     : rowVal === filterVal;
@@ -296,10 +306,10 @@ export function matchFilters(
 ): boolean {
   if (!filters) return true;
 
-  if (!matchValue(row.department, filters.department as any)) return false;
-  if (!matchValue(row.type, filters.type as any)) return false;
-  if (!matchValue(row.state, filters.state as any)) return false;
-  if (!matchValue(row.applyState, filters.applyState as any)) return false;
+  if (!matchScalarOrArray(row.department, filters.department)) return false;
+  if (!matchScalarOrArray(row.type, filters.type)) return false;
+  if (!matchScalarOrArray(row.state, filters.state)) return false;
+  if (!matchScalarOrArray(row.applyState, filters.applyState)) return false;
 
   if (!inRange(parseTimeMs(row.signStartTime), filters.signStartRange))
     return false;

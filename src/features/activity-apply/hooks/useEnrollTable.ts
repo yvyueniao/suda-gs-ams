@@ -104,6 +104,14 @@ export function useEnrollTable(options?: {
    * - 当列表页不显式传 onCancel 时，依旧可以通过 flow 来实现“取消成功/失败 toast”
    */
   applyFlow?: ReturnType<typeof useApplyFlow>;
+
+  /**
+   * ✅ 新增：由外部传入 nowMs
+   * 用途：
+   * - 让列表页“报名时间窗禁用”有一个明确的时间口径
+   * - 避免 columns.tsx 自己 Date.now() 导致不刷新/不可控
+   */
+  nowMs?: number;
 }) {
   const bizKey = "activityApply.list";
 
@@ -189,6 +197,9 @@ export function useEnrollTable(options?: {
   // =========================
   const columns = useMemo(() => {
     const base = buildEnrollColumns({
+      // ✅ 新增：nowMs 统一注入（给“报名窗外禁用”/“取消窗外禁用”共用）
+      nowMs: options?.nowMs ?? Date.now(),
+
       onDetail: (row) => options?.onOpenDetail?.(row.id),
 
       // ✅ 报名：优先走页面层注入（通常是 flow.startRegister → 弹窗结果）
@@ -216,6 +227,7 @@ export function useEnrollTable(options?: {
 
     return columnPrefs.applyPresetsToAntdColumns(base);
   }, [
+    options?.nowMs,
     options?.onOpenDetail,
     options?.onRegister,
     options?.onCancel,

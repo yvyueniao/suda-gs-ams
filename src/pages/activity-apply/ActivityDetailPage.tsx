@@ -138,9 +138,8 @@ export default function ActivityDetailPage() {
   const isCancel = primary.isCancel;
 
   /**
-   * nowMs：用于“报名时间窗内才能取消”的前置禁用
-   * - 你现在不用 12h 限制了，所以只需要这个判断
-   * - 这里用 useMemo 让它在“详情/状态变化”时更新一次即可
+   * nowMs：用于“报名时间窗”判断
+   * - 这里仍然保持你原来的策略：在“详情/状态变化”时更新一次
    */
   const nowMs = useMemo(() => Date.now(), [detail?.id, applyState]);
 
@@ -156,20 +155,23 @@ export default function ActivityDetailPage() {
   }, [detail, nowMs]);
 
   /**
-   * ✅ 取消限制（已按你要求删除 12h 规则）：
-   * - 报名：不前置禁用（交给后端 msg + 报名结果弹窗）
-   * - 取消：只做“报名时间窗”限制
+   * ✅ 报名/取消 都受 “报名时间窗” 影响：
+   * - 报名：窗外禁用（灰色不可点）
+   * - 取消：窗外禁用（灰色不可点）
+   *
+   * 说明：
+   * - 你现在删除了 12h 规则，所以这里只看 signOk
    */
   const primaryDisabled = useMemo(() => {
     if (!detail) return true;
-    return isCancel ? !signOk : false;
-  }, [detail, isCancel, signOk]);
+    return !signOk; // ✅ 核心变化：不管报名还是取消，只要不在时间窗就禁用
+  }, [detail, signOk]);
 
   const primaryReason = useMemo(() => {
-    if (!isCancel) return undefined;
+    if (!detail) return "暂无详情数据";
     if (!signOk) return "不在报名时间范围内";
     return undefined;
-  }, [isCancel, signOk]);
+  }, [detail, signOk]);
 
   const primaryLoading = useMemo(() => {
     if (activityId == null) return false;
@@ -178,6 +180,9 @@ export default function ActivityDetailPage() {
 
   const onPrimaryClick = useCallback(async () => {
     if (activityId == null || !detail) return;
+
+    // ✅ 双保险：即使未来 Button disabled 逻辑改了，这里也不会误触发请求
+    if (!signOk) return;
 
     // ✅ 报名：走 flow（必弹成功/失败弹窗）
     if (!isCancel) {
@@ -201,7 +206,7 @@ export default function ActivityDetailPage() {
         await applyFlow.startCancelWithNotify(activityId);
       },
     });
-  }, [activityId, detail, isCancel, applyFlow, primary, primaryReason]);
+  }, [activityId, detail, signOk, isCancel, applyFlow, primary, primaryReason]);
 
   const resultKind =
     applyFlow.modal.kind === "REGISTER_OK"
@@ -247,7 +252,8 @@ export default function ActivityDetailPage() {
           </Space>
         </Space>
 
-        {primaryDisabled && isCancel ? (
+        {/* ✅ 窗外禁用提示：报名/取消都提示 */}
+        {primaryDisabled ? (
           <div style={{ marginTop: 8 }}>
             <Text type="secondary">{primaryReason}</Text>
           </div>
