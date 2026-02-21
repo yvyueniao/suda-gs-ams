@@ -174,12 +174,14 @@ export function buildEnrollColumns(
       sorter: true,
     },
 
+    // ✅ 改动：已报名 -> 成功申请（成功报名 + 成功候补）
     {
-      title: "已报名",
-      dataIndex: "registeredNum",
-      key: "registeredNum",
-      width: 100,
+      title: "成功申请",
+      dataIndex: "successApplyNum",
+      key: "successApplyNum",
+      width: 110,
       sorter: true,
+      render: (v: number | undefined) => (typeof v === "number" ? v : "-"),
     },
 
     {
@@ -228,14 +230,14 @@ export function buildEnrollColumns(
          */
         const primaryDisabled = !signOk;
 
-        // ✅ 给禁用原因（给 confirm 文案用；你也可以扩展到 tooltip/extra 文案）
+        // ✅ 禁用原因（可用于文案/tooltip；目前用于 confirm 文案）
         const reason = !signOk ? "不在报名时间范围内" : undefined;
 
         const primaryLoading = isCancel
           ? isCanceling?.(record.id)
           : isRegistering?.(record.id);
 
-        // ✅ 取消动作二次确认（保留原逻辑）
+        // ✅ 取消动作二次确认（保留原逻辑，且消灭 as any）
         const confirm = isCancel
           ? getCancelConfirmMeta({
               primaryText: primary.text,
@@ -245,7 +247,7 @@ export function buildEnrollColumns(
           : undefined;
 
         const onClick = () => {
-          if (primaryDisabled) return; // ✅ 双保险：即使某些场景 disabled 没生效，也不执行
+          if (primaryDisabled) return; // ✅ 双保险
           if (!isCancel) return onRegister(record);
           return onCancel(record);
         };

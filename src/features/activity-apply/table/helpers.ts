@@ -25,9 +25,11 @@
  * - 取消报名 12 小时限制逻辑
  *
  * ✅ 本次修复点：
- * 1) 导出 CancelConfirmMetaPayload（让 columns.tsx 不需要 as any）
- * 2) matchFilters 去掉 as any：用“按字段匹配”的类型安全实现
- * 3) 新增 getSignWindowReason：统一生成“报名时间窗外”的禁用原因（可选用）
+ * 1) ✅ mergeEnrollRows 补齐 successApplyNum（消灭 TS 报错：EnrollTableRow 缺字段）
+ * 2) 导出 CancelConfirmMetaPayload（让 columns.tsx 不需要 as any）
+ * 3) matchFilters 去掉 as any：用“按字段匹配”的类型安全实现
+ * 4) 新增 getSignWindowReason：统一生成“报名时间窗外”的禁用原因（可选用）
+ * 5) getSortValue 支持 successApplyNum 排序
  */
 
 import type {
@@ -120,6 +122,7 @@ export function buildMyApplicationMap(apps: MyApplicationItem[]) {
 /**
  * 把活动列表与“我的报名记录”拼成表格行（EnrollTableRow）
  * - 每行带上 myApplication + applyState（前端派生）
+ * - ✅ 补齐：successApplyNum（成功申请数 = 成功报名 + 成功候补）
  */
 export function mergeEnrollRows(
   activities: ActivityItem[],
@@ -131,10 +134,16 @@ export function mergeEnrollRows(
     const my = map.get(act.id);
     const applyState = deriveApplyActionState(my);
 
+    // ✅ 成功申请 = 成功报名(registeredNum) + 成功候补(candidateSuccNum)
+    const successApplyNum =
+      (typeof act.registeredNum === "number" ? act.registeredNum : 0) +
+      (typeof act.candidateSuccNum === "number" ? act.candidateSuccNum : 0);
+
     return {
       ...act,
       myApplication: my,
       applyState,
+      successApplyNum,
     };
   });
 }
@@ -313,13 +322,10 @@ export function matchFilters(
 
   if (!inRange(parseTimeMs(row.signStartTime), filters.signStartRange))
     return false;
-
   if (!inRange(parseTimeMs(row.signEndTime), filters.signEndRange))
     return false;
-
   if (!inRange(parseTimeMs(row.activityStime), filters.activityStartRange))
     return false;
-
   if (!inRange(parseTimeMs(row.activityEtime), filters.activityEndRange))
     return false;
 
@@ -381,6 +387,10 @@ export function getSortValue(
 
     case "candidateNum":
       return row.candidateNum ?? 0;
+
+    // ✅ 新增：成功申请排序（成功报名 + 成功候补）
+    case "successApplyNum":
+      return row.successApplyNum ?? 0;
 
     case "applyState": {
       const order: ApplyActionState[] = [

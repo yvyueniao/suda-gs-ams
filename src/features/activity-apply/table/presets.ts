@@ -13,6 +13,14 @@ import type { EnrollTableRow } from "../types";
  *
  * ❌ 不负责：
  * - sorter / filters / render（这些属于 antd columns，放到 columns.tsx）
+ *
+ * ✅ 本次修改：
+ * - 原“已报名（registeredNum）”改为“成功申请（successApplyNum）”
+ * - successApplyNum = 报名成功人数 + 候补成功人数
+ *
+ * ⚠️ 注意：
+ * - 若你修改了 key（registeredNum → successApplyNum）
+ *   记得在 useEnrollTable 中将 columnPrefs version +1
  */
 export const activityApplyTablePresets: TableColumnPreset<EnrollTableRow>[] = [
   { key: "id", title: "编号", width: 90 },
@@ -30,11 +38,14 @@ export const activityApplyTablePresets: TableColumnPreset<EnrollTableRow>[] = [
 
   { key: "location", title: "地点", width: 160 },
 
-  // ✅ 新增：分数/次数（后端字段就是 score）
+  // 分数/次数
   { key: "score", title: "分数/次数", width: 120 },
 
   { key: "fullNum", title: "总人数", width: 100 },
-  { key: "registeredNum", title: "已报名", width: 100 },
+
+  // ✅ 修改：成功申请 = 报名成功 + 候补成功
+  { key: "successApplyNum", title: "成功申请", width: 120 },
+
   { key: "candidateNum", title: "候补数", width: 100 },
 
   { key: "applyState", title: "我的报名状态", width: 140 },

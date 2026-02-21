@@ -29,7 +29,6 @@ import type {
 import {
   deriveApplyActionState,
   inSignWindow,
-  // ✅ 12h 取消限制已删除：这里不再 import canCancelBy12h
   getPrimaryActionMeta,
   getApplyStateTagMeta,
   getCancelConfirmMeta,
@@ -164,7 +163,7 @@ export default function ActivityDetailPage() {
    */
   const primaryDisabled = useMemo(() => {
     if (!detail) return true;
-    return !signOk; // ✅ 核心变化：不管报名还是取消，只要不在时间窗就禁用
+    return !signOk;
   }, [detail, signOk]);
 
   const primaryReason = useMemo(() => {
@@ -172,6 +171,29 @@ export default function ActivityDetailPage() {
     if (!signOk) return "不在报名时间范围内";
     return undefined;
   }, [detail, signOk]);
+
+  /**
+   * ✅ 成功申请数（成功报名 + 成功候补）
+   * - 优先使用后续在数据层补齐的 detail.successApplyNum
+   * - 若详情接口未补齐，则本地兜底计算
+   */
+  const successApplyNum = useMemo(() => {
+    if (!detail) return null;
+
+    if (typeof (detail as any).successApplyNum === "number") {
+      return (detail as any).successApplyNum as number;
+    }
+
+    const registeredNum =
+      typeof detail.registeredNum === "number" ? detail.registeredNum : 0;
+
+    const candidateSuccNum =
+      typeof (detail as any).candidateSuccNum === "number"
+        ? ((detail as any).candidateSuccNum as number)
+        : 0;
+
+    return registeredNum + candidateSuccNum;
+  }, [detail]);
 
   const primaryLoading = useMemo(() => {
     if (activityId == null) return false;
@@ -306,11 +328,14 @@ export default function ActivityDetailPage() {
                   label: "总人数",
                   children: detail.fullNum ?? "-",
                 },
+
+                // ✅ 关键改动：已报名 -> 成功申请（成功报名 + 成功候补）
                 {
-                  key: "registeredNum",
-                  label: "已报名",
-                  children: detail.registeredNum ?? "-",
+                  key: "successApplyNum",
+                  label: "成功申请",
+                  children: successApplyNum ?? "-",
                 },
+
                 {
                   key: "candidateNum",
                   label: "候补数",

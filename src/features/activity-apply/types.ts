@@ -14,6 +14,10 @@
  * - ActivityItem.state 仅表示“活动状态”
  * - MyApplicationItem.state 仅表示“报名状态”
  * - 表格里展示“我的报名状态”请使用 EnrollTableRow.applyState（前端派生）
+ *
+ * ✅ 本次新增：
+ * - EnrollTableRow.successApplyNum：成功申请人数（报名成功 + 候补成功）
+ *   用于列表“成功申请”列展示/排序/导出（避免污染后端 ActivityItem 模型）
  */
 
 export type ActivityType = 0 | 1; // 0: 活动 / 1: 讲座
@@ -63,10 +67,10 @@ export interface ActivityItem {
 
   state: ActivityState;
 
-  registeredNum: number;
-  candidateNum: number;
-  candidateSuccNum: number;
-  candidateFailNum: number;
+  registeredNum: number; // 报名成功人数
+  candidateNum: number; // 候补人数
+  candidateSuccNum: number; // 候补成功人数
+  candidateFailNum: number; // 候补失败人数
 }
 
 /* =====================================================
@@ -141,6 +145,12 @@ export interface EnrollTableRow extends ActivityItem {
 
   /** 前端派生状态（表格里展示/筛选“我的报名状态”以此为准） */
   applyState: ApplyActionState;
+
+  /**
+   * ✅ 成功申请人数（列表“成功申请”列使用）
+   * = registeredNum（报名成功） + candidateSuccNum（候补成功）
+   */
+  successApplyNum: number;
 }
 
 /* =====================================================
