@@ -19,8 +19,6 @@ export const ROLE_LABEL: Record<Role, string> = {
 /**
  * ======================================
  * ✅ 后端统一返回壳（通用）
- * - 你们接口文档统一：{ code, msg, data, timestamp }
- * - shared/http 若“解壳只返回 data”，这里依然可以用在需要保留壳的接口链路里（比如导入结果弹窗）
  * ======================================
  */
 export type ApiEnvelope<T> = {
@@ -47,7 +45,6 @@ export interface UserListItem {
 
   /**
    * ✅ 口径统一：invalid = true => 正常；false => 封锁
-   * （你已明确：true=正常）
    */
   invalid: boolean;
 
@@ -107,14 +104,7 @@ export interface UserCreatePayload {
 
 export type BatchInsertUserPayload = UserCreatePayload[];
 
-/**
- * ✅ 导入结果（按你后端现状：统一返回壳，data 通常是字符串提示）
- * 示例：
- * { code: 200, msg: "操作成功", data: "成功添加2条数据", timestamp: 1770010244887 }
- *
- * 如果未来后端把 data 改成结构化对象，也能兼容：
- * ApiEnvelope<string | { successCount: number; ... } | null>
- */
+/** ✅ 导入结果：按你后端现状，返回壳 */
 export type BatchInsertUserResult = ApiEnvelope<unknown>;
 
 /**
@@ -123,8 +113,7 @@ export type BatchInsertUserResult = ApiEnvelope<unknown>;
  * POST /user/batchDelete
  * ======================================
  */
-
-export type BatchDeleteUserPayload = string[]; // username[]
+export type BatchDeleteUserPayload = string[];
 
 /**
  * ======================================
@@ -132,8 +121,7 @@ export type BatchDeleteUserPayload = string[]; // username[]
  * POST /user/batchLock
  * ======================================
  */
-
-export type BatchLockUserPayload = string[]; // username[]
+export type BatchLockUserPayload = string[];
 
 /**
  * ======================================
@@ -141,7 +129,6 @@ export type BatchLockUserPayload = string[]; // username[]
  * POST /user/unlock
  * ======================================
  */
-
 export interface UnlockUserPayload {
   username: string;
 }
@@ -149,11 +136,9 @@ export interface UnlockUserPayload {
 /**
  * ======================================
  * 用户详情
- * ✅ 改为：POST /user/infoforUsername
- * 返回壳：{ code, msg, data: { ...UserInfo }, timestamp }
+ * POST /user/infoforUsername
  * ======================================
  */
-
 export interface UserInfo {
   id: number;
   username: string;
@@ -171,16 +156,12 @@ export interface UserInfo {
   createTime: string;
   lastLoginTime: string;
 
-  /** 详情接口里可能有，也可能没有（建议兼容可选） */
   serviceScore?: number;
   lectureNum?: number;
 
   department?: string | null;
 }
 
-/**
- * 详情接口返回壳（用于 /user/infoforUsername）
- */
 export type UserInfoForUsernameResult = ApiEnvelope<UserInfo>;
 
 /**
@@ -188,7 +169,6 @@ export type UserInfoForUsernameResult = ApiEnvelope<UserInfo>;
  * 导入预览模型（前端解析 xls 后使用）
  * ======================================
  */
-
 export interface UserImportPreviewRow {
   username: string;
   password: string;
@@ -197,3 +177,36 @@ export interface UserImportPreviewRow {
   major: string;
   grade: string;
 }
+
+/**
+ * ======================================
+ * ✅ 录入加分（/activity/special）
+ * ======================================
+ * 后端接口文档：
+ * url：/activity/special
+ * body：{ username, type, score }
+ * type：0:加社会服务分 / 1:加讲座次数
+ */
+export type SpecialScoreType = 0 | 1;
+
+export const SPECIAL_SCORE_TYPE_LABEL: Record<SpecialScoreType, string> = {
+  0: "社会服务分",
+  1: "讲座次数",
+};
+
+export interface SpecialScorePayload {
+  username: string;
+  type: SpecialScoreType;
+  score: number;
+}
+
+/** 返回壳（data 多半是字符串提示） */
+export type SpecialScoreResult = string;
+
+/**
+ * ✅ 姓名模糊搜索选项（用于 AutoComplete）
+ */
+export type UserNameOption = {
+  username: string;
+  name: string;
+};

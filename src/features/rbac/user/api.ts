@@ -1,4 +1,4 @@
-/**src\features\rbac\user\api.ts
+/** src/features/rbac/user/api.ts
  * ======================================
  * 用户管理 API
  * ======================================
@@ -22,6 +22,8 @@ import type {
   UnlockUserPayload,
   UserInfo,
   UserInfoForUsernameResult,
+  SpecialScorePayload,
+  SpecialScoreResult,
 } from "./types";
 
 /**
@@ -30,7 +32,6 @@ import type {
  * POST /user/pages
  * ======================================
  */
-
 export async function getUserPages(
   params: UserPagesQuery,
 ): Promise<{ list: UserListItem[]; total: number }> {
@@ -55,8 +56,6 @@ export async function getUserPages(
  * 2) 批量插入用户
  * POST /user/batchInsertUser
  * ======================================
- *
- * ✅ 注意：你们后端是“统一返回壳”，这里直接返回壳（给结果弹窗用）
  */
 export async function batchInsertUser(
   payload: BatchInsertUserPayload,
@@ -74,7 +73,6 @@ export async function batchInsertUser(
  * POST /user/insert
  * ======================================
  */
-
 export async function insertUser(payload: UserCreatePayload): Promise<void> {
   await request<void>({
     url: "/user/insert",
@@ -89,7 +87,6 @@ export async function insertUser(payload: UserCreatePayload): Promise<void> {
  * POST /user/batchDelete
  * ======================================
  */
-
 export async function batchDeleteUser(
   payload: BatchDeleteUserPayload,
 ): Promise<void> {
@@ -106,7 +103,6 @@ export async function batchDeleteUser(
  * POST /user/batchLock
  * ======================================
  */
-
 export async function batchLockUser(
   payload: BatchLockUserPayload,
 ): Promise<void> {
@@ -123,7 +119,6 @@ export async function batchLockUser(
  * POST /user/unlock
  * ======================================
  */
-
 export async function unlockUser(payload: UnlockUserPayload): Promise<void> {
   await request<void>({
     url: "/user/unlock",
@@ -134,29 +129,38 @@ export async function unlockUser(payload: UnlockUserPayload): Promise<void> {
 
 /**
  * ======================================
- * 7) 用户详情（✅ 按你截图改接口）
- * POST /user/infoforUsername
- * 请求体：{ username }
- * 返回：{ code, msg, data: UserInfo, timestamp }
+ * 7) 用户详情
+ * POST /user/inforUsername
  *
- * ✅ 注意：你们 shared/http 的 request 通常会“解壳只返回 data”
- * 但为了稳妥兼容两种情况，这里做一次适配：
- * - 若 request 已解壳：res 就是 UserInfo
- * - 若 request 未解壳：res 是 UserInfoForUsernameResult，需要取 res.data
+ * ✅ 按你们 shared/http/request 的规则：
+ * - 若后端是统一壳 => request 会解壳直接返回 data（也就是 UserInfo）
+ * - 所以这里不需要再兼容 “未解壳” 的情况
  * ======================================
  */
-
 export async function getUserInfo(username: string): Promise<UserInfo> {
-  const res = await request<UserInfo | UserInfoForUsernameResult>({
+  return request<UserInfo>({
     url: "/user/inforUsername",
     method: "POST",
     data: { username },
   });
+}
 
-  // 兼容：request 已解壳 / 未解壳
-  const anyRes = res as any;
-  if (anyRes && typeof anyRes === "object" && "data" in anyRes) {
-    return (anyRes.data ?? {}) as UserInfo;
-  }
-  return res as UserInfo;
+/**
+ * ======================================
+ * 8) ✅ 录入加分
+ * POST /activity/special
+ * body: { username, type, score }
+ *
+ * ✅ 后端统一壳：{ code, msg, data: string, timestamp }
+ * ✅ request 会解壳：这里只会拿到 data（string）
+ * ======================================
+ */
+export async function specialAddScore(
+  payload: SpecialScorePayload,
+): Promise<SpecialScoreResult> {
+  return request<SpecialScoreResult>({
+    url: "/activity/special",
+    method: "POST",
+    data: payload,
+  });
 }

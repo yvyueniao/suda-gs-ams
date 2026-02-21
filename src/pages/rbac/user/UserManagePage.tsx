@@ -16,23 +16,42 @@ import { insertUser } from "../../../features/rbac/user/api";
 import type { UserCreatePayload } from "../../../features/rbac/user/types";
 
 import { useUserManagePage } from "../../../features/rbac/user/hooks/useUserManagePage";
+import { useUserSpecialScore } from "../../../features/rbac/user/hooks/useUserSpecialScore";
 
 import CreateUserModal from "./CreateUserModal";
 import ImportUsersModal from "./ImportUsersModal";
 import ImportResultModal from "./ImportResultModal";
 import UserDetailDrawer from "./UserDetailDrawer";
+import SpecialScoreModal from "./SpecialScoreModal";
 
 const { Title } = Typography;
 
 /**
  * ✅ 导入结果适配：
- * - 你当前 useUserImportFlow.result.result 是结构化结果（successCount/failCount...）
- * - 但 ImportResultModal 的展示模型是统一返回壳（code/msg/data/timestamp）
- * - 所以这里做一层“展示适配”，不改 hooks 也能跑
+ * - ImportResultModal 需要：统一返回壳（code/msg/data/timestamp）
+ * - hooks 的 result.result 可能是结构化统计，也可能是后端壳（你们后端有时返回 data 文本）
+ * - 这里做“展示适配”，不改 hooks 也能跑
  */
 function adaptImportResult(result: any) {
   if (!result) return null;
 
+  // 若本身就是壳（code/msg/data/timestamp），直接用
+  if (
+    typeof result === "object" &&
+    result &&
+    typeof result.code === "number" &&
+    typeof result.msg === "string" &&
+    "data" in result
+  ) {
+    return {
+      code: result.code,
+      msg: result.msg,
+      data: result.data,
+      timestamp: Number(result.timestamp ?? Date.now()),
+    };
+  }
+
+  // 否则按“结构化统计”拼装展示
   const successCount = Number(result.successCount ?? 0);
   const failCount = Number(result.failCount ?? 0);
 
@@ -86,6 +105,15 @@ export default function UserManagePage() {
 
     importFlow,
   } = useUserManagePage({ onNotify: notify });
+
+  // ✅ 新增：录入加分（尽量不动旧逻辑：独立 hook + 独立弹窗）
+  const specialScore = useUserSpecialScore({
+    onNotify: notify,
+    onAfterSubmit: () => {
+      // 录入成功后（若你希望刷新列表）
+      table.reload();
+    },
+  });
 
   const hasSelection = selectedUsernames.length > 0;
 
@@ -141,7 +169,7 @@ export default function UserManagePage() {
     table.reload();
   };
 
-  // Import Flow（✅ 不再 any-乱取字段，按 hooks 的真实结构拿）
+  // Import Flow（✅ 按 hooks 真实结构拿）
   const previewOpen = !!importFlow.preview.open;
   const previewStats = importFlow.preview.stats ?? null;
 
@@ -171,6 +199,9 @@ export default function UserManagePage() {
           onReset={table.reset}
           right={
             <Space>
+              {/* ✅ 新增：录入加分 */}
+              <Button onClick={specialScore.openModal}>录入加分</Button>
+
               <Button onClick={importFlow.openPreview}>批量导入</Button>
 
               <Button type="primary" onClick={() => setCreateOpen(true)}>
@@ -240,6 +271,21 @@ export default function UserManagePage() {
         />
       </Card>
 
+      {/* ✅ 新增：录入加分弹窗 */}
+      <SpecialScoreModal
+        open={specialScore.open}
+        onClose={specialScore.closeModal}
+        submitting={specialScore.submitting}
+        searching={specialScore.searching}
+        value={specialScore.value}
+        options={specialScore.options}
+        onNameInput={specialScore.onNameInput}
+        onPickUser={specialScore.onPickUser}
+        onTypeChange={specialScore.onTypeChange}
+        onScoreChange={specialScore.onScoreChange}
+        onSubmit={specialScore.submit}
+      />
+
       {/* 创建用户 */}
       <CreateUserModal
         open={createOpen}
@@ -258,7 +304,6 @@ export default function UserManagePage() {
         onFileSelected={importFlow.parseFile}
         onConfirmImport={async () => {
           await importFlow.submitImportAndReload();
-          // submitImport 内部已 closePreview，这里不重复关也行
         }}
       />
 
@@ -272,13 +317,12 @@ export default function UserManagePage() {
         }}
       />
 
-      {/* 详情 Drawer（✅ 不再写死 /user/info；来源你按实际改成你截图里的接口） */}
+      {/* 详情 Drawer */}
       <UserDetailDrawer
         open={detail.open}
         onClose={closeDetail}
         loading={detail.loading}
         detail={detail.data ?? null}
-        sourceApi="/department/allMembers"
       />
     </Space>
   );
