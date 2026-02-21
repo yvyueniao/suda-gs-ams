@@ -145,30 +145,20 @@ export default function AppLayout() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* ✅ 用 layout.css 接管样式：渐变顶栏/hover/chip */}
+      <Header className="app-header">
+        <div className="app-header__left">
           <Button
             type="text"
             aria-label="menu"
             onClick={toggleNav}
             icon={navBtnIcon}
-            style={{ color: "#fff" }}
+            className="app-header__navbtn"
           />
           <Typography.Title
             level={4}
+            className="app-header__title"
             style={{
-              color: "#fff",
-              margin: 0,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
               maxWidth: isMobile ? 180 : 520,
             }}
           >
@@ -176,20 +166,16 @@ export default function AppLayout() {
           </Typography.Title>
         </div>
 
-        <Dropdown
-          menu={{ items: dropdownItems, onClick: onDropdownClick }}
-          trigger={["click"]}
-        >
-          <Typography.Text
-            style={{
-              color: "#fff",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
+        <div className="app-header__right">
+          <Dropdown
+            menu={{ items: dropdownItems, onClick: onDropdownClick }}
+            trigger={["click"]}
           >
-            {user?.name ?? "未登录"}（{user ? roleLabel(user.role) : "-"}）
-          </Typography.Text>
-        </Dropdown>
+            <span className="app-header__user">
+              {user?.name ?? "未登录"}（{user ? roleLabel(user.role) : "-"}）
+            </span>
+          </Dropdown>
+        </div>
       </Header>
 
       <Layout>
@@ -206,21 +192,15 @@ export default function AppLayout() {
         />
 
         <Content style={{ padding: isMobile ? 12 : 16 }}>
-          <Outlet />
+          {/* ✅ 内容容器：统一 maxWidth + 居中（不影响各页面内部布局） */}
+          <div className="app-content">
+            <Outlet />
+          </div>
         </Content>
       </Layout>
 
-      {/* ✅ 通用页脚 */}
-      <Footer
-        style={{
-          textAlign: "center",
-          fontSize: 12,
-          color: "rgba(0,0,0,0.45)",
-          padding: "12px 16px",
-          borderTop: "1px solid rgba(0,0,0,0.06)",
-          background: "#fff",
-        }}
-      >
+      {/* ✅ 通用页脚：更轻、更“自然落地” */}
+      <Footer className="app-footer">
         © {new Date().getFullYear()} 苏州大学计算机科学与技术学院 ·
         研究生会活动管理系统
       </Footer>

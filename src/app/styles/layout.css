@@ -1,0 +1,99 @@
+/* ====== 顶部 Header（深色专业版） ====== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 56px;
+  padding: 0 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  /* ✅ 深色系（专业后台风格） */
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+
+  /* 更克制的阴影 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Header 左侧区域 */
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Header 右侧区域 */
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 菜单按钮 */
+.app-header__navbtn {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 6px;
+}
+
+.app-header__navbtn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 标题 */
+.app-header__title {
+  color: rgba(255, 255, 255, 0.92) !important;
+  margin: 0 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ====== 用户信息（去掉椭圆包裹，改为纯文字） ====== */
+.app-header__user {
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  white-space: nowrap;
+
+  /* ❌ 去掉背景 / 边框 / padding */
+  padding: 0;
+  background: transparent;
+  border: none;
+
+  transition: color 0.15s ease;
+}
+
+.app-header__user:hover {
+  color: #ffffff;
+}
+
+/* ====== Footer ====== */
+.app-footer {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(17, 24, 39, 0.45);
+  padding: 12px 16px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+
+  /* 让 Footer 更“自然落地” */
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: saturate(180%) blur(6px);
+}
+
+/* ====== 小屏适配（可选微调） ====== */
+@media (max-width: 768px) {
+  .app-header {
+    height: 54px;
+    padding: 0 12px;
+  }
+
+  .app-header__user {
+    padding: 6px 8px;
+  }
+}

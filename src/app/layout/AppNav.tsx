@@ -59,7 +59,7 @@ export default function AppNav({
       selectedKeys={selectedKeys}
       items={menuItems}
       onClick={onMenuClick}
-      style={{ height: "100%" }}
+      className="app-menu"
     />
   );
 
@@ -71,8 +71,9 @@ export default function AppNav({
         placement="left"
         open={drawerOpen}
         onClose={onCloseDrawer}
-        bodyStyle={{ padding: 0 }}
         width={drawerWidth}
+        bodyStyle={{ padding: 0 }}
+        className="app-drawer"
       >
         {menu}
       </Drawer>
@@ -87,7 +88,7 @@ export default function AppNav({
       collapsible
       collapsed={collapsed}
       trigger={null} // 由 Header 按钮控制折叠
-      style={{ borderRight: "1px solid #f0f0f0" }}
+      className="app-sider"
     >
       {menu}
     </Sider>
