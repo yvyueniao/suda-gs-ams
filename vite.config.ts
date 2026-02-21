@@ -33,6 +33,13 @@ export default defineConfig(({ command, mode }) => {
       port: 5173, // ✅ 固定端口（建议固定，方便内网访问）
       strictPort: true, // ✅ 端口被占用直接报错，不自动换端口
 
+      // ✅ 允许通过 cpolar 域名访问（解决 Blocked request: host is not allowed）
+      // 推荐：放行整个 cpolar 后缀，避免每次域名变更都要改配置
+      allowedHosts: [".cpolar.top"],
+
+      // 如果你更想“只放行当前这个域名”，用下面这一行替换上面 allowedHosts 即可：
+      // allowedHosts: ["6566ca4f.r17.cpolar.top"],
+
       proxy: USE_MOCK
         ? undefined // 如果启用了 mock 服务，则不需要代理
         : {
