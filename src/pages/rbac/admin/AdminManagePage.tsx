@@ -1,4 +1,4 @@
-//src\pages\rbac\admin\AdminManagePage.tsx
+// src/pages/rbac/admin/AdminManagePage.tsx
 import { useEffect, useMemo, useRef } from "react";
 import { Button, Card, Space, Typography, message } from "antd";
 import type { FilterValue } from "antd/es/table/interface";
@@ -51,17 +51,35 @@ export default function AdminManagePage() {
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
       <Card
-        size="small"
         title={
-          <Title level={5} style={{ margin: 0 }}>
-            管理员管理
-          </Title>
+          <Space
+            style={{ width: "100%", justifyContent: "space-between" }}
+            align="center"
+            wrap
+          >
+            <Space direction="vertical" size={0}>
+              <Title level={4} style={{ margin: 0 }}>
+                管理员管理
+              </Title>
+            </Space>
+
+            {/* ✅ 主操作按钮移动到标题右侧 */}
+            <Button type="primary" onClick={() => void openAppointModal()}>
+              任命职务
+            </Button>
+          </Space>
         }
         bodyStyle={{ paddingTop: 12 }}
       >
         <TableToolbar
-          /** ✅ 新增：左侧标题，避免左侧空旷（写法对齐 OrgPage） */
-          left={<strong style={{ fontSize: 14 }}>管理员列表</strong>}
+          /** 左侧标题 */
+          left={
+            <Space>
+              <Title level={5} style={{ margin: 0 }}>
+                管理员列表
+              </Title>
+            </Space>
+          }
           showSearch
           keyword={table.query.keyword}
           onKeywordChange={table.setKeyword}
@@ -88,18 +106,14 @@ export default function AdminManagePage() {
                 onOrderChange={(columnPrefs as any).setOrderedKeys}
                 onReset={columnPrefs.resetToDefault}
               />
-
-              <Button type="primary" onClick={() => void openAppointModal()}>
-                任命职务
-              </Button>
             </Space>
           }
         />
 
         <SmartTable
           bizKey="rbac.admin.members"
-          enableColumnResize // ✅ 开启拖拽调整列宽
-          sticky // 可选：表头吸顶（和部门页一致就加）
+          enableColumnResize
+          sticky
           rowKey="username"
           columns={columns}
           dataSource={table.rows}
@@ -108,7 +122,6 @@ export default function AdminManagePage() {
           total={table.total}
           query={table.query}
           onQueryChange={table.onQueryChange}
-          /** ✅ 关键：把 filters 变化接住（否则筛选永远不进 q.query.filters） */
           onFiltersChange={(filters: Record<string, FilterValue | null>) => {
             table.onQueryChange({ filters });
           }}

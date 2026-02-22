@@ -150,6 +150,13 @@ export default function FeedbackCenterPage() {
           onReset={list.reset}
           onRefresh={list.reload}
           loading={list.loading}
+          left={
+            <Space>
+              <Title level={5} style={{ margin: 0 }}>
+                反馈列表
+              </Title>
+            </Space>
+          }
           right={
             <Space>
               <Button onClick={() => list.exportCsv()} loading={list.exporting}>

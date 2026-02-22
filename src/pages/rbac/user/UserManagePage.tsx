@@ -12,6 +12,8 @@ import {
 
 import { confirmAsync, createAntdNotify } from "../../../shared/ui";
 
+import { Can } from "../../../shared/components/guard/Can";
+
 import { insertUser } from "../../../features/rbac/user/api";
 import type { UserCreatePayload } from "../../../features/rbac/user/types";
 
@@ -110,7 +112,6 @@ export default function UserManagePage() {
   const specialScore = useUserSpecialScore({
     onNotify: notify,
     onAfterSubmit: () => {
-      // 录入成功后（若你希望刷新列表）
       table.reload();
     },
   });
@@ -182,31 +183,51 @@ export default function UserManagePage() {
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
       <Card
-        size="small"
         title={
-          <Title level={5} style={{ margin: 0 }}>
-            用户管理
-          </Title>
+          <Space
+            style={{ width: "100%", justifyContent: "space-between" }}
+            align="center"
+            wrap
+          >
+            <Space direction="vertical" size={0}>
+              <Title level={4} style={{ margin: 0 }}>
+                用户管理
+              </Title>
+            </Space>
+
+            {/* ✅ 主操作：标题右侧 */}
+            <Button type="primary" onClick={() => setCreateOpen(true)}>
+              创建用户
+            </Button>
+          </Space>
         }
         bodyStyle={{ paddingTop: 12 }}
       >
         <TableToolbar
-          left={<strong style={{ fontSize: 14 }}>用户列表</strong>}
+          left={
+            <Space>
+              <Title level={5} style={{ margin: 0 }}>
+                用户列表
+              </Title>
+            </Space>
+          }
           showSearch
           keyword={table.query.keyword}
           onKeywordChange={table.setKeyword}
           onRefresh={table.reload}
           onReset={table.reset}
+          // ✅ 选中信息区：让批量操作更“名正言顺”
+          selectedCount={selectedUsernames.length}
+          onClearSelection={() => setSelectedUsernames([])}
           right={
             <Space>
-              {/* ✅ 新增：录入加分 */}
+              {/* ✅ 正常显示：录入加分 */}
               <Button onClick={specialScore.openModal}>录入加分</Button>
 
-              <Button onClick={importFlow.openPreview}>批量导入</Button>
-
-              <Button type="primary" onClick={() => setCreateOpen(true)}>
-                创建用户
-              </Button>
+              {/* ✅ 仅管理员（role=0）可见：批量导入 */}
+              <Can roles={[0]}>
+                <Button onClick={importFlow.openPreview}>批量导入</Button>
+              </Can>
 
               <Button
                 disabled={!hasSelection}

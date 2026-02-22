@@ -51,13 +51,36 @@ export default function ActivityAdminPage() {
   }, [m, t]);
 
   return (
-    <Card>
-      <Title level={4} style={{ marginTop: 0 }}>
-        活动 / 讲座管理
-      </Title>
+    <Card
+      title={
+        <Space
+          style={{ width: "100%", justifyContent: "space-between" }}
+          align="center"
+          wrap
+        >
+          <Space direction="vertical" size={0}>
+            <Title level={4} style={{ margin: 0 }}>
+              活动/讲座管理
+            </Title>
+          </Space>
 
+          {/* ✅ 挪到标题右侧：创建按钮（保留权限控制） */}
+          <Can roles={[0, 1, 2]}>
+            <Button type="primary" onClick={m.modal.openCreate}>
+              新建活动 / 讲座
+            </Button>
+          </Can>
+        </Space>
+      }
+    >
       <TableToolbar
-        left={<strong style={{ fontSize: 14 }}>可管理活动列表</strong>}
+        left={
+          <Space>
+            <Title level={5} style={{ margin: 0 }}>
+              可管理的活动/讲座列表
+            </Title>
+          </Space>
+        }
         showSearch
         searchMode="change"
         debounceMs={300}
@@ -69,13 +92,7 @@ export default function ActivityAdminPage() {
         loading={t.loading}
         right={
           <Space>
-            {/* 创建：干事(3)不可见/不可操作；这里只做 UI 控制，后端仍必须鉴权 */}
-            <Can roles={[0, 1, 2]}>
-              <Button type="primary" onClick={m.modal.openCreate}>
-                新建活动 / 讲座
-              </Button>
-            </Can>
-
+            {/* ✅ 创建按钮已挪到 Card.title，这里只保留表格工具 */}
             <Button onClick={() => t.exportCsv()} loading={t.exporting}>
               导出 CSV
             </Button>

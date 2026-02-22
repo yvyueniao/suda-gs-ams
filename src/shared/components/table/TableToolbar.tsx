@@ -295,6 +295,7 @@ export function TableToolbar(props: TableToolbarProps) {
       <Space wrap>
         {showSearch && (
           <Input
+            size="small"
             allowClear
             disabled={effectiveSearchDisabled}
             placeholder={searchPlaceholder}

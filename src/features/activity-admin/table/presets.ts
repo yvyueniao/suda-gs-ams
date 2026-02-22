@@ -22,7 +22,7 @@ import type { ManageableActivityItem } from "../types";
 export const activityAdminColumnPresets: TableColumnPreset<ManageableActivityItem>[] =
   [
     // =============== 基础信息 ===============
-    { key: "id", title: "ID", width: 80 },
+    { key: "id", title: "ID", width: 80, hidden: true },
     { key: "name", title: "名称", width: 220 },
     { key: "type", title: "类型", width: 110 },
     { key: "state", title: "活动状态", width: 120 },

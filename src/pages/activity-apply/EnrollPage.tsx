@@ -16,7 +16,7 @@ import { activityApplyTablePresets } from "../../features/activity-apply/table/p
 import ApplyResultModal from "./ApplyResultModal";
 import SupplementApplyModal from "./SupplementApplyModal";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function EnrollPage() {
   const onNotify = useCallback(
@@ -33,92 +33,91 @@ export default function EnrollPage() {
   });
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }} size="middle">
-      <Card>
-        <Space style={{ width: "100%", justifyContent: "space-between" }} wrap>
-          <Title level={3} style={{ margin: 0 }}>
-            活动/讲座报名
-          </Title>
+    <Card
+      title={
+        <Space
+          style={{ width: "100%", justifyContent: "space-between" }}
+          align="center"
+        >
+          <Space direction="vertical" size={0}>
+            <Title level={4} style={{ margin: 0 }}>
+              活动/讲座报名
+            </Title>
+          </Space>
 
           <Button
             type="primary"
-            size="large"
+            size="middle"
             onClick={() => supplement.openSupplement()}
           >
             补报名
           </Button>
         </Space>
-      </Card>
+      }
+    >
+      <TableToolbar
+        keyword={table.query.keyword}
+        onKeywordChange={(kw) => table.setKeyword(kw)}
+        loading={table.loading}
+        showSearch
+        searchMode="change"
+        debounceMs={300}
+        left={
+          <Space>
+            <Title level={5} style={{ margin: 0 }}>
+              活动 / 讲座列表
+            </Title>
+          </Space>
+        }
+        right={
+          <Space>
+            <Button onClick={() => table.resetQuery()} disabled={table.loading}>
+              重置
+            </Button>
 
-      <Card>
-        <TableToolbar
-          keyword={table.query.keyword}
-          onKeywordChange={(kw) => table.setKeyword(kw)}
-          loading={table.loading}
-          showSearch
-          searchMode="change"
-          debounceMs={300}
-          left={
-            <Space>
-              <Text strong>活动 / 讲座列表</Text>
-            </Space>
-          }
-          right={
-            <Space>
-              <Button
-                onClick={() => table.resetQuery()}
-                disabled={table.loading}
-              >
-                重置
-              </Button>
+            <Button onClick={() => table.exportCsv()} disabled={table.loading}>
+              导出 CSV
+            </Button>
 
-              <Button
-                onClick={() => table.exportCsv()}
-                disabled={table.loading}
-              >
-                导出 CSV
-              </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => table.reload()}
+              loading={table.loading}
+            >
+              刷新
+            </Button>
 
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => table.reload()}
-                loading={table.loading}
-              >
-                刷新
-              </Button>
+            <ColumnSettings
+              presets={activityApplyTablePresets}
+              visibleKeys={table.columnPrefs.visibleKeys}
+              onChange={(keys) => table.columnPrefs.setVisibleKeys([...keys])}
+              orderedKeys={table.columnPrefs.orderedKeys}
+              onOrderChange={(keys) =>
+                table.columnPrefs.setOrderedKeys([...keys])
+              }
+              onReset={() => table.columnPrefs.resetToDefault()}
+              disabled={table.loading}
+            />
+          </Space>
+        }
+      />
 
-              <ColumnSettings
-                presets={activityApplyTablePresets}
-                visibleKeys={table.columnPrefs.visibleKeys}
-                onChange={(keys) => table.columnPrefs.setVisibleKeys([...keys])}
-                orderedKeys={table.columnPrefs.orderedKeys}
-                onOrderChange={(keys) =>
-                  table.columnPrefs.setOrderedKeys([...keys])
-                }
-                onReset={() => table.columnPrefs.resetToDefault()}
-                disabled={table.loading}
-              />
-            </Space>
-          }
-        />
+      <SmartTable<EnrollTableRow>
+        bizKey="activityApply.list"
+        enableColumnResize
+        sticky
+        columns={table.columns}
+        dataSource={table.dataSource}
+        rowKey="id"
+        total={table.total}
+        loading={table.loading}
+        error={table.error}
+        query={table.query}
+        onQueryChange={table.onQueryChange}
+        onFiltersChange={table.onFiltersChange}
+      />
 
-        <SmartTable<EnrollTableRow>
-          bizKey="activityApply.list"
-          enableColumnResize
-          sticky
-          columns={table.columns}
-          dataSource={table.dataSource}
-          rowKey="id"
-          total={table.total}
-          loading={table.loading}
-          error={table.error}
-          query={table.query}
-          onQueryChange={table.onQueryChange}
-          onFiltersChange={table.onFiltersChange}
-        />
-      </Card>
-
-      {/* 报名结果弹窗（保留：这是报名结果，不是详情） */}
+      {/* 报名结果弹窗 */}
       <ApplyResultModal
         open={applyFlow.modal.open}
         kind={
@@ -138,7 +137,7 @@ export default function EnrollPage() {
         candidating={applyFlow.modal.candidateLoading}
       />
 
-      {/* ✅ 补报名弹窗（reason 已删除，对齐“无 reason”版本 hook + modal） */}
+      {/* 补报名弹窗 */}
       <SupplementApplyModal
         open={supplement.modal.open}
         submitting={supplement.submitting}
@@ -153,6 +152,6 @@ export default function EnrollPage() {
         onChangeFileList={supplement.setFileList}
         onSubmit={supplement.submit}
       />
-    </Space>
+    </Card>
   );
 }

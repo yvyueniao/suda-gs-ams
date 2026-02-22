@@ -212,14 +212,20 @@ export default function ProfilePage() {
           <Card
             className="profile-activities-card"
             title={
-              <Title level={5} style={{ margin: 0 }}>
+              <Title level={4} style={{ margin: 0 }}>
                 我的活动/讲座
               </Title>
             }
             bodyStyle={{ paddingTop: 12 }}
           >
             <TableToolbar
-              left={<Text strong>报名记录</Text>}
+              left={
+                <Space>
+                  <Title level={5} style={{ margin: 0 }}>
+                    报名记录
+                  </Title>
+                </Space>
+              }
               showSearch
               searchMode="submit"
               keyword={t.query.keyword}

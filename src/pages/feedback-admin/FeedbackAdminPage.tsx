@@ -85,7 +85,6 @@ export default function FeedbackAdminPage() {
             <Title level={4} style={{ margin: 0 }}>
               反馈处理
             </Title>
-            <Text type="secondary">查看并处理所有用户的反馈会话</Text>
           </Space>
         }
       >
@@ -99,6 +98,13 @@ export default function FeedbackAdminPage() {
           loading={table.loading}
           onRefresh={table.reload}
           onReset={table.reset}
+          left={
+            <Space>
+              <Title level={5} style={{ margin: 0 }}>
+                反馈列表
+              </Title>
+            </Space>
+          }
           right={rightActions}
         />
 

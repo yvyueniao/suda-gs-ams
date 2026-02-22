@@ -15,7 +15,7 @@ export const USER_COLUMN_PRESETS: TableColumnPreset[] = [
   // =========================
   // 身份信息
   // =========================
-  { key: "id", title: "ID", width: 80 },
+  { key: "id", title: "ID", width: 80, hidden: true },
 
   { key: "username", title: "学号", width: 130 },
   { key: "name", title: "姓名", width: 110 },

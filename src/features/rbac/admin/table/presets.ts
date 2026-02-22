@@ -11,7 +11,7 @@ import type { TableColumnPreset } from "../../../../shared/components/table";
  * - email / menuPermission 不展示（不出现在 presets 中）
  */
 export const ADMIN_MEMBER_COLUMN_PRESETS: TableColumnPreset[] = [
-  { key: "id", title: "ID", width: 84 },
+  { key: "id", title: "ID", width: 84, hidden: true },
 
   { key: "username", title: "学号", width: 140 },
   { key: "name", title: "姓名", width: 120 },

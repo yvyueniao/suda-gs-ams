@@ -27,7 +27,7 @@ const mockUser = {
   username: "20254227087",
   name: "梁靖松",
   invalid: true,
-  role: 1,
+  role: 0,
 
   email: "123@qq.com",
   major: "软件工程",

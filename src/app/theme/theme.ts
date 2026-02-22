@@ -103,7 +103,7 @@ export const appTheme: ThemeConfig = {
      * Table：表头更清爽、边框更浅
      */
     Table: {
-      headerBg: "#F7F9FD",
+      headerBg: "#e5e6ec",
       headerColor: "#1f1f1f",
       borderColor: "#E9EDF5",
     },

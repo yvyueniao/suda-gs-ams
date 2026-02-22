@@ -13,6 +13,7 @@ import "./app/styles/feedback.css";
 import "./app/styles/profile.css";
 import "./app/styles/activity-admin.css";
 import "./app/styles/activity-apply.css";
+import "./app/styles/ty.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

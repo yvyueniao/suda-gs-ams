@@ -23,7 +23,7 @@ import type { EnrollTableRow } from "../types";
  *   记得在 useEnrollTable 中将 columnPrefs version +1
  */
 export const activityApplyTablePresets: TableColumnPreset<EnrollTableRow>[] = [
-  { key: "id", title: "编号", width: 90 },
+  { key: "id", title: "编号", width: 90, hidden: true },
 
   { key: "name", title: "名称", width: 240 },
   { key: "department", title: "发布部门", width: 160 },

@@ -156,12 +156,7 @@
 }
 
 .profile-activities-card .ant-table-thead > tr > th {
-  background: #f7f9fd;
   font-weight: 600;
-}
-
-.profile-activities-card .ant-table-tbody > tr:hover > td {
-  background: #fafcff;
 }
 
 /* =========================================================
