@@ -133,9 +133,6 @@ export default function FeedbackCenterPage() {
           <Button type="primary" onClick={openCreate}>
             创建反馈
           </Button>
-          <Button onClick={list.reload} disabled={list.loading}>
-            刷新
-          </Button>
         </Space>
       }
     >
