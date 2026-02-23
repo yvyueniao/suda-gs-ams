@@ -117,7 +117,7 @@ function toApiErrorFromAxios(error: AxiosError): ApiError {
 function createHttpClient(): AxiosInstance {
   const instance = axios.create({
     baseURL: BASE_URL,
-    timeout: 15000,
+    timeout: 150000,
     // ✅ 不要在这里写死 Content-Type: application/json
     //    否则 FormData 上传会被强行变成 JSON，后端解析失败
   });
