@@ -48,12 +48,14 @@ export const MENU_KEY_TO_PATH: Record<string, string> = {
  * - 返回“二级 key”（更稳定）
  * - 长路径优先匹配（避免前缀冲突）
  * - RBAC 默认高亮 user_manage
+ * - /feedback/detail 根据来源页区分
  */
 export function pathToMenuKey(pathname: string): string {
+  if (pathname.startsWith("/feedback/detail")) return "";
   // ===== 活动 / 报名 =====
   if (pathname.startsWith("/enroll")) return "apply_list";
 
-  // ===== 反馈 =====
+  // ===== 反馈中心 =====
   if (pathname.startsWith("/feedback-center")) return "my_feedback";
 
   // ===== 个人中心 =====

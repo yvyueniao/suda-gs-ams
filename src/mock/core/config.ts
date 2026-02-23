@@ -9,8 +9,8 @@ export type MockConfig = {
 export const mockConfig: MockConfig = {
   enabled: true,
   delayMs: { min: 50, max: 300 },
-  failRate: 0.05,
-  emptyRate: 0.03,
+  failRate: 0.01,
+  emptyRate: 0.01,
 };
 
 // 可选：让你在控制台/脚本里动态改（临时调试很爽）

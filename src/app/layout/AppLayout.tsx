@@ -1,11 +1,21 @@
 // src/app/layout/AppLayout.tsx
 import { useMemo } from "react";
-import { Layout, Typography, Dropdown, Spin, message, Button } from "antd";
+import {
+  Layout,
+  Typography,
+  Dropdown,
+  Spin,
+  message,
+  Button,
+  Space,
+} from "antd";
 import type { MenuProps } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
+  UserOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -16,14 +26,8 @@ import { useLogout } from "../../features/auth/hooks/useLogout";
 
 import AppNav from "./AppNav";
 import { useLayoutNav } from "../hooks/useLayoutNav";
-
-// ✅ 新增：菜单 key -> icon 的映射
 import { getMenuIcon } from "../menu/menuIconMap";
-
-// ✅ 异步动作编排（统一 toast + loading）
 import { useAsyncAction } from "../../shared/actions";
-
-// ✅ 二次确认弹窗（你们封装好的）
 import { confirmAsync } from "../../shared/ui/confirmAsync";
 
 const { Header, Content, Footer } = Layout;
@@ -52,19 +56,14 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ 初始化逻辑解耦：user/menu/loading/error 全部从 hook 来
   const { user, menuTree, loading } = useAppBootstrap();
-
-  // ✅ 退出逻辑（Pure）：只清 session + 跳转，不弹窗、不 toast
   const { logout } = useLogout();
 
-  // ✅ 退出异步编排：统一 toast + loading
   const logoutAction = useAsyncAction({
     successMessage: "已退出登录",
     errorMessage: "退出失败",
   });
 
-  // ✅ 导航交互状态解耦：是否移动端、折叠、抽屉开关
   const {
     isMobile,
     collapsed,
@@ -76,13 +75,11 @@ export default function AppLayout() {
 
   const menuItems = useMemo(() => buildAntdMenuItems(menuTree), [menuTree]);
 
-  // 菜单高亮：pathname -> 后端 menu key
   const selectedKeys = useMemo(() => {
     const key = pathToMenuKey(location.pathname);
     return key ? [key] : [];
   }, [location.pathname]);
 
-  // 点击菜单：后端 key -> 前端路由 path
   const onMenuClick: MenuProps["onClick"] = (e) => {
     const key = String(e.key);
     const path = MENU_KEY_TO_PATH[key];
@@ -93,31 +90,28 @@ export default function AppLayout() {
     }
 
     navigate(path);
-
-    // ✅ 移动端点完菜单自动收起抽屉
     afterNavigate();
   };
 
-  // 右上角下拉：个人中心 / 退出
+  // ✅ 下拉菜单：加 icon + 收紧宽度（不要跟触发按钮一样宽）
   const dropdownItems: MenuProps["items"] = useMemo(() => {
     return [
-      { key: "profile", label: "个人中心" },
+      { key: "profile", label: "个人中心", icon: <UserOutlined /> },
       { type: "divider" as const },
       {
         key: "logout",
-        label: logoutAction.loading ? "退出中..." : "退出",
+        label: logoutAction.loading ? "退出中..." : "退出登录",
+        icon: <LogoutOutlined />,
         disabled: logoutAction.loading,
       },
     ];
   }, [logoutAction.loading]);
 
-  // ✅ 下拉点击：加二次确认 + 统一异步编排
   const onDropdownClick: MenuProps["onClick"] = async ({ key }) => {
     if (key === "profile") {
       navigate("/profile");
       return;
     }
-
     if (key === "logout") {
       const ok = await confirmAsync({
         title: "确认退出登录？",
@@ -126,7 +120,6 @@ export default function AppLayout() {
         cancelText: "取消",
         danger: true,
       });
-
       if (!ok) return;
 
       await logoutAction.run(() => logout());
@@ -143,9 +136,10 @@ export default function AppLayout() {
     <MenuFoldOutlined />
   );
 
+  const userLabel = `${user?.name ?? "未登录"}（${user ? roleLabel(user.role) : "-"}）`;
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      {/* ✅ 用 layout.css 接管样式：渐变顶栏/hover/chip */}
       <Header className="app-header">
         <div className="app-header__left">
           <Button
@@ -158,9 +152,7 @@ export default function AppLayout() {
           <Typography.Title
             level={4}
             className="app-header__title"
-            style={{
-              maxWidth: isMobile ? 180 : 520,
-            }}
+            style={{ maxWidth: isMobile ? 180 : 520 }}
           >
             苏大计算机学院研究生会活动管理系统
           </Typography.Title>
@@ -168,12 +160,24 @@ export default function AppLayout() {
 
         <div className="app-header__right">
           <Dropdown
-            menu={{ items: dropdownItems, onClick: onDropdownClick }}
             trigger={["click"]}
+            overlayStyle={{ minWidth: "unset" }}
+            menu={{
+              items: dropdownItems,
+              onClick: onDropdownClick,
+              style: { minWidth: 160 },
+            }}
           >
-            <span className="app-header__user">
-              {user?.name ?? "未登录"}（{user ? roleLabel(user.role) : "-"}）
-            </span>
+            {/* ✅ 关键：直接内联强制白色，避免被全局样式覆盖 */}
+            <Button
+              type="text"
+              className="app-header__userbtn"
+              style={{ color: "rgba(255,255,255,0.92)" }}
+            >
+              <Space size={6}>
+                <span style={{ color: "inherit" }}>{userLabel}</span>
+              </Space>
+            </Button>
           </Dropdown>
         </div>
       </Header>
@@ -192,14 +196,12 @@ export default function AppLayout() {
         />
 
         <Content style={{ padding: isMobile ? 12 : 16 }}>
-          {/* ✅ 内容容器：统一 maxWidth + 居中（不影响各页面内部布局） */}
           <div className="app-content">
             <Outlet />
           </div>
         </Content>
       </Layout>
 
-      {/* ✅ 通用页脚：更轻、更“自然落地” */}
       <Footer className="app-footer">
         © {new Date().getFullYear()} 苏州大学计算机科学与技术学院 ·
         研究生会活动管理系统
