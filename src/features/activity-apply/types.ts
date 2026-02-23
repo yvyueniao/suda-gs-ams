@@ -18,9 +18,14 @@
  * ✅ 本次新增：
  * - EnrollTableRow.successApplyNum：成功申请人数（报名成功 + 候补成功）
  *   用于列表“成功申请”列展示/排序/导出（避免污染后端 ActivityItem 模型）
+ *
+ * ✅ 本次修复/增强：
+ * - ActivityDetailResponse：对齐后端 searchById 的 data 结构（{ activity: {...} }）
+ * - 增加一些通用 Response / Payload 类型别名，减少 any（不改后端字段）
  */
 
 export type ActivityType = 0 | 1; // 0: 活动 / 1: 讲座
+
 export type ActivityState = 0 | 1 | 2 | 3 | 4;
 /**
  * 0: 未开始
@@ -80,7 +85,7 @@ export interface ActivityItem {
 export interface ActivityDetail extends ActivityItem {}
 
 /**
- * searchById 返回结构：
+ * searchById 的 data 结构：
  * {
  *   activity: ActivityDetail
  * }

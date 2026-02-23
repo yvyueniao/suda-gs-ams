@@ -30,6 +30,9 @@
  * 3) matchFilters 去掉 as any：用“按字段匹配”的类型安全实现
  * 4) 新增 getSignWindowReason：统一生成“报名时间窗外”的禁用原因（可选用）
  * 5) getSortValue 支持 successApplyNum 排序
+ *
+ * ✅ 额外增强（不破坏你原逻辑）：
+ * - getSortValue 默认分支：尽量避免 any，改成 Record<string, unknown> 安全读取
  */
 
 import type {
@@ -405,9 +408,11 @@ export function getSortValue(
       return order.indexOf(row.applyState);
     }
 
-    default:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (row as any)[field] ?? null;
+    default: {
+      // ✅ 尽量避免 any：用“字典读取”兜底
+      const dict = row as unknown as Record<string, unknown>;
+      return dict[field] ?? null;
+    }
   }
 }
 

@@ -110,7 +110,7 @@ let activities: MockActivityItem[] = [
     department: "学术部",
     time: "2026-02-02 10:20:00",
     signStartTime: "2026-02-03 10:00:00",
-    signEndTime: "2026-02-15 10:00:00",
+    signEndTime: "2026-02-25 10:00:00",
     fullNum: 80,
     score: 5,
     location: "本部报告厅",

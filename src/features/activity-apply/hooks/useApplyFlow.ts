@@ -10,9 +10,16 @@
  * - ✅ 不直接 import antd message / Modal（不做 UI）
  * - ✅ 只暴露状态与回调，让页面层决定怎么展示
  * - ✅ 候补入口只存在于“报名失败弹窗”
+ *
+ * ✅ 本次修复点（按你说的“弹窗出现但实际没执行”来兜底）：
+ * 1) startRegister / startCancelWithNotify / startCandidateFromFailModal：
+ *    - 统一 try/catch：避免 request 抛错时直接让页面“看起来没执行”
+ *    - 失败时也能稳定写 modal.msg / notify
+ * 2) 让 onNotify 也能接收 info（可用于“窗外禁用”的提示等）
+ * 3) 对 enableCandidateInFailModal：state 初始化和 openRegisterFail 保持一致
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useApplyActions } from "./useApplyActions";
 import type { ApplyActionResult } from "./useApplyActions";
@@ -70,6 +77,10 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
   });
   const applyActions = externalActions ?? innerActions;
 
+  // ✅ 避免闭包拿到旧的 enableCandidateInFailModal（虽然你依赖数组写了，这里更稳）
+  const enableCandidateRef = useRef(enableCandidateInFailModal);
+  enableCandidateRef.current = enableCandidateInFailModal;
+
   const [modal, setModal] = useState<ApplyFlowModalState>({
     kind: "NONE",
     open: false,
@@ -87,6 +98,8 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
       activityId: null,
       activityName: undefined,
       msg: "",
+      // ✅ 关闭时不强行改 canCandidate，避免“下一次打开”出现奇怪闪烁
+      // canCandidate 由 openRegisterFail / openRegisterOk 决定
     }));
   }, []);
 
@@ -112,37 +125,59 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
         activityId: payload.id,
         activityName: payload.name,
         msg: payload.msg,
-        canCandidate: enableCandidateInFailModal,
+        canCandidate: enableCandidateRef.current,
       });
     },
-    [enableCandidateInFailModal],
+    [],
   );
 
   /**
    * ✅ 入口：点击“报名”按钮时调用
    * - 无论成功/失败都要弹窗（符合你的要求）
+   *
+   * ✅ 关键修复：try/catch
+   * - 有些情况下 request 会 throw（网络错/401/后端非 200）
+   * - 你如果不 catch，页面会“看起来点了但没执行”（其实是 Promise reject 了）
    */
   const startRegister = useCallback(
     async (
       row: Pick<EnrollTableRow, "id" | "name">,
     ): Promise<ApplyActionResult> => {
-      const res = await applyActions.register(row.id);
+      try {
+        const res = await applyActions.register(row.id);
 
-      if (res.ok) {
-        openRegisterOk({
-          id: row.id,
-          name: row.name,
-          msg: res.msg || "报名成功",
-        });
-      } else {
+        if (res.ok) {
+          openRegisterOk({
+            id: row.id,
+            name: row.name,
+            msg: res.msg || "报名成功",
+          });
+        } else {
+          openRegisterFail({
+            id: row.id,
+            name: row.name,
+            msg: res.msg || "报名失败",
+          });
+        }
+
+        return res;
+      } catch (e) {
+        // ✅ 兜底：即使异常，也给失败弹窗（并把错误信息尽量展示出来）
+        const msg =
+          e instanceof Error
+            ? e.message || "报名失败"
+            : typeof e === "string"
+              ? e
+              : "报名失败";
+
         openRegisterFail({
           id: row.id,
           name: row.name,
-          msg: res.msg || "报名失败",
+          msg,
         });
-      }
 
-      return res;
+        return { ok: false, kind: "REGISTER", activityId: row.id, msg };
+      }
     },
     [applyActions, openRegisterFail, openRegisterOk],
   );
@@ -153,6 +188,8 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
    * 1) 点击后先关闭弹窗
    * 2) 候补成功：非侵入提示 success
    * 3) 候补失败：非侵入提示 error + msg
+   *
+   * ✅ 修复：try/catch（同理，避免 promise reject 后“看起来没执行”）
    */
   const startCandidateFromFailModal = useCallback(async () => {
     const id = modal.activityId;
@@ -160,31 +197,56 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
 
     closeModal();
 
-    const res = await applyActions.candidate(id);
+    try {
+      const res = await applyActions.candidate(id);
 
-    if (res.ok) {
-      onNotify?.({ kind: "success", msg: res.msg || "候补成功" });
-    } else {
-      onNotify?.({ kind: "error", msg: res.msg || "候补失败" });
+      if (res.ok) {
+        onNotify?.({ kind: "success", msg: res.msg || "候补成功" });
+      } else {
+        onNotify?.({ kind: "error", msg: res.msg || "候补失败" });
+      }
+    } catch (e) {
+      const msg =
+        e instanceof Error
+          ? e.message || "候补失败"
+          : typeof e === "string"
+            ? e
+            : "候补失败";
+      onNotify?.({ kind: "error", msg });
     }
   }, [applyActions, closeModal, modal.activityId, onNotify]);
 
   /**
-   * ✅ 新增：取消动作（取消报名/取消候补/取消审核）
+   * ✅ 取消动作（取消报名/取消候补/取消审核）
    * - 二次确认在页面层/ActionCell 处理
    * - 这里负责：执行取消 + 最终成功/失败提示（toast）
+   *
+   * ✅ 修复：try/catch（避免异常时没有最终提示）
    */
   const startCancelWithNotify = useCallback(
     async (activityId: number): Promise<ApplyActionResult> => {
-      const res = await applyActions.cancel(activityId);
+      try {
+        const res = await applyActions.cancel(activityId);
 
-      if (res.ok) {
-        onNotify?.({ kind: "success", msg: res.msg || "取消成功" });
-      } else {
-        onNotify?.({ kind: "error", msg: res.msg || "取消失败" });
+        if (res.ok) {
+          onNotify?.({ kind: "success", msg: res.msg || "取消成功" });
+        } else {
+          onNotify?.({ kind: "error", msg: res.msg || "取消失败" });
+        }
+
+        return res;
+      } catch (e) {
+        const msg =
+          e instanceof Error
+            ? e.message || "取消失败"
+            : typeof e === "string"
+              ? e
+              : "取消失败";
+
+        onNotify?.({ kind: "error", msg });
+
+        return { ok: false, kind: "CANCEL", activityId, msg };
       }
-
-      return res;
     },
     [applyActions, onNotify],
   );
@@ -216,10 +278,10 @@ export function useApplyFlow(options: UseApplyFlowOptions = {}) {
     // ✅ 暴露 actions（给取消等继续用）
     applyActions,
 
-    // ✅ 报名入口（列表按钮调用这个）
+    // ✅ 报名入口（列表按钮/详情按钮调用这个）
     startRegister,
 
-    // ✅ 新增：取消入口（列表/详情页确认后调用这个，自动 toast）
+    // ✅ 取消入口（列表/详情页确认后调用这个，自动 toast）
     startCancelWithNotify,
 
     // ✅ 弹窗状态与事件

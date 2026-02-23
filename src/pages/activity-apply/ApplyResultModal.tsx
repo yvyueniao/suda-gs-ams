@@ -78,7 +78,7 @@ export default function ApplyResultModal(props: ApplyResultModalProps) {
       open={open}
       title={modalTitle(kind)}
       onCancel={onClose}
-      destroyOnClose
+      destroyOnHidden
       maskClosable={false}
       footer={
         <Space>
