@@ -27,7 +27,7 @@ import {
 import type { FeedbackSessionItem } from "../../features/feedback/types";
 import { useFeedbackListPage } from "../../features/feedback/hooks/useFeedbackListPage";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function FeedbackAdminPage() {
   const navigate = useNavigate();
