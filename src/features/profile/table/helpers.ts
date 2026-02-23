@@ -22,6 +22,9 @@
  * ✅ 与报名模块抽离对齐：
  * - 时间字段的排序/解析统一走 shared/utils/datetime
  *   这样避免不同模块各自写 Date.parse 导致兼容差异
+ *
+ * ✅ 本次修复：
+ * - applicationStateLabel 支持 0-5（报名模块已更新到 6 个状态：0~5）
  */
 
 import {
@@ -31,11 +34,7 @@ import {
 } from "../../../shared/components/table";
 
 import type { MyActivityFilters, MyActivityItem } from "../types";
-import {
-  ACTIVITY_TYPE_LABEL,
-  APPLICATION_STATE_LABEL,
-  // ACTIVITY_STATE_LABEL, // 如果你后面详情弹窗也在这里用，可以打开
-} from "../types";
+import { ACTIVITY_TYPE_LABEL, APPLICATION_STATE_LABEL } from "../types";
 
 import { parseTimeMs } from "../../../shared/utils/datetime";
 
@@ -50,8 +49,18 @@ export function activityTypeLabel(type?: number) {
 }
 
 export function applicationStateLabel(state?: number) {
-  if (state === 0 || state === 1 || state === 2 || state === 3)
-    return APPLICATION_STATE_LABEL[state];
+  // ✅ 支持 0-5
+  if (
+    state === 0 ||
+    state === 1 ||
+    state === 2 ||
+    state === 3 ||
+    state === 4 ||
+    state === 5
+  ) {
+    // Record<number,string> 下标访问时做一次兜底
+    return APPLICATION_STATE_LABEL[state as 0 | 1 | 2 | 3 | 4 | 5] ?? "-";
+  }
   return "-";
 }
 

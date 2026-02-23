@@ -64,12 +64,24 @@ export type ActivityType =
   | 0 // 活动
   | 1; // 讲座
 
-/** 报名状态（/activity/userApplications） */
+/**
+ * ✅ 报名状态（/activity/userApplications）
+ *
+ * 与活动报名模块对齐：
+ * 0: 报名成功
+ * 1: 候补中
+ * 2: 候补成功
+ * 3: 候补失败
+ * 4: 审核中
+ * 5: 审核失败
+ */
 export type ApplicationState =
   | 0 // 报名成功
   | 1 // 候补中
   | 2 // 候补成功
-  | 3; // 候补失败
+  | 3 // 候补失败
+  | 4 // 审核中
+  | 5; // 审核失败
 
 /** 个人中心 - 我的活动列表项（/activity/userApplications） */
 export interface MyActivityItem {
@@ -161,6 +173,8 @@ export const APPLICATION_STATE_LABEL: Record<ApplicationState, string> = {
   1: "候补中",
   2: "候补成功",
   3: "候补失败",
+  4: "审核中",
+  5: "审核失败",
 };
 
 export const ACTIVITY_STATE_LABEL: Record<ActivityState, string> = {

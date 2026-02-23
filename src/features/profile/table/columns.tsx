@@ -16,18 +16,29 @@ const { Text } = Typography;
 
 function activityTypeMeta(type: MyActivityItem["type"]) {
   return type === 0
-    ? { label: activityTypeLabel(type), color: "blue" }
-    : { label: activityTypeLabel(type), color: "purple" };
+    ? { label: activityTypeLabel(type), color: "blue" as const }
+    : { label: activityTypeLabel(type), color: "purple" as const };
 }
 
 function applyStateMeta(state: MyActivityItem["state"]) {
   const label = applicationStateLabel(state);
 
+  /**
+   * ✅ state 已更新为 0-5
+   * 0: 报名成功
+   * 1: 候补中
+   * 2: 候补成功
+   * 3: 候补失败
+   * 4: 审核中
+   * 5: 审核失败
+   */
   const colorMap: Record<number, string> = {
-    0: "success", // 报名成功
-    1: "processing", // 候补中
-    2: "success", // 候补成功
-    3: "error", // 候补失败
+    0: "success",
+    1: "processing",
+    2: "success",
+    3: "error",
+    4: "gold",
+    5: "error",
   };
 
   return {
@@ -38,8 +49,8 @@ function applyStateMeta(state: MyActivityItem["state"]) {
 
 function boolMeta(v: boolean | undefined) {
   return v
-    ? { label: boolLabel(v), color: "success" }
-    : { label: boolLabel(v), color: "default" };
+    ? { label: boolLabel(v), color: "success" as const }
+    : { label: boolLabel(v), color: "default" as const };
 }
 
 /* =====================================================
@@ -84,6 +95,8 @@ export function buildMyActivitiesColumns(
         { text: "候补中", value: 1 },
         { text: "候补成功", value: 2 },
         { text: "候补失败", value: 3 },
+        { text: "审核中", value: 4 },
+        { text: "审核失败", value: 5 },
       ],
       render: (v) => {
         const meta = applyStateMeta(v);

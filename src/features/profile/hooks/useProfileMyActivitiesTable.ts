@@ -29,6 +29,11 @@
  * ✅ 关键设计点
  * - 全量拉取 + 本地查询：分页/搜索/筛选不打接口，体验顺滑
  * - 详情请求防串线：用户连续点不同“详情”，旧请求返回不会覆盖新请求
+ *
+ * ✅ 本次补齐（你刚提到的“优先用后端返回信息”）
+ * - 后端可能返回：{ code:200, msg:"未找到活动", data:{activity:null} }
+ * - request<T>() 一般会“只解 data”，所以 getActivityDetail 可能拿到的是 null
+ * - 这里约定：detail 可以为 null，弹窗保持 open，UI 层用 Empty 展示（你现在的 ActivityDetailModal 已支持）
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -157,7 +162,10 @@ export function useProfileMyActivitiesTable() {
   // =====================================================
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // ✅ 关键：detail 允许为 null（“未找到活动”）
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
+
   const [currentRow, setCurrentRow] = useState<MyActivityItem | null>(null);
 
   /**
@@ -169,8 +177,6 @@ export function useProfileMyActivitiesTable() {
 
   /**
    * ✅ 行内异步动作：按 activityId 独立 loading（给 ActionCell 用）
-   * - successMessage 不需要（查看详情一般不 toast）
-   * - errorMessage 给一个统一兜底即可
    */
   const detailAction = useAsyncMapAction<number, void>({
     errorMessage: "加载详情失败",
@@ -179,7 +185,7 @@ export function useProfileMyActivitiesTable() {
   /**
    * ✅ openDetail：显式约束类型（避免 Promise<unknown>）
    * - 返回 Promise<void>（符合 MyActivitiesActions 定义）
-   * - 详情接口本身仍可能返回任意类型，但这里不会把它“作为返回值传出去”
+   * - 详情接口可能返回 null：此时弹窗保持 open，detail 置 null（UI 显示 Empty）
    */
   const openDetail = useCallback<MyActivitiesActions["openDetail"]>(
     async (activityId: number) => {
@@ -195,18 +201,16 @@ export function useProfileMyActivitiesTable() {
       setDetail(null);
 
       try {
-        // ✅ 关键：用 detailAction 包起来 => 按行 loading + 防连点
-        // 注意：这里 fn 明确返回 Promise<void>，避免 run 推断成 unknown
         await detailAction.run(activityId, async () => {
           const d = await getActivityDetail(activityId);
 
           // ✅ 只接受“最新一次”请求的结果
           if (detailReqIdRef.current !== reqId) return;
 
-          setDetail(d);
+          // ✅ 允许 d 为 null（后端返回 activity:null）
+          setDetail((d ?? null) as ActivityDetail | null);
         });
       } finally {
-        // ✅ 只结束“最新一次”请求的 loading（并且弹窗仍开着时）
         if (detailReqIdRef.current === reqId) {
           setDetailLoading(false);
         }
@@ -399,7 +403,7 @@ export function useProfileMyActivitiesTable() {
     openDetail,
     closeDetail,
 
-    // ✅ 新增：给 columns.tsx / 页面层使用
+    // ✅ 给 columns.tsx / 页面层使用
     detailAction,
 
     // 兼容
