@@ -69,10 +69,6 @@ export default function ForgotPasswordModal({
   const handleSendCode = () =>
     sendAction.run(async () => {
       const username = String(form.getFieldValue("username") ?? "").trim();
-      if (!/^\d{11}$/.test(username)) {
-        message.warning("账号必须为 11 位数字");
-        return false;
-      }
 
       const ok = await sendCode(username);
       // 倒计时中重复点：不提示、不报错
@@ -103,12 +99,9 @@ export default function ForgotPasswordModal({
         <Form.Item
           name="username"
           label="账号"
-          rules={[
-            { required: true, message: "请输入账号" },
-            { pattern: /^\d{11}$/, message: "账号必须为 11 位数字" },
-          ]}
+          rules={[{ required: true, message: "请输入账号" }]}
         >
-          <Input placeholder="请输入 11 位账号" maxLength={11} />
+          <Input placeholder="请输入账号" maxLength={15} />
         </Form.Item>
 
         <Form.Item

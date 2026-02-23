@@ -92,7 +92,7 @@ export default function LoginPage() {
                 登录
               </Typography.Title>
               <div className="auth-card-desc">
-                账号为 11 位学号；如无法登录请联系管理员
+                账号为学号；如无法登录请联系管理员
               </div>
             </div>
 
@@ -105,15 +105,12 @@ export default function LoginPage() {
               <Form.Item
                 name="username"
                 label="账号"
-                rules={[
-                  { required: true, message: "请输入账号" },
-                  { pattern: /^\d{11}$/, message: "账号必须为 11 位数字" },
-                ]}
+                rules={[{ required: true, message: "请输入账号" }]}
               >
                 <Input
                   prefix={<UserOutlined />}
-                  placeholder="请输入 11 位账号"
-                  maxLength={11}
+                  placeholder="请输入账号"
+                  maxLength={15}
                   inputMode="numeric"
                   autoComplete="username"
                 />
