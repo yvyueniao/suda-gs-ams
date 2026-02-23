@@ -43,7 +43,7 @@ export function useActivityAdminTable() {
 
   // ✅ 关键：把会用于 callback 的字段解构出来，避免依赖 [q]/[query] 导致 callback 每次 render 都变
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
-  const { page, pageSize, sorter, filters, keyword } = query;
+  const { pageSize, sorter, filters, keyword } = query;
 
   /**
    * 2️⃣ 拉取后端全量数据（全量模式：仅首次 + reload 时拉）

@@ -36,10 +36,6 @@ import "../../app/styles/activity-admin.css";
 
 const { Title, Text, Paragraph } = Typography;
 
-function typeText(type: ActivityType) {
-  return type === 0 ? "活动" : "讲座";
-}
-
 function renderTypeTag(type: ActivityType) {
   return type === 0 ? (
     <Tag color="blue">活动</Tag>
