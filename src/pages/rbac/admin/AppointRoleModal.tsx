@@ -83,30 +83,12 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
 
   const [form] = Form.useForm<AppointRoleFormValues>();
 
-  // 打开时：同步父层 values（父层负责强一致回填 name/username）
-  useEffect(() => {
-    if (!open) return;
-
-    // destroyOnClose 开着，其实每次 open 都是新表单；
-    // 这里仍保留 setFieldsValue，确保父层回填及时反映到 UI
-    if (!values) {
-      form.resetFields();
-      return;
-    }
-    form.setFieldsValue(values as any);
-  }, [open, values, form]);
-
-  const deptOptions = useMemo(() => {
-    return (departments ?? []).map((d) => ({
-      value: d.id,
-      label: d.department,
-    }));
-  }, [departments]);
-
-  // ✅ 姓名下拉 options（value 用 username，保证唯一；label 展示 name + username）
+  // ✅ 关键修复：Select 的 value 要与 Form 字段一致（name 展示姓名，username 展示学号）
+  // 所以 options.value 不能再用 username（否则选中后会把 username 塞进 name 字段）
+  // -> nameOptions.value 用 u.name；usernameOptions.value 用 u.username
   const nameOptions = useMemo(() => {
     return (suggestions ?? []).map((u) => ({
-      value: u.username,
+      value: u.name,
       label: (
         <Space size={8}>
           <Text>{u.name}</Text>
@@ -116,7 +98,6 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
     }));
   }, [suggestions]);
 
-  // ✅ 学号下拉 options（value 也用 username；label 反过来展示 username + name）
   const usernameOptions = useMemo(() => {
     return (suggestions ?? []).map((u) => ({
       value: u.username,
@@ -129,11 +110,47 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
     }));
   }, [suggestions]);
 
+  const deptOptions = useMemo(() => {
+    return (departments ?? []).map((d) => ({
+      value: d.id,
+      label: d.department,
+    }));
+  }, [departments]);
+
+  // 打开时：同步父层 values（父层负责强一致回填 name/username）
+  useEffect(() => {
+    if (!open) return;
+
+    if (!values) {
+      form.resetFields();
+      return;
+    }
+
+    // ✅ 只回填存在的字段（避免 undefined 覆盖）
+    form.setFieldsValue(values as any);
+  }, [open, values, form]);
+
   const pickByUsername = (username: string) => {
     const picked = (suggestions ?? []).find((x) => x.username === username);
     if (!picked) return;
+
     onPickUser(picked);
+
     // UI 侧立即同步，父层 values 回填也会再次 setFieldsValue（幂等）
+    form.setFieldsValue({
+      name: picked.name,
+      username: picked.username,
+    } as any);
+  };
+
+  const pickByName = (name: string) => {
+    // ✅ 可能同名，这里按“当前 suggestions 中第一个匹配”选择
+    // 如果你后续想彻底规避同名：让 name Select 开启 labelInValue 并把 value 仍用 username。
+    const picked = (suggestions ?? []).find((x) => x.name === name);
+    if (!picked) return;
+
+    onPickUser(picked);
+
     form.setFieldsValue({
       name: picked.name,
       username: picked.username,
@@ -179,9 +196,6 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
             allowClear
             placeholder="输入姓名或学号进行搜索"
             filterOption={false}
-            // ✅ Select 的 value 是表单字段 name（string），这里不直接把 username 放到 name 里
-            // 所以我们用 onSelect 去 pick，并在 pick 时 setFieldsValue 把 name/username 写回
-            // options 的 value 统一用 username（唯一）
             options={nameOptions}
             notFoundContent={
               searchingSuggestion ? <Spin size="small" /> : "暂无匹配"
@@ -192,10 +206,7 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
               void onSearchUser("");
               form.setFieldsValue({ name: "", username: "" } as any);
             }}
-            onSelect={(username) => pickByUsername(String(username))}
-            // ✅ 让输入框显示“name”
-            // 这里通过 Form 的 name 字段控制显示：父层回填 values.name -> effect setFieldsValue
-            // 因此不用额外配置 labelInValue
+            onSelect={(name) => pickByName(String(name))}
           />
         </Form.Item>
 

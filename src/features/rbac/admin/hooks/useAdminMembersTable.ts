@@ -54,8 +54,14 @@ export function useAdminMembersTable(params: {
     initial: { page: 1, pageSize: 10 },
   });
 
-  // ✅ 解构：对齐“部门管理页成功写法”，避免依赖 [q] 导致回调抖动
+  // ✅ 解构：避免依赖 [q] 导致回调抖动
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
+
+  // ✅ 用 ref 保存当前页，避免 onQueryChange 依赖 query.page
+  const pageRef = useRef(query.page);
+  useEffect(() => {
+    pageRef.current = query.page;
+  }, [query.page]);
 
   const fetchAll: TableFetcher<DepartmentMemberItem, AdminMemberFilters> =
     useCallback(async () => {
@@ -70,8 +76,6 @@ export function useAdminMembersTable(params: {
 
   /**
    * ✅ 本地查询：分页 / 搜索 / 筛选 / 排序
-   * - matchFilters：department / role / invalid
-   * - getSortValue：本地排序（sorter:true 会回传 sorter.field）
    */
   const local = useMemo(() => {
     return applyLocalQuery<DepartmentMemberItem, AdminMemberFilters>(
@@ -91,6 +95,7 @@ export function useAdminMembersTable(params: {
   );
 
   // ✅ columns：只依赖 departmentFilters + prefs（onDelete 用 ref 调用）
+  // ✅ width 统一由 presets 控制：columns.tsx 不再写 width
   const columns = useMemo(() => {
     const raw = buildAdminMemberColumns({
       departmentFilters,
@@ -130,7 +135,7 @@ export function useAdminMembersTable(params: {
       if (typeof next.page === "number") {
         setPage(next.page, next.pageSize);
       } else if (typeof next.pageSize === "number") {
-        setPage(query.page, next.pageSize);
+        setPage(pageRef.current, next.pageSize);
       }
 
       // sorter
@@ -148,7 +153,7 @@ export function useAdminMembersTable(params: {
         setKeyword(next.keyword);
       }
     },
-    [setPage, setSorter, setFilters, setKeyword, query.page],
+    [setPage, setSorter, setFilters, setKeyword],
   );
 
   return {

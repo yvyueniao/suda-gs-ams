@@ -29,6 +29,6 @@ export const ADMIN_MEMBER_COLUMN_PRESETS: TableColumnPreset[] = [
   { key: "createTime", title: "创建时间", width: 170 },
   { key: "lastLoginTime", title: "上次登录", width: 170 },
 
-  // 操作列
-  { key: "actions", title: "操作", width: 160 },
+  // 操作列（与 columns.tsx 保持一致）
+  { key: "actions", title: "操作", width: 100 },
 ];

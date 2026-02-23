@@ -42,7 +42,7 @@ export default function AdminManagePage() {
     searchingSuggestion,
   } = useAdminManagePage({ onNotify: notify });
 
-  // ✅ 关键：只执行一次
+  // ✅ init 保留：只执行一次（页面初始化时加载部门）
   const didInitRef = useRef(false);
   useEffect(() => {
     if (didInitRef.current) return;
@@ -67,8 +67,8 @@ export default function AdminManagePage() {
               </Title>
             </Space>
 
-            {/* ✅ 主操作按钮移动到标题右侧 */}
-            <Button type="primary" onClick={() => void openAppointModal()}>
+            {/* ✅ openModal 只打开：不在这里加载部门（部门已在 init 加载） */}
+            <Button type="primary" onClick={openAppointModal}>
               任命职务
             </Button>
           </Space>

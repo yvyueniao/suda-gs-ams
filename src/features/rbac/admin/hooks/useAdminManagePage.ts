@@ -82,11 +82,10 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
     }
   }, [notify]);
 
-  const ensureDepartmentsLoaded = useCallback(async () => {
-    if (departments.length > 0) return;
-    await loadDepartments();
-  }, [departments.length, loadDepartments]);
-
+  /**
+   * ✅ 你要求：保留 init（页面 useEffect 初始化加载部门）
+   * 所以这里让 openModal 只负责打开，不再负责加载
+   */
   const departmentFilters = useMemo(() => {
     return departments.map((d) => ({
       text: d.department,
@@ -140,8 +139,11 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   const [searchingSuggestion, setSearchingSuggestion] = useState(false);
   const searchingRef = useRef(false);
 
-  const openAppointModal = useCallback(async () => {
-    await ensureDepartmentsLoaded();
+  /**
+   * ✅ 按你的要求：openModal 只打开，不再加载 departments
+   * （部门列表由页面 init 调用 loadDepartments 来保证）
+   */
+  const openAppointModal = useCallback(() => {
     setAppointModal({
       open: true,
       sharedSearchKey: "",
@@ -149,7 +151,7 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
       selectedUser: null,
       values: {},
     });
-  }, [ensureDepartmentsLoaded]);
+  }, []);
 
   const closeAppointModal = useCallback(() => {
     setAppointModal((s) => ({ ...s, open: false }));
@@ -230,6 +232,18 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   const [submittingAppoint, setSubmittingAppoint] = useState(false);
   const appointSubmittingRef = useRef(false);
 
+  /**
+   * ✅ 用 ref 持有最新 selectedUser，避免 submitAppoint 依赖它导致函数抖动
+   */
+  const pickedUserRef = useRef<UserSuggestion | null>(
+    appointModal.selectedUser,
+  );
+  useMemo(() => {
+    pickedUserRef.current = appointModal.selectedUser;
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointModal.selectedUser]);
+
   const submitAppoint = useCallback(
     async (values: AppointRoleFormValues) => {
       if (appointSubmittingRef.current) return;
@@ -238,9 +252,8 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
        * ✅ 强一致校验：
        * - 必须选中过用户（selectedUser）
        * - 并且表单里的 name/username 必须与 selectedUser 对齐
-       * 这样可以防止：用户手动改了一边导致两者不一致
        */
-      const picked = appointModal.selectedUser;
+      const picked = pickedUserRef.current;
       if (!picked) {
         notify({ kind: "error", msg: "请从下拉中选择用户（姓名或学号）" });
         return;
@@ -271,7 +284,7 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
         setSubmittingAppoint(false);
       }
     },
-    [appointModal.selectedUser, closeAppointModal, notify, table],
+    [closeAppointModal, notify, table],
   );
 
   return {
