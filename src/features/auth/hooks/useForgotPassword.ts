@@ -1,23 +1,35 @@
-// src/features/auth/hooks/useForgotPassword.ts
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormInstance } from "antd";
+import { Form, message } from "antd";
 
+import { useAsyncAction } from "../../../shared/actions";
 import { sendVerifyCode, forgetPassword } from "../api";
 import type { ForgetPasswordPayload, OperationResult } from "../types";
 
-/**
- * useForgotPassword
- *
- * 职责（升级后）：
- * - 只编排“倒计时”规则（countdown）
- * - 提供两步动作：sendCode / resetPassword（不维护 loading、不 message）
- *
- * loading / 错误提示 / 成功提示：
- * - 统一交给 shared/actions/useAsyncAction
- */
+type ForgotFormValues = {
+  username: string;
+  verifyCode: string;
+  newPassword: string;
+  newPassword2: string;
+};
 
 const COUNTDOWN_SECONDS = 60;
 
+/**
+ * useForgotPassword（UI Hook）
+ *
+ * ✅ 目标：把 ForgotPasswordModal 里的所有业务编排都收进来
+ * - 表单实例 form
+ * - 打开弹窗时初始化
+ * - 发送验证码：校验账号/倒计时/按钮状态/提示/loading
+ * - 重置密码：表单校验/调用接口/提示/成功回调/loading
+ *
+ * ❌ 不改 shared 层
+ * ❌ 不在这里做 invalid 判断（你说靠后端）
+ */
 export function useForgotPassword() {
+  const [form] = Form.useForm<ForgotFormValues>();
+
   // 倒计时（>0 表示按钮禁用）
   const [countdown, setCountdown] = useState(0);
 
@@ -48,41 +60,94 @@ export function useForgotPassword() {
     [stopTimer],
   );
 
-  useEffect(() => {
-    return () => stopTimer();
-  }, [stopTimer]);
+  useEffect(() => stopTimer, [stopTimer]);
+
+  // 监听账号
+  const usernameWatch = Form.useWatch("username", form);
+
+  // 你现在的规则：11 位数字才允许点“获取验证码”
+  const canSendCode = useMemo(() => {
+    const u = String(usernameWatch ?? "").trim();
+    return /^\d{11}$/.test(u) && countdown <= 0;
+  }, [usernameWatch, countdown]);
 
   /**
-   * 发送验证码
-   * - 倒计时中：返回 false（不抛错，让页面决定是否提示）
-   * - 成功：开启倒计时，返回 true
-   * - 失败：抛 ApiError（由 useAsyncAction 统一提示）
+   * 弹窗打开时初始化表单
    */
-  const sendCode = useCallback(
-    async (username: string) => {
-      const u = (username ?? "").trim();
-      if (countdown > 0) return false;
+  const initWhenOpen = useCallback(
+    (open: boolean, initialUsername?: string) => {
+      if (!open) return;
 
-      await sendVerifyCode({ username: u });
-      startCountdown(COUNTDOWN_SECONDS);
-      return true;
+      form.setFieldsValue({
+        username: String(initialUsername ?? "").trim(),
+        verifyCode: "",
+        newPassword: "",
+        newPassword2: "",
+      });
     },
-    [countdown, startCountdown],
+    [form],
   );
 
   /**
-   * 重置密码
-   * - 成功：返回服务端 OperationResult（string / null）
-   * - 失败：抛 ApiError（由 useAsyncAction 统一提示）
+   * 发送验证码 action
+   * - 成功提示：固定文案即可（后端此接口 data 是 null）
+   * - 失败提示：优先吃后端 msg（由 request->ApiError.message 兜底）
    */
-  const resetPassword = useCallback(async (payload: ForgetPasswordPayload) => {
-    const username = (payload.username ?? "").trim();
-    const verifyCode = (payload.verifyCode ?? "").trim();
-    const newPassword = payload.newPassword ?? "";
+  const sendAction = useAsyncAction<boolean>({
+    successMessage: "验证码已发送（请注意查收邮箱信息）",
+    errorMessage: "发送失败，请稍后重试",
+  });
 
-    const res = await forgetPassword({ username, verifyCode, newPassword });
-    return res as OperationResult;
-  }, []);
+  const handleSendCode = useCallback(() => {
+    return sendAction.run(async () => {
+      const username = String(form.getFieldValue("username") ?? "").trim();
+
+      // 倒计时中重复点：不提示、不报错
+      if (countdown > 0) return false;
+
+      await sendVerifyCode({ username });
+      startCountdown(COUNTDOWN_SECONDS);
+      return true;
+    });
+  }, [sendAction, form, countdown, startCountdown]);
+
+  /**
+   * 重置密码 action
+   * - 成功提示：优先用后端返回 data（string），没有就用默认文案
+   * - 失败提示：优先吃后端 msg（由 request->ApiError.message）
+   */
+  const resetAction = useAsyncAction<OperationResult>({
+    errorMessage: "重置失败，请稍后重试",
+    onError: (e: any) => {
+      // 表单校验错误：不提示
+      if (e?.errorFields) return true;
+    },
+  });
+
+  const handleResetPassword = useCallback(
+    async (onSuccess?: () => void) => {
+      return resetAction.run(async () => {
+        const v = await form.validateFields();
+
+        const payload: ForgetPasswordPayload = {
+          username: v.username.trim(),
+          verifyCode: v.verifyCode.trim(),
+          newPassword: v.newPassword,
+        };
+
+        const res = await forgetPassword(payload);
+
+        // ✅ 成功提示：优先后端 data（字符串）
+        message.success(res || "密码已重置，请使用新密码登录");
+
+        // 关闭弹窗等交给调用方
+        onSuccess?.();
+
+        return res as OperationResult;
+      });
+    },
+    [resetAction, form],
+  );
 
   const resetCountdown = useCallback(() => {
     stopTimer();
@@ -90,9 +155,25 @@ export function useForgotPassword() {
   }, [stopTimer]);
 
   return {
+    // form
+    form: form as FormInstance<ForgotFormValues>,
+
+    // countdown & ui state
     countdown,
-    sendCode,
-    resetPassword,
+    canSendCode,
+
+    // loading
+    sendLoading: sendAction.loading,
+    resetLoading: resetAction.loading,
+
+    // init
+    initWhenOpen,
+
+    // handlers
+    handleSendCode,
+    handleResetPassword,
+
+    // misc
     resetCountdown,
   };
 }

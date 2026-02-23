@@ -30,6 +30,7 @@ export default function LoginPage() {
   const closeForgot = () => setForgotOpen(false);
 
   // ✅ 登录 action：统一 loading / 错误提示 / 成功提示
+  // ⚠️ 错误提示优先使用后端 msg（前提：shared/http 将 msg 归一到 ApiError.message）
   const loginAction = useAsyncAction<void>({
     successMessage: "登录成功",
     errorMessage: "登录失败，请重试",
@@ -48,6 +49,7 @@ export default function LoginPage() {
       await doLogin(String(values.username).trim(), String(values.password));
     });
 
+  // ✅ 点击“忘记密码？”时再取一次当前输入的 username，保证是最新值
   const initialForgotUsername = String(
     form.getFieldValue("username") ?? "",
   ).trim();

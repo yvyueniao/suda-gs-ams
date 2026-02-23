@@ -1,16 +1,7 @@
-// src/pages/login/ForgotPasswordModal.tsx
-import { useEffect, useMemo } from "react";
-import { Button, Form, Input, Modal, Typography, message } from "antd";
+import { useEffect } from "react";
+import { Button, Form, Input, Modal, Typography } from "antd";
 
-import { useAsyncAction } from "../../shared/actions";
 import { useForgotPassword } from "../../features/auth/hooks/useForgotPassword";
-
-type ForgotFormValues = {
-  username: string;
-  verifyCode: string;
-  newPassword: string;
-  newPassword2: string;
-};
 
 type Props = {
   open: boolean;
@@ -24,75 +15,30 @@ export default function ForgotPasswordModal({
   onClose,
   initialUsername,
 }: Props) {
-  const [form] = Form.useForm<ForgotFormValues>();
+  const {
+    form,
+    countdown,
+    canSendCode,
+    sendLoading,
+    resetLoading,
+    initWhenOpen,
+    handleSendCode,
+    handleResetPassword,
+  } = useForgotPassword();
 
-  const { countdown, sendCode, resetPassword } = useForgotPassword();
-
-  // 发送验证码 action（只管这个按钮的 loading + 提示）
-  const sendAction = useAsyncAction<boolean>({
-    successMessage: "验证码已发送（请查收邮箱/短信）",
-    errorMessage: "发送失败，请稍后重试",
-  });
-
-  // 重置密码 action（对应 Modal OK）
-  const resetAction = useAsyncAction<string | null>({
-    errorMessage: "重置失败，请稍后重试",
-    onError: (e: any) => {
-      // 表单校验错误：不提示
-      if (e?.errorFields) return true;
-    },
-    onSuccess: async (res) => {
-      message.success(res || "密码已重置，请使用新密码登录");
-      onClose();
-    },
-  });
-
-  // 弹窗打开时：预填账号 + 清空其它字段
+  // 弹窗打开时：预填账号 + 清空其它字段（由 hook 统一处理）
   useEffect(() => {
-    if (!open) return;
-    form.setFieldsValue({
-      username: String(initialUsername ?? "").trim(),
-      verifyCode: "",
-      newPassword: "",
-      newPassword2: "",
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const usernameWatch = Form.useWatch("username", form);
-
-  const canSendCode = useMemo(() => {
-    const u = String(usernameWatch ?? "").trim();
-    return /^\d{11}$/.test(u) && countdown <= 0;
-  }, [usernameWatch, countdown]);
-
-  const handleSendCode = () =>
-    sendAction.run(async () => {
-      const username = String(form.getFieldValue("username") ?? "").trim();
-
-      const ok = await sendCode(username);
-      // 倒计时中重复点：不提示、不报错
-      return ok;
-    });
-
-  const handleResetPassword = () =>
-    resetAction.run(async () => {
-      const v = await form.validateFields();
-      return resetPassword({
-        username: v.username.trim(),
-        verifyCode: v.verifyCode.trim(),
-        newPassword: v.newPassword,
-      });
-    });
+    initWhenOpen(open, initialUsername);
+  }, [open, initialUsername, initWhenOpen]);
 
   return (
     <Modal
       title="忘记密码"
       open={open}
       onCancel={onClose}
-      onOk={handleResetPassword}
+      onOk={() => handleResetPassword(onClose)}
       okText="重置密码"
-      confirmLoading={resetAction.loading}
+      confirmLoading={resetLoading}
       destroyOnClose
     >
       <Form form={form} layout="vertical">
@@ -120,8 +66,8 @@ export default function ForgotPasswordModal({
                 type="link"
                 style={{ padding: 0 }}
                 onClick={handleSendCode}
-                disabled={!canSendCode || sendAction.loading}
-                loading={sendAction.loading}
+                disabled={!canSendCode || sendLoading}
+                loading={sendLoading}
               >
                 {countdown > 0 ? `${countdown}s 后重试` : "获取验证码"}
               </Button>
