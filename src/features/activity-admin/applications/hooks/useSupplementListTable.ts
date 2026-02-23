@@ -17,6 +17,7 @@
  * - ✅ 全量拉取后端列表，然后 applyLocalQuery 本地处理
  * - ✅ autoDeps="reload"：避免 query 变化导致重复请求
  * - ✅ 审核成功后自动 reload()
+ * - ✅ 审核动作返回后端 data（string），供页面层 toast 使用（如需要）
  */
 
 import { useCallback, useMemo } from "react";
@@ -77,8 +78,9 @@ export function useSupplementListTable(activityId: number) {
 
   /**
    * 4️⃣ 审核动作（按 username 维度 loading）
+   * - 不在 hook 里 toast；但把后端 msg 返回给页面层
    */
-  const audit = useAsyncMapAction<string>({
+  const audit = useAsyncMapAction<string, string>({
     silentUnauthorized: true,
   });
 
@@ -89,8 +91,8 @@ export function useSupplementListTable(activityId: number) {
 
   const approve = useCallback(
     async (row: SupplementRow) => {
-      await audit.run(row.username, async () => {
-        await examineSupplement({
+      const serverMsg = await audit.run(row.username, async () => {
+        return await examineSupplement({
           activityId: row.activityId,
           username: row.username,
           view: 0, // 通过
@@ -98,14 +100,15 @@ export function useSupplementListTable(activityId: number) {
       });
 
       await d.reload();
+      return serverMsg;
     },
     [audit, d],
   );
 
   const reject = useCallback(
     async (row: SupplementRow) => {
-      await audit.run(row.username, async () => {
-        await examineSupplement({
+      const serverMsg = await audit.run(row.username, async () => {
+        return await examineSupplement({
           activityId: row.activityId,
           username: row.username,
           view: 5, // 不通过
@@ -113,13 +116,13 @@ export function useSupplementListTable(activityId: number) {
       });
 
       await d.reload();
+      return serverMsg;
     },
     [audit, d],
   );
 
   /**
    * 5️⃣ 列偏好
-   * bizKey：activity.admin.supplements
    */
   const {
     visibleKeys,

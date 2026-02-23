@@ -6,13 +6,14 @@
  * 职责：
  * - 活动/讲座管理列表页（UI 层）
  * - 组合：
- *   - useActivityAdminPage（业务编排聚合：table + modal + submit + isDeleting + navigateToDetail）
+ *   - useActivityAdminPage（业务编排聚合：table + modal + submit + navigateToDetail）
  *   - SmartTable / TableToolbar / ColumnSettings（通用表格体系）
  *   - ActivityUpsertModal（创建/修改复用弹窗）
  *
  * 约定：
  * - 页面层只做 UI + 交互，不直接 request
  * - 权限只做“可见/可点”控制：使用 <Can />
+ * - ✅ 删除 toast 优先使用后端返回的 msg（data:string）
  */
 
 import { useMemo } from "react";
@@ -26,6 +27,7 @@ import {
 } from "../../shared/components/table";
 
 import { Can } from "../../shared/components/guard/Can";
+import { useAsyncMapAction } from "../../shared/actions";
 
 import { useActivityAdminPage } from "../../features/activity-admin/hooks/useActivityAdminPage";
 import { buildActivityAdminColumns } from "../../features/activity-admin/table/columns";
@@ -39,16 +41,29 @@ export default function ActivityAdminPage() {
   const m = useActivityAdminPage();
   const t = m.table;
 
+  /**
+   * ✅ 删除：页面层统一做 loading + toast（并尽量用后端返回信息）
+   */
+  const del = useAsyncMapAction<number, string>({
+    successMessage: (_id, result) => String(result ?? "").trim() || "删除成功",
+    errorMessage: "删除失败",
+  });
+
   const columns = useMemo(() => {
     const base = buildActivityAdminColumns({
       onEdit: (record) => m.modal.openEdit(record),
-      onDelete: (record) => m.submitDelete(record),
+
+      // ✅ 用页面层 del 包一层：负责 toast + 行级 loading
+      onDelete: (record) => del.run(record.id, () => m.submitDelete(record)),
+
       onDetail: (record) => m.navigateToDetail(record.id),
-      isDeleting: (id) => m.isDeleting(id),
+
+      // ✅ 行级 loading
+      isDeleting: (id) => del.isLoading(id),
     });
 
     return t.applyPresetsToAntdColumns(base);
-  }, [m, t]);
+  }, [m, t, del]);
 
   return (
     <Card
@@ -64,7 +79,6 @@ export default function ActivityAdminPage() {
             </Title>
           </Space>
 
-          {/* ✅ 挪到标题右侧：创建按钮（保留权限控制） */}
           <Can roles={[0, 1, 2]}>
             <Button type="primary" onClick={m.modal.openCreate}>
               新建活动 / 讲座
@@ -92,7 +106,6 @@ export default function ActivityAdminPage() {
         loading={t.loading}
         right={
           <Space>
-            {/* ✅ 创建按钮已挪到 Card.title，这里只保留表格工具 */}
             <Button onClick={() => t.exportCsv()} loading={t.exporting}>
               导出 CSV
             </Button>
@@ -121,24 +134,18 @@ export default function ActivityAdminPage() {
         loading={t.loading}
         error={t.error}
         onQueryChange={t.onQueryChange}
-        /** ✅ 关键：把 antd filters 写回 query.filters，否则 applyLocalQuery 永远拿不到筛选条件 */
         onFiltersChange={(filters: Record<string, FilterValue | null>) => {
-          // 1) 清洗：去掉 null / 空数组，避免“看似有 filters 实则无效”的情况
           const cleaned = Object.fromEntries(
             Object.entries(filters).filter(
               ([, v]) => v != null && (!Array.isArray(v) || v.length > 0),
             ),
           );
 
-          // 2) 写回业务 query.filters（你们本地过滤逻辑只关心 type/state，但这里保持通用结构）
           t.setFilters(cleaned as any);
-
-          // 3) 筛选变化时回到第一页（更符合用户预期）
           t.onQueryChange({ page: 1 });
         }}
       />
 
-      {/* 新建/修改复用弹窗：useActivityAdminPage 已经把 open/mode/editing 聚合好了 */}
       <ActivityUpsertModal
         open={m.modal.open}
         mode={m.modal.mode}

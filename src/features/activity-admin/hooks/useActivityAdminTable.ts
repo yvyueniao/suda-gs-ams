@@ -41,8 +41,9 @@ export function useActivityAdminTable() {
    */
   const q = useTableQuery<Record<string, any>>();
 
-  // ✅ 关键：把会用于 callback 的字段解构出来，避免依赖 [q] 导致 callback 每次 render 都变
+  // ✅ 关键：把会用于 callback 的字段解构出来，避免依赖 [q]/[query] 导致 callback 每次 render 都变
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
+  const { page, pageSize, sorter, filters, keyword } = query;
 
   /**
    * 2️⃣ 拉取后端全量数据（全量模式：仅首次 + reload 时拉）
@@ -97,35 +98,62 @@ export function useActivityAdminTable() {
   );
 
   /**
-   * 6️⃣ SmartTable 桥接：SmartTable 只回传分页/排序/筛选（Partial<TableQuery>）
-   * ✅ 关键：依赖写到具体 setXxx 上，避免 [q] 造成 callback 抖动
+   * 6️⃣ SmartTable 桥接
+   *
+   * ✅ 本次改动点：
+   * - 当 keyword / filters / sorter 发生变化时，自动回到第 1 页（更符合用户预期，也避免“当前页超范围空表”）
+   * - 当只改变 pageSize 时，也回到第 1 页（否则页码可能越界）
    */
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<Record<string, any>>>) => {
-      // 分页
+      const hasNextSorter = "sorter" in next;
+      const hasNextFilters = "filters" in next;
+      const hasNextKeyword = "keyword" in next;
+
+      const nextSorter = hasNextSorter ? next.sorter : sorter;
+      const nextFilters = hasNextFilters ? next.filters : filters;
+      const nextKeyword = hasNextKeyword ? next.keyword : keyword;
+
+      const sorterChanged = hasNextSorter && nextSorter !== sorter;
+      const keywordChanged = hasNextKeyword && nextKeyword !== keyword;
+      // filters 一般是对象，SmartTable 很可能每次给新引用；这里用“引用变化即视为变化”
+      const filtersChanged = hasNextFilters && nextFilters !== filters;
+
+      const shouldBackToFirstPage =
+        sorterChanged || filtersChanged || keywordChanged;
+
+      // ① 分页：如果显式传 page，以它为准
       if (typeof next.page === "number") {
         setPage(next.page, next.pageSize);
       } else if (typeof next.pageSize === "number") {
-        // 只改 pageSize（兜底）
-        setPage(query.page, next.pageSize);
+        // ✅ 改动：只改 pageSize 时，回到第一页
+        setPage(1, next.pageSize);
+      } else if (shouldBackToFirstPage) {
+        // ✅ 改动：排序/筛选/搜索变化 => 回到第一页（pageSize 取当前）
+        setPage(1, pageSize);
       }
 
-      // 排序
-      if ("sorter" in next) {
-        setSorter(next.sorter);
-      }
+      // ② 排序
+      if (hasNextSorter) setSorter(next.sorter);
 
-      // 筛选（你本模块只处理 type/state，但 query.filters 仍是唯一真相源）
-      if ("filters" in next) {
-        setFilters(next.filters);
-      }
+      // ③ 筛选
+      if (hasNextFilters) setFilters(next.filters);
 
-      // 关键词（本模块 keyword 只匹配 name，匹配规则在 helpers 里）
-      if ("keyword" in next) {
-        setKeyword(next.keyword);
-      }
+      // ④ 搜索
+      if (hasNextKeyword) setKeyword(next.keyword);
     },
-    [setPage, setSorter, setFilters, setKeyword, query.page],
+    [
+      setPage,
+      setSorter,
+      setFilters,
+      setKeyword,
+
+      // 用“原始字段”做依赖，避免依赖整个 query 对象
+      pageSize,
+      sorter,
+      filters,
+      keyword,
+    ],
   );
 
   return {

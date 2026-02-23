@@ -59,11 +59,14 @@ export async function createActivity(
 /**
  * 修改活动/讲座信息（部分更新）
  * POST /activity/updateActivityInfo
+ *
+ * ⚠️ 注意：后端返回类型可能随版本变化（null / string / object）
+ * 这里用 unknown 保持兼容性，避免前端被返回值“锁死”
  */
 export async function updateActivityInfo(
   payload: UpdateActivityPayload,
-): Promise<null> {
-  const resp = await request<null>({
+): Promise<unknown> {
+  const resp = await request<unknown>({
     url: "/activity/updateActivityInfo",
     method: "POST",
     data: payload,
@@ -90,13 +93,13 @@ export async function deleteActivity(payload: DeleteActivityPayload) {
  * 按 ID 查询活动/讲座详情
  * POST /activity/searchById
  */
-export async function fetchActivityDetailById(
-  id: number,
-): Promise<ActivityDetailResponse> {
+export async function fetchActivityDetailById(payload: {
+  id: number;
+}): Promise<ActivityDetailResponse> {
   const resp = await request<ActivityDetailResponse>({
     url: "/activity/searchById",
     method: "POST",
-    data: { id },
+    data: payload,
   });
 
   return resp;

@@ -1,6 +1,6 @@
 // src/pages/activity-admin/ActivityAdminDetailPage.tsx
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -17,10 +17,8 @@ import {
 
 import { Can } from "../../shared/components/guard/Can";
 import { ApiError } from "../../shared/http/error";
-import { request } from "../../shared/http/client";
 
 import ActivityUpsertModal from "./ActivityUpsertModal";
-import { updateActivityInfo } from "../../features/activity-admin/api";
 
 import RegisterListPanel from "./applications/RegisterListPanel";
 import CandidateListPanel from "./applications/CandidateListPanel";
@@ -32,34 +30,11 @@ import type {
   UpdateActivityPayload,
 } from "../../features/activity-admin/types";
 
+import { useActivityAdminDetailPage } from "../../features/activity-admin/hooks/useActivityAdminDetailPage";
+
 import "../../app/styles/activity-admin.css";
 
 const { Title, Text, Paragraph } = Typography;
-
-type ActivityDetail = {
-  id: number;
-  name: string;
-  description: string;
-  department: string;
-  time: string;
-  signStartTime: string;
-  signEndTime: string;
-  fullNum: number;
-  score: number;
-  location: string;
-  activityStime: string;
-  activityEtime: string;
-  type: ActivityType;
-  state: ActivityState;
-  registeredNum: number;
-  candidateNum: number;
-  candidateSuccNum: number;
-  candidateFailNum: number;
-};
-
-type SearchByIdResponse = {
-  activity: ActivityDetail;
-};
 
 function typeText(type: ActivityType) {
   return type === 0 ? "活动" : "讲座";
@@ -96,51 +71,15 @@ export default function ActivityAdminDetailPage() {
 
   const activityId = useMemo(() => Number(id), [id]);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [detail, setDetail] = useState<ActivityDetail | null>(null);
+  // ✅ 业务编排下沉到 hook（不在页面里 request / update）
+  const d = useActivityAdminDetailPage(activityId);
 
-  const [modalOpen, setModalOpen] = useState(false);
-
+  // 仅 UI 态：当前激活 tab（保留你原来的交互）
   const [activeTab, setActiveTab] = useState<
     "registers" | "candidates" | "supplements"
   >("registers");
 
-  const fetchDetail = useCallback(async () => {
-    if (!Number.isFinite(activityId) || activityId <= 0) {
-      setError(new Error("非法活动 ID"));
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const resp = await request<SearchByIdResponse>({
-        url: "/activity/searchById",
-        method: "POST",
-        data: { id: activityId },
-      });
-
-      setDetail(resp.activity);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [activityId]);
-
-  useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
-
   const back = () => navigate(-1);
-
-  // ✅ Header 副标题：用“类型：名称”，替代“ID：2”
-  const headerSubtitle = useMemo(() => {
-    if (detail) return `${typeText(detail.type)}：${detail.name}`;
-    return "详情加载中…";
-  }, [detail]);
 
   return (
     <div className="activity-admin-page">
@@ -154,7 +93,7 @@ export default function ActivityAdminDetailPage() {
                   活动 / 讲座详情
                 </Title>
 
-                <Text type="secondary">{headerSubtitle}</Text>
+                <Text type="secondary">{d.headerSubtitle}</Text>
               </div>
 
               <Space>
@@ -163,8 +102,8 @@ export default function ActivityAdminDetailPage() {
                 <Can roles={[0, 1, 2, 3]}>
                   <Button
                     type="primary"
-                    onClick={() => setModalOpen(true)}
-                    disabled={!detail}
+                    onClick={d.openEdit}
+                    disabled={!d.detail}
                   >
                     修改
                   </Button>
@@ -174,19 +113,19 @@ export default function ActivityAdminDetailPage() {
 
             <Divider />
 
-            {loading ? (
+            {d.loading ? (
               <Spin />
-            ) : error ? (
+            ) : d.error ? (
               <Empty
                 description={
-                  error instanceof ApiError
-                    ? error.message
-                    : error instanceof Error
-                      ? error.message
+                  d.error instanceof ApiError
+                    ? d.error.message
+                    : d.error instanceof Error
+                      ? d.error.message
                       : "加载失败"
                 }
               />
-            ) : !detail ? (
+            ) : !d.detail ? (
               <Empty description="暂无数据" />
             ) : (
               <>
@@ -200,81 +139,81 @@ export default function ActivityAdminDetailPage() {
                       size="small"
                       column={2}
                       items={[
-                        { key: "name", label: "名称", children: detail.name },
+                        { key: "name", label: "名称", children: d.detail.name },
                         {
                           key: "type",
                           label: "类型",
-                          children: renderTypeTag(detail.type),
+                          children: renderTypeTag(d.detail.type),
                         },
                         {
                           key: "state",
                           label: "状态",
-                          children: renderStateTag(detail.state),
+                          children: renderStateTag(d.detail.state),
                         },
                         {
                           key: "department",
                           label: "部门",
-                          children: detail.department,
+                          children: d.detail.department,
                         },
                         {
                           key: "location",
                           label: "地点",
-                          children: detail.location,
+                          children: d.detail.location,
                         },
                         {
                           key: "score",
                           label: "分数",
-                          children: <Tag color="gold">{detail.score}</Tag>,
+                          children: <Tag color="gold">{d.detail.score}</Tag>,
                         },
                         {
                           key: "fullNum",
                           label: "人数上限",
-                          children: detail.fullNum,
+                          children: d.detail.fullNum,
                         },
                         {
                           key: "registeredNum",
                           label: "已报名",
-                          children: detail.registeredNum,
+                          children: d.detail.registeredNum,
                         },
                         {
                           key: "candidateNum",
                           label: "候补人数",
-                          children: detail.candidateNum,
+                          children: d.detail.candidateNum,
                         },
                         {
                           key: "candidateSuccNum",
                           label: "候补成功",
-                          children: detail.candidateSuccNum,
+                          children: d.detail.candidateSuccNum,
                         },
                         {
                           key: "candidateFailNum",
                           label: "候补失败",
-                          children: detail.candidateFailNum,
+                          children: d.detail.candidateFailNum,
                         },
                         {
                           key: "time",
                           label: "创建时间",
-                          children: detail.time,
+                          children: d.detail.time,
                         },
                         {
                           key: "signStartTime",
                           label: "报名开始",
-                          children: detail.signStartTime,
+                          children: d.detail.signStartTime,
                         },
                         {
                           key: "signEndTime",
                           label: "报名截止",
-                          children: detail.signEndTime,
+                          children: d.detail.signEndTime,
                         },
                         {
                           key: "activityStime",
                           label: "活动开始",
-                          children: detail.activityStime,
+                          children: d.detail.activityStime,
                         },
                         {
                           key: "activityEtime",
                           label: "活动结束",
-                          children: detail.activityEtime,
+                          children: d.detail.activityEtime,
                         },
                       ]}
                     />
@@ -287,7 +226,7 @@ export default function ActivityAdminDetailPage() {
 
                   <div className="activity-admin-desc">
                     <Paragraph className="activity-admin-desc-content">
-                      {detail.description || <Text type="secondary">-</Text>}
+                      {d.detail.description || <Text type="secondary">-</Text>}
                     </Paragraph>
                   </div>
                 </div>
@@ -309,21 +248,21 @@ export default function ActivityAdminDetailPage() {
                           key: "registers",
                           label: "报名人员列表",
                           children: (
-                            <RegisterListPanel activityId={detail.id} />
+                            <RegisterListPanel activityId={d.detail.id} />
                           ),
                         },
                         {
                           key: "candidates",
                           label: "候补人员列表",
                           children: (
-                            <CandidateListPanel activityId={detail.id} />
+                            <CandidateListPanel activityId={d.detail.id} />
                           ),
                         },
                         {
                           key: "supplements",
                           label: "补报名人员列表",
                           children: (
-                            <SupplementListPanel activityId={detail.id} />
+                            <SupplementListPanel activityId={d.detail.id} />
                           ),
                         },
                       ]}
@@ -336,17 +275,18 @@ export default function ActivityAdminDetailPage() {
 
           {/* UpsertModal（edit 模式） */}
           <ActivityUpsertModal
-            open={modalOpen}
+            open={d.modalOpen}
             mode="edit"
-            editing={detail}
-            onCancel={() => setModalOpen(false)}
-            onSubmitCreate={async () => {}}
+            editing={d.detail}
+            onCancel={d.closeEdit}
+            onSubmitCreate={async () => undefined}
             onSubmitUpdate={async (payload: UpdateActivityPayload) => {
-              await updateActivityInfo(payload);
+              // ✅ 统一由 hook 编排（会自动 close + reload）
+              return await d.submitUpdate(payload);
             }}
             onSuccess={async () => {
-              setModalOpen(false);
-              await fetchDetail();
+              // ✅ hook 内部已 close + reload，这里无需重复
+              return;
             }}
           />
         </Card>

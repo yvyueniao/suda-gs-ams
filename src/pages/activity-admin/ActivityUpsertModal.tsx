@@ -9,6 +9,7 @@
  * 约定：
  * - 真实提交逻辑由父组件传入（create/update）
  * - loading / toast / ApiError 统一走 shared/actions/useAsyncAction
+ * - ✅ toast 文案优先使用后端返回的 string（data），无则兜底
  * - ✅ “修改”复用本弹窗，但按后端接口约束：
  *   - /activity/updateActivityInfo 仅支持修改：
  *     signStartTime/signEndTime/fullNum/score/activityStime/activityEtime
@@ -54,10 +55,10 @@ export type ActivityUpsertModalProps = {
 
   onCancel: () => void;
 
-  /** create 模式提交 */
+  /** create 模式提交（建议返回后端 data:string，便于 toast） */
   onSubmitCreate: (payload: CreateActivityPayload) => Promise<unknown>;
 
-  /** edit 模式提交 */
+  /** edit 模式提交（你后端 data 可能为 null） */
   onSubmitUpdate: (payload: UpdateActivityPayload) => Promise<unknown>;
 
   /** 成功后回调（通常用于 reload） */
@@ -90,6 +91,15 @@ function formatDT(v: Dayjs) {
   return v.format(DT_FORMAT);
 }
 
+/** ✅ 优先取后端返回的 string（data）作为成功提示 */
+function pickServerMsg(result: unknown): string | null {
+  if (typeof result === "string") {
+    const s = result.trim();
+    return s ? s : null;
+  }
+  return null;
+}
+
 export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
   const {
     open,
@@ -105,8 +115,14 @@ export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
 
   const isEdit = mode === "edit";
 
-  const action = useAsyncAction({
-    successMessage: isEdit ? "修改成功" : "创建成功",
+  /**
+   * ✅ 成功提示：优先后端 msg，否则兜底
+   * - create：你后端一般会返回 string（例如“创建成功”）
+   * - update：你后端 data 可能是 null，这里会走兜底“修改成功”
+   */
+  const action = useAsyncAction<unknown>({
+    successMessage: (result) =>
+      pickServerMsg(result) ?? (isEdit ? "修改成功" : "创建成功"),
   });
 
   const initialValues = useMemo((): Partial<FormValues> => {
@@ -184,7 +200,7 @@ export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
     // 额外的时间顺序校验（后端也会校验，但前端先拦住体验更好）
     validateTimeOrder(values);
 
-    await action.run(async () => {
+    const result = await action.run(async () => {
       if (isEdit) {
         if (!editing) throw new Error("缺少 editing 数据，无法修改");
 
@@ -199,7 +215,7 @@ export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
           activityEtime: formatDT(values.activityEtime),
         };
 
-        await onSubmitUpdate(payload);
+        return await onSubmitUpdate(payload);
       } else {
         const payload: CreateActivityPayload = {
           name: values.name,
@@ -215,15 +231,15 @@ export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
           activityEtime: formatDT(values.activityEtime),
         };
 
-        await onSubmitCreate(payload);
+        return await onSubmitCreate(payload);
       }
     });
 
-    // run 没抛错 => 成功
-    if (!action.loading) {
-      onCancel();
-      onSuccess?.();
-    }
+    // ✅ run 失败会返回 undefined；成功即使返回 null 也算成功
+    if (result === undefined) return;
+
+    onCancel();
+    onSuccess?.();
   };
 
   const dtPlaceholder = "请选择日期时间";

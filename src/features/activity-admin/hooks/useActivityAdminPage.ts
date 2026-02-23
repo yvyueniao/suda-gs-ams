@@ -5,19 +5,18 @@
  *
  * 职责：
  * - 活动/讲座管理页（ActivityAdminPage）的业务编排聚合
- * - 聚合：table（useActivityAdminTable）+ 创建/编辑弹窗状态 + 删除动作按行 loading
+ * - 聚合：table（useActivityAdminTable）+ 创建/编辑弹窗状态
  * - 暴露：openCreate/openEdit/closeModal、submitCreate/submitUpdate/submitDelete、navigateToDetail
  *
  * 约定：
  * - ✅ 只做业务编排，不做 UI（不 message、不 Modal）
- * - ✅ 不维护按钮 loading（交给 shared/actions/useAsyncAction/useAsyncMapAction）
+ * - ✅ 不维护按钮 loading（交给页面层 shared/actions/useAsyncAction/useAsyncMapAction）
  * - ✅ 成功后触发 table.reload() 刷新列表
+ * - ✅ 尽量返回后端 data（string），供页面层 toast 使用
  */
 
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { useAsyncMapAction } from "../../../shared/actions";
 
 import type {
   CreateActivityPayload,
@@ -62,52 +61,39 @@ export function useActivityAdminPage() {
   }, []);
 
   /**
-   * 3️⃣ 删除动作 loading（按 id 维度）
-   * - 你的 useAsyncMapAction API：isLoading(key) / run(key, fn)
-   */
-  const del = useAsyncMapAction<number>({
-    // 这里不需要 keyOf，你的 run 会直接传 key
-    // successMessage / errorMessage 如需可加（但你也可以让 UI 层 toast）
-    silentUnauthorized: true,
-  });
-
-  const isDeleting = useCallback((id: number) => del.isLoading(id), [del]);
-
-  /**
-   * 4️⃣ 提交动作：create / update / delete
+   * 3️⃣ 提交动作：create / update / delete
    * ✅ 成功后统一 reload
+   * ✅ create/delete 返回后端 msg（string），供 UI toast 使用
    */
   const submitCreate = useCallback(
     async (payload: CreateActivityPayload) => {
-      await createActivity(payload);
+      const serverMsg = await createActivity(payload); // data: string
       await table.reload();
+      return serverMsg;
     },
     [table],
   );
 
   const submitUpdate = useCallback(
     async (payload: UpdateActivityPayload) => {
-      await updateActivityInfo(payload);
+      await updateActivityInfo(payload); // data: null
       await table.reload();
+      return null;
     },
     [table],
   );
 
   const submitDelete = useCallback(
     async (record: ManageableActivityItem) => {
-      await del.run(record.id, async () => {
-        await deleteActivity({ id: record.id });
-        // deleteActivity 返回 string 也没关系，这里不依赖返回值
-        return undefined as unknown as void;
-      });
-
+      const serverMsg = await deleteActivity({ id: record.id }); // data: string
       await table.reload();
+      return serverMsg;
     },
-    [del, table],
+    [table],
   );
 
   /**
-   * 5️⃣ 详情跳转（隐藏路由）
+   * 4️⃣ 详情跳转（隐藏路由）
    */
   const navigateToDetail = useCallback(
     (id: number) => {
@@ -117,7 +103,7 @@ export function useActivityAdminPage() {
   );
 
   /**
-   * 6️⃣ 给页面层更好用的派生值
+   * 5️⃣ 给页面层更好用的派生值
    */
   const modal = useMemo(() => {
     return {
@@ -132,16 +118,12 @@ export function useActivityAdminPage() {
 
   return {
     table,
-
     modal,
 
     // actions
     submitCreate,
     submitUpdate,
     submitDelete,
-
-    // delete loading
-    isDeleting,
 
     // navigation
     navigateToDetail,

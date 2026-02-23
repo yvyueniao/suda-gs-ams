@@ -2,11 +2,15 @@
 
 import type { ColumnsType } from "antd/es/table";
 import { Tag } from "antd";
-import { ActionCell } from "../../../shared/components/table";
-import { Can } from "../../../shared/components/guard/Can";
 
-import type { ManageableActivityItem } from "../types";
-import type { ActivityType, ActivityState } from "../types";
+import { ActionCell } from "../../../shared/components/table";
+import { getUser } from "../../../shared/session/session";
+
+import type {
+  ManageableActivityItem,
+  ActivityType,
+  ActivityState,
+} from "../types";
 
 type BuildColumnsParams = {
   onEdit: (record: ManageableActivityItem) => void;
@@ -27,7 +31,7 @@ function stateLabel(state: ActivityState) {
     3: "进行中",
     4: "已结束",
   };
-  return map[state];
+  return map[state] ?? "-";
 }
 
 function stateColor(state: ActivityState) {
@@ -38,13 +42,18 @@ function stateColor(state: ActivityState) {
     3: "green",
     4: "red",
   };
-  return map[state];
+  return map[state] ?? "default";
 }
 
 export function buildActivityAdminColumns(
   params: BuildColumnsParams,
 ): ColumnsType<ManageableActivityItem> {
   const { onEdit, onDelete, onDetail, isDeleting } = params;
+
+  // ✅ Can 不支持函数 children，所以在这里直接算权限
+  const user = getUser();
+  const canDelete =
+    !!user && [0, 1, 2].includes(user.role as 0 | 1 | 2 | 3 | 4);
 
   return [
     {
@@ -190,36 +199,40 @@ export function buildActivityAdminColumns(
       key: "actions",
       width: 140,
       fixed: "right",
-      render: (_: unknown, record: ManageableActivityItem) => (
-        <ActionCell
-          record={record}
-          actions={[
-            {
-              key: "detail",
-              label: "详情",
-              onClick: () => onDetail(record),
-            },
-            {
-              key: "edit",
-              label: "修改",
-              onClick: () => onEdit(record),
-            },
-            {
-              key: "delete",
-              label: <Can roles={[0, 1, 2]}>删除</Can>,
-              danger: true,
-              loading: isDeleting?.(record.id),
-              confirm: {
-                title: "确认删除该活动？",
-                content: `名称：${record.name}`,
-                okText: "删除",
-                cancelText: "取消",
-              },
-              onClick: () => onDelete(record),
-            },
-          ]}
-        />
-      ),
+      render: (_: unknown, record: ManageableActivityItem) => {
+        const actions = [
+          {
+            key: "detail",
+            label: "详情",
+            onClick: () => onDetail(record),
+          },
+          {
+            key: "edit",
+            label: "修改",
+            onClick: () => onEdit(record),
+          },
+          // ✅ 无权限就不下发“删除”action（等价于 Can mode="hide"）
+          ...(canDelete
+            ? [
+                {
+                  key: "delete",
+                  label: "删除",
+                  danger: true,
+                  loading: isDeleting?.(record.id),
+                  confirm: {
+                    title: "确认删除该活动？",
+                    content: `名称：${record.name}`,
+                    okText: "删除",
+                    cancelText: "取消",
+                  },
+                  onClick: () => onDelete(record),
+                },
+              ]
+            : []),
+        ];
+
+        return <ActionCell record={record} actions={actions} />;
+      },
     },
   ];
 }
