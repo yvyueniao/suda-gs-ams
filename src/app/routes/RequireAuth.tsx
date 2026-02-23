@@ -36,10 +36,11 @@ export default function RequireAuth() {
 
     (async () => {
       try {
-        // 1) 校验 token
-        await verifyToken();
+        // 1) 校验 token（后端返回 data: User）
+        const u = await verifyToken();
+        setUser(u); // ✅ 立刻写入 session（让角色守卫/页面可用）
 
-        // 2) 拉用户信息（可能刷新 token）
+        // 2) 拉用户信息（后端可能刷新 token）
         const info = await getUserInfo();
         setUser(info.user);
         if (info.token) setToken(info.token);
@@ -56,16 +57,20 @@ export default function RequireAuth() {
           }
         }
 
-        // ✅ 其他错误：服务器挂了/断网/404/500...
-        // 直接跳 404，并进入 fatal（终止态，不再请求 token）
+        // 其他错误：服务器挂了/断网/404/500...
+        // ✅ 跳 500，并进入 fatal（终止态，不再请求 token）
         if (!fatalRef.current) {
           fatalRef.current = true;
           setState("fatal");
-          navigate("/500", { replace: true });
+          navigate("/500", {
+            replace: true,
+            state: { from: location.pathname + location.search },
+          });
         }
       }
     })();
-  }, [navigate]);
+    // ✅ location 只在报错时用来带 from，因此加入依赖更严谨
+  }, [navigate, location.pathname, location.search]);
 
   if (state === "checking") return <Spin fullscreen />;
 
@@ -74,7 +79,7 @@ export default function RequireAuth() {
     return <Navigate to="/login" replace state={{ from }} />;
   }
 
-  // fatal：已 navigate(/404)，这里返回 null 即可
+  // fatal：已 navigate(/500)，这里返回 null 即可
   if (state === "fatal") return null;
 
   return <Outlet />;
