@@ -1,7 +1,7 @@
 // src/pages/rbac/user/UserManagePage.tsx
 
 import { useMemo, useState } from "react";
-import { Button, Card, Space, Typography, message } from "antd";
+import { Button, Card, Space, Typography, message, Tooltip } from "antd";
 import type { FilterValue } from "antd/es/table/interface";
 
 import {
@@ -27,6 +27,8 @@ import UserDetailDrawer from "./UserDetailDrawer";
 import SpecialScoreModal from "./SpecialScoreModal";
 
 const { Title } = Typography;
+// 🔒 删除功能开关（上线时改为 true 即可）
+const ENABLE_DELETE = false;
 
 /**
  * ✅ 导入结果适配：
@@ -237,14 +239,19 @@ export default function UserManagePage() {
                 批量封锁
               </Button>
 
-              <Button
-                danger
-                disabled={!hasSelection}
-                loading={!!deleting}
-                onClick={confirmBatchDelete}
-              >
-                批量删除
-              </Button>
+              <Tooltip title={!ENABLE_DELETE ? "删除功能暂未开放" : undefined}>
+                {/* disabled 按钮不触发事件，必须包一层 span 才能显示 Tooltip */}
+                <span>
+                  <Button
+                    danger
+                    disabled={!ENABLE_DELETE || !hasSelection}
+                    loading={ENABLE_DELETE ? !!deleting : false}
+                    onClick={ENABLE_DELETE ? confirmBatchDelete : undefined}
+                  >
+                    批量删除
+                  </Button>
+                </span>
+              </Tooltip>
 
               <Button
                 loading={!!table.exporting}
