@@ -23,10 +23,14 @@ import {
   DatePicker,
   InputNumber,
   Radio,
-  Space,
+  Row,
+  Col,
 } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+
+// ✅ DatePicker 中文 locale（只影响 DatePicker 自己）
+import zhCN from "antd/es/date-picker/locale/zh_CN";
 
 import { useAsyncAction } from "../../shared/actions";
 
@@ -222,6 +226,8 @@ export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
     }
   };
 
+  const dtPlaceholder = "请选择日期时间";
+
   return (
     <Modal
       title={isEdit ? "修改活动/讲座" : "新建活动/讲座"}
@@ -230,126 +236,172 @@ export default function ActivityUpsertModal(props: ActivityUpsertModalProps) {
       onOk={handleOk}
       confirmLoading={action.loading}
       destroyOnClose
-      width={860}
+      width={900}
     >
-      <Form<FormValues> form={form} layout="vertical" requiredMark={false}>
-        <Space size={16} style={{ display: "flex" }} align="start">
-          <Form.Item
-            name="name"
-            label="名称"
-            style={{ flex: 1 }}
-            rules={[
-              { required: true, message: "请输入名称" },
-              { max: 60, message: "名称不能超过 60 个字符" },
-            ]}
-          >
-            <Input
-              placeholder="请输入活动/讲座名称"
-              allowClear
-              disabled={isEdit}
-            />
-          </Form.Item>
+      <Form<FormValues> form={form} layout="vertical">
+        <Row gutter={[16, 8]}>
+          {/* 名称 + 类型 */}
+          <Col xs={24} md={16}>
+            <Form.Item
+              name="name"
+              label="名称"
+              rules={[
+                { required: true, message: "请输入名称" },
+                { max: 60, message: "名称不能超过 60 个字符" },
+              ]}
+            >
+              <Input
+                placeholder="请输入活动/讲座名称"
+                allowClear
+                disabled={isEdit}
+              />
+            </Form.Item>
+          </Col>
 
-          <Form.Item
-            name="type"
-            label="类型"
-            style={{ width: 220 }}
-            rules={[{ required: true, message: "请选择类型" }]}
-          >
-            <Radio.Group disabled={isEdit}>
-              <Radio value={0}>活动</Radio>
-              <Radio value={1}>讲座</Radio>
-            </Radio.Group>
-          </Form.Item>
-        </Space>
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="type"
+              label="类型"
+              rules={[{ required: true, message: "请选择类型" }]}
+            >
+              <Radio.Group disabled={isEdit}>
+                <Radio value={0}>活动</Radio>
+                <Radio value={1}>讲座</Radio>
+              </Radio.Group>
+            </Form.Item>
+          </Col>
 
-        <Form.Item
-          name="description"
-          label="描述"
-          rules={[
-            { required: true, message: "请输入描述" },
-            { max: 500, message: "描述不能超过 500 个字符" },
-          ]}
-        >
-          <Input.TextArea
-            rows={4}
-            placeholder="请输入活动/讲座描述"
-            showCount
-            maxLength={500}
-            disabled={isEdit}
-          />
-        </Form.Item>
+          {/* 描述 */}
+          <Col span={24}>
+            <Form.Item
+              name="description"
+              label="描述"
+              rules={[
+                { required: true, message: "请输入描述" },
+                { max: 500, message: "描述不能超过 500 个字符" },
+              ]}
+            >
+              <Input.TextArea
+                rows={3}
+                placeholder="请输入活动/讲座描述"
+                showCount
+                maxLength={500}
+                disabled={isEdit}
+              />
+            </Form.Item>
+          </Col>
 
-        <Form.Item
-          name="location"
-          label="地点"
-          rules={[
-            { required: true, message: "请输入地点" },
-            { max: 60, message: "地点不能超过 60 个字符" },
-          ]}
-        >
-          <Input placeholder="请输入地点" allowClear disabled={isEdit} />
-        </Form.Item>
+          {/* 地点 */}
+          <Col span={24}>
+            <Form.Item
+              name="location"
+              label="地点"
+              rules={[
+                { required: true, message: "请输入地点" },
+                { max: 60, message: "地点不能超过 60 个字符" },
+              ]}
+            >
+              <Input placeholder="请输入地点" allowClear disabled={isEdit} />
+            </Form.Item>
+          </Col>
 
-        <Space size={16} style={{ display: "flex" }} align="start">
-          <Form.Item
-            name="signStartTime"
-            label="报名开始时间"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "请选择报名开始时间" }]}
-          >
-            <DatePicker showTime format={DT_FORMAT} style={{ width: "100%" }} />
-          </Form.Item>
+          {/* 报名时间 */}
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="signStartTime"
+              label="报名开始时间"
+              rules={[{ required: true, message: "请选择报名开始时间" }]}
+            >
+              <DatePicker
+                locale={zhCN}
+                showTime={{ format: "HH:mm:ss" }}
+                format={DT_FORMAT}
+                placeholder={dtPlaceholder}
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
 
-          <Form.Item
-            name="signEndTime"
-            label="报名截止时间"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "请选择报名截止时间" }]}
-          >
-            <DatePicker showTime format={DT_FORMAT} style={{ width: "100%" }} />
-          </Form.Item>
-        </Space>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="signEndTime"
+              label="报名截止时间"
+              rules={[{ required: true, message: "请选择报名截止时间" }]}
+            >
+              <DatePicker
+                locale={zhCN}
+                showTime={{ format: "HH:mm:ss" }}
+                format={DT_FORMAT}
+                placeholder={dtPlaceholder}
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
 
-        <Space size={16} style={{ display: "flex" }} align="start">
-          <Form.Item
-            name="activityStime"
-            label="活动开始时间"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "请选择活动开始时间" }]}
-          >
-            <DatePicker showTime format={DT_FORMAT} style={{ width: "100%" }} />
-          </Form.Item>
+          {/* 活动时间 */}
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="activityStime"
+              label="活动开始时间"
+              rules={[{ required: true, message: "请选择活动开始时间" }]}
+            >
+              <DatePicker
+                locale={zhCN}
+                showTime={{ format: "HH:mm:ss" }}
+                format={DT_FORMAT}
+                placeholder={dtPlaceholder}
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
 
-          <Form.Item
-            name="activityEtime"
-            label="活动结束时间"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "请选择活动结束时间" }]}
-          >
-            <DatePicker showTime format={DT_FORMAT} style={{ width: "100%" }} />
-          </Form.Item>
-        </Space>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="activityEtime"
+              label="活动结束时间"
+              rules={[{ required: true, message: "请选择活动结束时间" }]}
+            >
+              <DatePicker
+                locale={zhCN}
+                showTime={{ format: "HH:mm:ss" }}
+                format={DT_FORMAT}
+                placeholder={dtPlaceholder}
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
 
-        <Space size={16} style={{ display: "flex" }} align="start">
-          <Form.Item
-            name="fullNum"
-            label="人数上限"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "请输入人数上限" }]}
-          >
-            <InputNumber min={1} max={999999} style={{ width: "100%" }} />
-          </Form.Item>
+          {/* 人数 + 分数 */}
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="fullNum"
+              label="人数上限"
+              rules={[{ required: true, message: "请输入人数上限" }]}
+            >
+              <InputNumber
+                min={1}
+                max={999999}
+                placeholder="请输入人数上限"
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
 
-          <Form.Item
-            name="score"
-            label="分数"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "请输入分数" }]}
-          >
-            <InputNumber min={0} max={999999} style={{ width: "100%" }} />
-          </Form.Item>
-        </Space>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="score"
+              label="分数"
+              rules={[{ required: true, message: "请输入分数" }]}
+            >
+              <InputNumber
+                min={0}
+                max={999999}
+                placeholder="请输入分数"
+                style={{ width: "100%" }}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );

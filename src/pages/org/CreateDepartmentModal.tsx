@@ -82,7 +82,7 @@ export default function CreateDepartmentModal({
       confirmLoading={action.loading}
       destroyOnClose
     >
-      <Form<FormValues> form={form} layout="vertical" requiredMark={false}>
+      <Form<FormValues> form={form} layout="vertical">
         <Form.Item
           name="department"
           label="部门名称"

@@ -70,7 +70,7 @@ export default function CreateFeedbackModal(props: CreateFeedbackModalProps) {
       okText="提交"
       cancelText="取消"
     >
-      <Form form={form} layout="vertical" requiredMark={false}>
+      <Form form={form} layout="vertical">
         <Form.Item
           label="反馈标题"
           name="title"
