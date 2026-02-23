@@ -42,9 +42,11 @@ export default function CreateDepartmentModal({
 
   /**
    * ✅ 异步动作（统一 loading + toast + ApiError 处理）
+   * ✅ 提示信息：优先使用后端返回值（data/msg），为空再兜底
    */
   const action = useAsyncAction({
-    successMessage: "创建成功",
+    successMessage: (_result) => String(_result ?? "").trim() || "创建成功",
+    errorMessage: "创建失败",
   });
 
   /**
@@ -62,14 +64,17 @@ export default function CreateDepartmentModal({
   const handleOk = async () => {
     const values = await form.validateFields();
 
-    await action.run(async () => {
-      await createDepartment(values.department);
-    });
+    try {
+      // ✅ 返回后端结果，让 successMessage 能拿到 _result
+      await action.run(async () => {
+        return await createDepartment(values.department);
+      });
 
-    // 如果执行成功（没有抛异常）
-    if (!action.loading) {
+      // ✅ 只有成功才关闭弹窗 + 回调
       onCancel();
       onSuccess?.();
+    } catch {
+      // ❌ 失败：toast 已由 useAsyncAction 统一处理，这里不关弹窗
     }
   };
 

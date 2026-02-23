@@ -26,6 +26,7 @@ export default function OrgPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
   const del = useAsyncMapAction<number, string>({
+    // ✅ 提示信息：优先使用后端返回值（data/msg），为空再兜底
     successMessage: (_id, result) => String(result ?? "").trim() || "删除成功",
     errorMessage: "删除失败",
   });
@@ -115,7 +116,7 @@ export default function OrgPage() {
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         createDepartment={(department) => m.submitCreate({ department })}
-        onSuccess={() => t.reload()}
+        // ✅ 方案 A：刷新由 useDepartmentManage.submitCreate 内部完成，这里不再重复 reload
       />
     </Card>
   );
