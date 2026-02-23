@@ -120,82 +120,80 @@ export default function FeedbackCenterPage() {
   );
 
   return (
-    <div style={{ padding: 16 }}>
-      <Card
-        title={
-          <Space direction="vertical" size={0}>
-            <Title level={4} style={{ margin: 0 }}>
-              我的反馈
+    <Card
+      title={
+        <Space direction="vertical" size={0}>
+          <Title level={4} style={{ margin: 0 }}>
+            我的反馈
+          </Title>
+        </Space>
+      }
+      extra={
+        <Space>
+          <Button type="primary" onClick={openCreate}>
+            创建反馈
+          </Button>
+          <Button onClick={list.reload} disabled={list.loading}>
+            刷新
+          </Button>
+        </Space>
+      }
+    >
+      {/* 工具条：本地过滤建议用 change + debounce */}
+      <TableToolbar
+        showSearch
+        keyword={list.query.keyword}
+        onKeywordChange={list.setKeyword}
+        searchMode="change"
+        debounceMs={200}
+        onReset={list.reset}
+        onRefresh={list.reload}
+        loading={list.loading}
+        left={
+          <Space>
+            <Title level={5} style={{ margin: 0 }}>
+              反馈列表
             </Title>
           </Space>
         }
-        extra={
+        right={
           <Space>
-            <Button type="primary" onClick={openCreate}>
-              创建反馈
+            <Button onClick={() => list.exportCsv()} loading={list.exporting}>
+              导出
             </Button>
-            <Button onClick={list.reload} disabled={list.loading}>
-              刷新
-            </Button>
+
+            <ColumnSettings
+              presets={list.presets}
+              visibleKeys={list.visibleKeys}
+              onChange={handleVisibleKeysChange}
+              orderedKeys={list.orderedKeys}
+              onOrderChange={handleOrderedKeysChange}
+              onReset={list.resetToDefault}
+            />
           </Space>
         }
-      >
-        {/* 工具条：本地过滤建议用 change + debounce */}
-        <TableToolbar
-          showSearch
-          keyword={list.query.keyword}
-          onKeywordChange={list.setKeyword}
-          searchMode="change"
-          debounceMs={200}
-          onReset={list.reset}
-          onRefresh={list.reload}
-          loading={list.loading}
-          left={
-            <Space>
-              <Title level={5} style={{ margin: 0 }}>
-                反馈列表
-              </Title>
-            </Space>
-          }
-          right={
-            <Space>
-              <Button onClick={() => list.exportCsv()} loading={list.exporting}>
-                导出
-              </Button>
+      />
 
-              <ColumnSettings
-                presets={list.presets}
-                visibleKeys={list.visibleKeys}
-                onChange={handleVisibleKeysChange}
-                orderedKeys={list.orderedKeys}
-                onOrderChange={handleOrderedKeysChange}
-                onReset={list.resetToDefault}
-              />
-            </Space>
-          }
-        />
+      <SmartTable<FeedbackSessionItem, Record<string, any>>
+        bizKey="feedback.mine"
+        rowKey="sessionId"
+        loading={list.loading}
+        error={list.error}
+        dataSource={list.rows}
+        columns={antdColumns}
+        query={list.query}
+        total={list.total}
+        onQueryChange={list.onQueryChange}
+        onFiltersChange={(filters) => list.onQueryChange({ filters })}
+        enableColumnResize
+      />
 
-        <SmartTable<FeedbackSessionItem, Record<string, any>>
-          bizKey="feedback.mine"
-          rowKey="sessionId"
-          loading={list.loading}
-          error={list.error}
-          dataSource={list.rows}
-          columns={antdColumns}
-          query={list.query}
-          total={list.total}
-          onQueryChange={list.onQueryChange}
-          onFiltersChange={(filters) => list.onQueryChange({ filters })}
-          enableColumnResize
-        />
-
-        <CreateFeedbackModal
-          open={createOpen}
-          loading={creating}
-          onCancel={closeCreate}
-          onSubmit={submitCreate}
-        />
-      </Card>
-    </div>
+      <CreateFeedbackModal
+        open={createOpen}
+        loading={creating}
+        onCancel={closeCreate}
+        onSubmit={submitCreate}
+      />
+    </Card>
   );
 }

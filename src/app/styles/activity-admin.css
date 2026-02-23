@@ -4,10 +4,6 @@
    只用于：活动/讲座管理端详情页（ActivityAdminDetailPage）
    ========================================================= */
 
-.activity-admin-page {
-  padding: 16px;
-}
-
 /* 页面最大宽度（可选） */
 .activity-admin-container {
   max-width: 1900px;

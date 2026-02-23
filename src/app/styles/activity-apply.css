@@ -3,10 +3,6 @@
    报名端详情页样式（ActivityDetailPage）
    ========================================================= */
 
-.activity-apply-page {
-  padding: 16px;
-}
-
 .activity-apply-container {
   max-width: 1900px;
   margin: 0 auto;

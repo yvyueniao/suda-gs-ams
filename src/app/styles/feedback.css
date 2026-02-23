@@ -4,15 +4,6 @@
  */
 
 /* ===== 页面容器 ===== */
-.feedback-page {
-  padding: 24px;
-}
-
-@media (max-width: 1768px) {
-  .feedback-page {
-    padding: 12px;
-  }
-}
 
 /* 居中容器（可选但强烈推荐：避免内容贴边/过宽） */
 .feedback-container {

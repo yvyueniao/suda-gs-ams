@@ -78,51 +78,49 @@ export default function FeedbackAdminPage() {
   );
 
   return (
-    <div style={{ padding: 16 }}>
-      <Card
-        title={
-          <Space direction="vertical" size={0}>
-            <Title level={4} style={{ margin: 0 }}>
-              反馈处理
+    <Card
+      title={
+        <Space direction="vertical" size={0}>
+          <Title level={4} style={{ margin: 0 }}>
+            反馈处理
+          </Title>
+        </Space>
+      }
+    >
+      <TableToolbar
+        showSearch
+        searchMode="change"
+        debounceMs={300}
+        keyword={table.query.keyword}
+        onKeywordChange={table.setKeyword}
+        searchPlaceholder="搜索：标题 / 姓名"
+        loading={table.loading}
+        onRefresh={table.reload}
+        onReset={table.reset}
+        left={
+          <Space>
+            <Title level={5} style={{ margin: 0 }}>
+              反馈列表
             </Title>
           </Space>
         }
-      >
-        <TableToolbar
-          showSearch
-          searchMode="change"
-          debounceMs={300}
-          keyword={table.query.keyword}
-          onKeywordChange={table.setKeyword}
-          searchPlaceholder="搜索：标题 / 姓名"
-          loading={table.loading}
-          onRefresh={table.reload}
-          onReset={table.reset}
-          left={
-            <Space>
-              <Title level={5} style={{ margin: 0 }}>
-                反馈列表
-              </Title>
-            </Space>
-          }
-          right={rightActions}
-        />
+        right={rightActions}
+      />
 
-        <SmartTable<FeedbackSessionItem, Record<string, any>>
-          bizKey="feedback.all"
-          rowKey="sessionId"
-          columns={columns}
-          dataSource={table.rows}
-          loading={table.loading}
-          error={table.error}
-          query={table.query as any}
-          total={table.total}
-          onQueryChange={table.onQueryChange as any}
-          onFiltersChange={(filters) => table.onQueryChange({ filters } as any)}
-          enableColumnResize
-          sticky
-        />
-      </Card>
-    </div>
+      <SmartTable<FeedbackSessionItem, Record<string, any>>
+        bizKey="feedback.all"
+        rowKey="sessionId"
+        columns={columns}
+        dataSource={table.rows}
+        loading={table.loading}
+        error={table.error}
+        query={table.query as any}
+        total={table.total}
+        onQueryChange={table.onQueryChange as any}
+        onFiltersChange={(filters) => table.onQueryChange({ filters } as any)}
+        enableColumnResize
+        sticky
+      />
+    </Card>
   );
 }
