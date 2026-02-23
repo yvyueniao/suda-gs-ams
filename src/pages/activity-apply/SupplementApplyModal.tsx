@@ -160,8 +160,8 @@ export default function SupplementApplyModal(props: SupplementApplyModalProps) {
         <Alert
           type="info"
           showIcon
-          message="补报名需要上传 PDF"
-          description="请选择活动并上传 PDF 附件后提交补报名申请。"
+          message="补报名情况说明"
+          description="活动名额报满的情况下，有特殊情况需要报名的同学，如导师要求参加等，请上传相关的聊天记录或证明材料pdf版本"
         />
 
         <Form
