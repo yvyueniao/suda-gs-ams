@@ -35,24 +35,29 @@ const ENABLE_DELETE = false;
  * - ImportResultModal 需要：统一返回壳（code/msg/data/timestamp）
  * - hooks 的 result.result 可能是结构化统计，也可能是后端壳（你们后端有时返回 data 文本）
  * - 这里做“展示适配”，不改 hooks 也能跑
+ *
+ * ✅ 关键改动：
+ * - msg 优先用后端给出的（如果有）
+ * - code 也尽量用后端的（如果有），否则再做兜底推断
  */
 function adaptImportResult(result: any) {
   if (!result) return null;
 
-  // 若本身就是壳（code/msg/data/timestamp），直接用
-  if (
-    typeof result === "object" &&
-    result &&
-    typeof result.code === "number" &&
-    typeof result.msg === "string" &&
-    "data" in result
-  ) {
-    return {
-      code: result.code,
-      msg: result.msg,
-      data: result.data,
-      timestamp: Number(result.timestamp ?? Date.now()),
-    };
+  // ✅ 若本身就是壳（code/msg/data/timestamp），直接用（优先后端）
+  if (typeof result === "object" && result) {
+    const anyR = result as any;
+
+    const hasShellLike =
+      "code" in anyR || "msg" in anyR || "data" in anyR || "timestamp" in anyR;
+
+    if (hasShellLike) {
+      return {
+        code: typeof anyR.code === "number" ? anyR.code : undefined,
+        msg: typeof anyR.msg === "string" ? anyR.msg : undefined,
+        data: anyR.data,
+        timestamp: Number(anyR.timestamp ?? Date.now()),
+      };
+    }
   }
 
   // 否则按“结构化统计”拼装展示
@@ -130,11 +135,14 @@ export default function UserManagePage() {
     setCreating(true);
     try {
       await insertUser(payload);
+      // ✅ 这里接口返回 void，没有后端 msg 可用，只能用前端文案
       notify({ kind: "success", msg: "创建成功" });
       setCreateOpen(false);
       table.reload();
-    } catch {
-      notify({ kind: "error", msg: "创建失败，请稍后重试" });
+    } catch (err: any) {
+      // ✅ 如果 shared/http 抛的是 ApiError，err.message 就是后端 msg（优先用它）
+      notify({ kind: "error", msg: err?.message ?? "创建失败，请稍后重试" });
+      throw err;
     } finally {
       setCreating(false);
     }
@@ -152,6 +160,8 @@ export default function UserManagePage() {
     });
 
     if (!confirmed) return;
+
+    // ✅ batch hook 内部会优先吐后端 msg（我们在 hooks 里已改），这里只负责链路
     await runBatchDelete();
     table.reload();
   };
@@ -168,6 +178,8 @@ export default function UserManagePage() {
     });
 
     if (!confirmed) return;
+
+    // ✅ batch hook 内部会优先吐后端 msg（我们在 hooks 里已改），这里只负责链路
     await runBatchLock();
     table.reload();
   };
@@ -181,6 +193,14 @@ export default function UserManagePage() {
     () => adaptImportResult(importFlow.result.result),
     [importFlow.result.result],
   );
+
+  // ✅ 防止“重复打开导入/录入加分/创建”等
+  const busy =
+    !!creating ||
+    !!locking ||
+    !!deleting ||
+    !!importFlow.submitting ||
+    !!specialScore.submitting;
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
@@ -198,7 +218,11 @@ export default function UserManagePage() {
             </Space>
 
             {/* ✅ 主操作：标题右侧 */}
-            <Button type="primary" onClick={() => setCreateOpen(true)}>
+            <Button
+              type="primary"
+              onClick={() => setCreateOpen(true)}
+              disabled={busy}
+            >
               创建用户
             </Button>
           </Space>
@@ -224,11 +248,15 @@ export default function UserManagePage() {
           right={
             <Space>
               {/* ✅ 正常显示：录入加分 */}
-              <Button onClick={specialScore.openModal}>录入加分</Button>
+              <Button onClick={specialScore.openModal} disabled={busy}>
+                录入加分
+              </Button>
 
               {/* ✅ 仅管理员（role=0）可见：批量导入 */}
               <Can roles={[0]}>
-                <Button onClick={importFlow.openPreview}>批量导入</Button>
+                <Button onClick={importFlow.openPreview} disabled={busy}>
+                  批量导入
+                </Button>
               </Can>
 
               <Button
@@ -261,6 +289,7 @@ export default function UserManagePage() {
                     notify: (type, text) => notify({ kind: type, msg: text }),
                   })
                 }
+                disabled={busy}
               >
                 导出
               </Button>
@@ -343,6 +372,7 @@ export default function UserManagePage() {
         onClose={importFlow.closeResult}
         result={adaptedResult}
         onDownloadFailed={(url) => {
+          // ✅ 这里仅弹提示（下载动作以后再接）
           notify({ kind: "info", msg: `失败名单下载：${url}` });
         }}
       />

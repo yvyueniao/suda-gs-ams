@@ -13,7 +13,6 @@ import {
   Modal,
   Form,
   AutoComplete,
-  Input,
   Select,
   InputNumber,
   Space,
@@ -129,6 +128,9 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
     !Number.isNaN(value.score) &&
     value.score >= 0;
 
+  // ✅ 提交/搜索中：禁用输入，避免用户在提交过程中改值导致“UI 显示”和“hook 校验”不同步
+  const disabled = !!submitting;
+
   return (
     <Modal
       title="录入加分"
@@ -160,8 +162,13 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <AutoComplete
               value={value.name}
               options={nameOptions as any}
-              onSearch={(text) => void onNameInput(text)}
+              onSearch={(text) => {
+                if (disabled) return;
+                void onNameInput(text);
+              }}
               onChange={(text) => {
+                if (disabled) return;
+
                 // allowClear：清空时两列一起清更安全
                 if (!text) {
                   clearPickedUser?.();
@@ -171,13 +178,15 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
                 void onNameInput(text);
               }}
               onSelect={(_val, option: any) => {
+                if (disabled) return;
                 const raw = option?._raw as UserNameOption | undefined;
                 if (raw) onPickUser(raw);
               }}
               placeholder="输入姓名 / 选择下拉"
-              allowClear
+              allowClear={!disabled}
               notFoundContent={searching ? "搜索中..." : "无匹配用户"}
               style={{ width: "100%" }}
+              disabled={disabled}
             />
           </Form.Item>
 
@@ -190,8 +199,13 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <AutoComplete
               value={value.username}
               options={usernameOptions as any}
-              onSearch={(text) => void onUsernameInput(text)}
+              onSearch={(text) => {
+                if (disabled) return;
+                void onUsernameInput(text);
+              }}
               onChange={(text) => {
+                if (disabled) return;
+
                 if (!text) {
                   clearPickedUser?.();
                   void onUsernameInput("");
@@ -200,13 +214,15 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
                 void onUsernameInput(text);
               }}
               onSelect={(_val, option: any) => {
+                if (disabled) return;
                 const raw = option?._raw as UserNameOption | undefined;
                 if (raw) onPickUser(raw);
               }}
               placeholder="输入学号 / 选择下拉"
-              allowClear
+              allowClear={!disabled}
               notFoundContent={searching ? "搜索中..." : "无匹配用户"}
               style={{ width: "100%" }}
+              disabled={disabled}
             />
           </Form.Item>
 
@@ -215,8 +231,12 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <Select
               value={value.type}
               options={TYPE_OPTIONS as any}
-              onChange={(v) => onTypeChange(v as SpecialScoreType)}
+              onChange={(v) => {
+                if (disabled) return;
+                onTypeChange(v as SpecialScoreType);
+              }}
               style={{ width: "100%" }}
+              disabled={disabled}
             />
           </Form.Item>
 
@@ -227,14 +247,19 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
               min={0}
               precision={0}
               placeholder="请输入分数"
-              onChange={(v) => onScoreChange(v)}
+              onChange={(v) => {
+                if (disabled) return;
+                onScoreChange(v);
+              }}
               style={{ width: "100%" }}
+              disabled={disabled}
             />
           </Form.Item>
         </div>
 
         <Text type="secondary">
           提示：姓名/学号任意一列都可以搜索并下拉选择；一旦手动修改其中一列，另一列会被清空以防止信息不一致。
+          {submitting ? "（提交中已暂时锁定输入）" : null}
         </Text>
       </Form>
     </Modal>

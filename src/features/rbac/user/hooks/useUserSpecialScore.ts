@@ -52,6 +52,13 @@ function normalizeText(v: unknown): string {
   return String(v ?? "").trim();
 }
 
+/** ✅ 统一把错误转为“优先后端 msg”的可展示文案 */
+function errToMsg(err: unknown, fallback: string) {
+  const anyErr = err as any;
+  const msg = typeof anyErr?.message === "string" ? anyErr.message.trim() : "";
+  return msg || fallback;
+}
+
 export function useUserSpecialScore(options?: {
   onNotify?: Notify;
   /** ✅ 成功提交后给页面层一个回调（例如 table.reload） */
@@ -90,9 +97,12 @@ export function useUserSpecialScore(options?: {
     });
     setOptionsList([]);
     setSearching(false);
+    // ✅ 让正在飞的请求失效（避免 close 后“回填候选”）
+    lastReqIdRef.current += 1;
   }, []);
 
   const openModal = useCallback(() => {
+    // ✅ 只打开，不做任何加载/重置（符合你之前的要求）
     setOpen(true);
   }, []);
 
@@ -100,13 +110,16 @@ export function useUserSpecialScore(options?: {
   // 1) ✅ 共用搜索：姓名/学号任意输入 -> options
   // - 走 /user/pages 使用 key 进行模糊查询（后端支持 name/username）
   // - 仅保留最后一次请求结果（防竞态）
-  // - ✅ 只负责“拉候选 + 维护 optionsList”，不直接改 value（value 的互斥清空在 onNameInput/onUsernameInput 里做）
+  // - ✅ 只负责“拉候选 + 维护 optionsList”，不直接改 value
   // ======================================================
   const searchCandidates = useCallback(
     async (keyword: string) => {
       const key = normalizeText(keyword);
 
       if (!key) {
+        // ✅ 清空搜索时：让飞行中的请求失效，避免晚到结果覆盖 UI
+        lastReqIdRef.current += 1;
+
         setOptionsList([]);
         setSearching(false);
         return;
@@ -122,6 +135,7 @@ export function useUserSpecialScore(options?: {
           key,
         });
 
+        // ✅ 只接收最后一次请求
         if (reqId !== lastReqIdRef.current) return;
 
         const mapped: UserNameOption[] = (list ?? [])
@@ -132,10 +146,11 @@ export function useUserSpecialScore(options?: {
           .filter((x) => x.username && x.name);
 
         setOptionsList(mapped);
-      } catch (err: any) {
+      } catch (err) {
         if (reqId !== lastReqIdRef.current) return;
+
         setOptionsList([]);
-        notify({ kind: "error", msg: err?.message ?? "用户搜索失败" });
+        notify({ kind: "error", msg: errToMsg(err, "用户搜索失败") });
       } finally {
         if (reqId === lastReqIdRef.current) setSearching(false);
       }
@@ -154,23 +169,20 @@ export function useUserSpecialScore(options?: {
       const nextName = nameText;
       const nextKey = normalizeText(nameText);
 
+      // ✅ 只 setValue 一次（避免“清空时 setValue 两次”的抖动）
       setValue((s) => {
         const prevName = normalizeText(s.name);
-        // ✅ 如果用户手动改了姓名（且之前已有学号），为了不出现不一致，清空学号
-        const shouldClearUsername = !!s.username && nextKey !== prevName;
+        const changed = nextKey !== prevName;
+
         return {
           ...s,
           name: nextName,
-          username: shouldClearUsername ? "" : s.username,
+          // ✅ 如果用户手动改了姓名（且之前已有学号），为了不出现不一致，清空学号
+          username: s.username && changed ? "" : s.username,
+          // ✅ 如果姓名被清空，则学号也清空（避免残留）
+          ...(nextKey ? null : { username: "" }),
         };
       });
-
-      if (!nextKey) {
-        setOptionsList([]);
-        // 清空姓名时，学号也清空（避免残留）
-        setValue((s) => ({ ...s, username: "" }));
-        return;
-      }
 
       await searchCandidates(nextKey);
     },
@@ -184,21 +196,17 @@ export function useUserSpecialScore(options?: {
 
       setValue((s) => {
         const prevUsername = normalizeText(s.username);
-        // ✅ 如果用户手动改了学号（且之前已有姓名），为了不出现不一致，清空姓名
-        const shouldClearName = !!s.name && nextKey !== prevUsername;
+        const changed = nextKey !== prevUsername;
+
         return {
           ...s,
           username: nextUsername,
-          name: shouldClearName ? "" : s.name,
+          // ✅ 如果用户手动改了学号（且之前已有姓名），为了不出现不一致，清空姓名
+          name: s.name && changed ? "" : s.name,
+          // ✅ 如果学号被清空，则姓名也清空（避免残留）
+          ...(nextKey ? null : { name: "" }),
         };
       });
-
-      if (!nextKey) {
-        setOptionsList([]);
-        // 清空学号时，姓名也清空（避免残留）
-        setValue((s) => ({ ...s, name: "" }));
-        return;
-      }
 
       await searchCandidates(nextKey);
     },
@@ -214,6 +222,10 @@ export function useUserSpecialScore(options?: {
       name: opt.name,
       username: opt.username,
     }));
+    // ✅ 选中后通常不需要继续展示候选（避免误选/视觉噪音）
+    setOptionsList([]);
+    setSearching(false);
+    lastReqIdRef.current += 1; // 让飞行中的请求失效
   }, []);
 
   // ======================================================
@@ -227,7 +239,7 @@ export function useUserSpecialScore(options?: {
     }));
     setOptionsList([]);
     setSearching(false);
-    // 让正在飞的请求失效
+    // ✅ 让正在飞的请求失效
     lastReqIdRef.current += 1;
   }, []);
 
@@ -258,7 +270,7 @@ export function useUserSpecialScore(options?: {
     const username = normalizeText(value.username);
     const score = value.score;
 
-    // ✅ 前置校验
+    // ✅ 前置校验（这是前端固定文案，不涉及后端 msg）
     if (!name) {
       notify({ kind: "info", msg: "请输入姓名或从下拉选择用户" });
       return;
@@ -288,10 +300,9 @@ export function useUserSpecialScore(options?: {
     try {
       const serverMsg = await specialAddScore(payload);
 
-      notify({
-        kind: "success",
-        msg: String(serverMsg ?? "").trim(),
-      });
+      // ✅ 成功提示：优先用后端 data（通常是 string）
+      const okMsg = String(serverMsg ?? "").trim() || "录入成功";
+      notify({ kind: "success", msg: okMsg });
 
       try {
         await options?.onAfterSubmit?.();
@@ -300,8 +311,9 @@ export function useUserSpecialScore(options?: {
       }
 
       closeModal();
-    } catch (err: any) {
-      notify({ kind: "error", msg: err?.message ?? "录入失败" });
+    } catch (err) {
+      // ✅ 失败提示：优先后端 msg（ApiError.message）
+      notify({ kind: "error", msg: errToMsg(err, "录入失败") });
       throw err;
     } finally {
       submittingRef.current = false;

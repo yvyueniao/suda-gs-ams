@@ -27,6 +27,32 @@ const INVALID_FILTERS = [
   { text: "封锁", value: false },
 ];
 
+/**
+ * ✅ 角色语义颜色映射（对齐 admin 管理界面）
+ * role：
+ * 0=管理员
+ * 1=主席
+ * 2=部长
+ * 3=干事
+ * 4=普通学生
+ */
+function getRoleTagColor(role: Role): string {
+  switch (role) {
+    case 0:
+      return "gold"; // 管理员
+    case 1:
+      return "red"; // 主席
+    case 2:
+      return "purple"; // 部长
+    case 3:
+      return "cyan"; // 干事
+    case 4:
+      return "blue"; // 普通学生
+    default:
+      return "blue";
+  }
+}
+
 export function buildUserColumns(params: {
   /** 行内解封（固定显示） */
   onUnlock: (record: UserTableRow) => void | Promise<unknown>;
@@ -56,7 +82,10 @@ export function buildUserColumns(params: {
       width: 100,
       sorter: true,
       filters: ROLE_FILTERS,
-      render: (role: Role) => <Tag color="blue">{ROLE_LABEL[role] ?? "-"}</Tag>,
+      // ✅ 改：不同角色不同颜色（对齐 admin）
+      render: (role: Role) => (
+        <Tag color={getRoleTagColor(role)}>{ROLE_LABEL[role] ?? "-"}</Tag>
+      ),
     },
 
     {

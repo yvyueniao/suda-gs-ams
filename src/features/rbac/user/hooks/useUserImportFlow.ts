@@ -49,6 +49,13 @@ function normalizeText(v: unknown): string {
   return String(v ?? "").trim();
 }
 
+/** ✅ 提示信息优先用后端 msg：ApiError.message / Error.message */
+function errToMsg(err: unknown, fallback: string) {
+  const anyErr = err as any;
+  const msg = typeof anyErr?.message === "string" ? anyErr.message.trim() : "";
+  return msg || fallback;
+}
+
 function pickFirstMatch(
   headers: string[],
   candidates: string[],
@@ -301,8 +308,13 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
         if (rows.length === 0) {
           notify({ kind: "info", msg: "未解析到有效数据（可能是空表）" });
         }
-      } catch {
-        notify({ kind: "error", msg: "解析文件失败，请检查模板是否正确" });
+      } catch (err) {
+        // ✅ 失败提示：优先后端 msg（这里多半是本地解析错误，没有后端 msg，就 fallback）
+        notify({
+          kind: "error",
+          msg: errToMsg(err, "解析文件失败，请检查模板是否正确"),
+        });
+        throw err;
       } finally {
         parsingRef.current = false;
         setParsing(false);
@@ -355,15 +367,19 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       // ✅ 关闭预览（也可以不关，看你页面交互）
       closePreview();
 
-      // code===200 走 success，否则走 error 提示更符合你接口文档
+      // ✅ 提示信息优先后端 msg（shell.msg 就是后端 msg）
       if (shell.code === 200) {
-        notify({ kind: "success", msg: shell.msg ?? "导入请求已提交" });
+        notify({
+          kind: "success",
+          msg: (shell.msg ?? "").trim() || "导入成功",
+        });
       } else {
-        notify({ kind: "error", msg: shell.msg ?? "导入失败" });
+        notify({ kind: "error", msg: (shell.msg ?? "").trim() || "导入失败" });
       }
-    } catch {
-      notify({ kind: "error", msg: "导入失败，请稍后重试" });
-      throw new Error("import failed");
+    } catch (err) {
+      // ✅ 失败：优先 err.message（ApiError.message=后端 msg）
+      notify({ kind: "error", msg: errToMsg(err, "导入失败") });
+      throw err;
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
