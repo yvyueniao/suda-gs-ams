@@ -16,6 +16,7 @@ export const departmentColumnPresets: TableColumnPreset<DepartmentItem>[] = [
     key: "id",
     title: "部门ID",
     width: 96,
+    hidden: true,
   },
   {
     key: "department",
