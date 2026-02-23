@@ -4,17 +4,21 @@
  *
  * ✅ 页面层组件（UI）
  * - 只负责渲染 Modal + Form，不直接请求接口
- * - 姓名联想/回填/提交动作：全部由父层（useAdminManagePage）注入
+ * - 姓名/学号联想/回填/提交动作：全部由父层（useAdminManagePage）注入
  *
  * 表单字段：
- * 1) 姓名（可输入，输入时触发 onNameInputChange；下拉联想）
- * 2) 学号 username（只读，由选择联想用户后自动回填）
+ * 1) 姓名（下拉可搜；与“学号”共用同一份 suggestions）
+ * 2) 学号（下拉可搜；与“姓名”共用同一份 suggestions）
  * 3) 部门 departmentId（下拉；来自 departments）
  * 4) 职务 role（下拉；固定选项）
+ *
+ * ✅ 关键：修改任一端（姓名/学号）都会触发 onSearchUser
+ * - 选中任一端 -> onPickUser -> 父层强一致回填 name/username
+ * - 清空任一端 -> clearPickedUser -> 父层清掉选择，避免不一致
  */
 
 import { useEffect, useMemo } from "react";
-import { Modal, Form, Input, Select, Space, Spin, Typography } from "antd";
+import { Modal, Form, Select, Space, Spin, Typography } from "antd";
 
 import type {
   AppointRoleFormValues,
@@ -34,18 +38,21 @@ export type AppointRoleModalProps = {
   departments: DepartmentOption[];
   loadingDepartments?: boolean;
 
-  /** 联想候选（由 hook 管理） */
+  /** 联想候选（由 hook 管理，共用） */
   suggestions: UserSuggestion[];
   searchingSuggestion?: boolean;
 
-  /** 表单回填值（由 hook 管理） */
+  /** 表单回填值（由 hook 管理：name/username 永远强一致） */
   values?: Partial<AppointRoleFormValues>;
 
-  /** 姓名输入变化：父层去做搜索（可加 debounce） */
-  onNameInputChange: (name: string) => void | Promise<unknown>;
+  /** ✅ 共用搜索：输入姓名/学号都调这个 */
+  onSearchUser: (key: string) => void | Promise<unknown>;
 
-  /** 选择某个联想项：父层回填 username */
-  onPickSuggestion: (u: UserSuggestion) => void;
+  /** ✅ 选中用户：姓名/学号任一端选中都走这里 */
+  onPickUser: (u: UserSuggestion) => void;
+
+  /** ✅ 清空：任一端 allowClear 时调用，避免两者不一致 */
+  clearPickedUser: () => void;
 
   /** 提交任命 */
   submitting?: boolean;
@@ -53,7 +60,7 @@ export type AppointRoleModalProps = {
 };
 
 function roleOptions() {
-  // 固定：管理员/主席/部长/干事（通常任命不会给“普通学生”，但你也可保留）
+  // 固定：主席/部长/干事（通常任命不会给“普通学生”，你也可按需扩展）
   const allow: Role[] = [1, 2, 3];
   return allow.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
 }
@@ -67,17 +74,21 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
     suggestions,
     searchingSuggestion,
     values,
-    onNameInputChange,
-    onPickSuggestion,
+    onSearchUser,
+    onPickUser,
+    clearPickedUser,
     submitting,
     onSubmit,
   } = props;
 
   const [form] = Form.useForm<AppointRoleFormValues>();
 
-  // 打开时：同步父层 values（支持回填 username）
+  // 打开时：同步父层 values（父层负责强一致回填 name/username）
   useEffect(() => {
     if (!open) return;
+
+    // destroyOnClose 开着，其实每次 open 都是新表单；
+    // 这里仍保留 setFieldsValue，确保父层回填及时反映到 UI
     if (!values) {
       form.resetFields();
       return;
@@ -92,9 +103,10 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
     }));
   }, [departments]);
 
-  const sugOptions = useMemo(() => {
+  // ✅ 姓名下拉 options（value 用 username，保证唯一；label 展示 name + username）
+  const nameOptions = useMemo(() => {
     return (suggestions ?? []).map((u) => ({
-      value: u.name, // Select 的值用 name；真正的对象用 onSelect 里查
+      value: u.username,
       label: (
         <Space size={8}>
           <Text>{u.name}</Text>
@@ -104,12 +116,28 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
     }));
   }, [suggestions]);
 
-  const handleSelectSuggestion = (nameValue: string) => {
-    const picked = (suggestions ?? []).find((x) => x.name === nameValue);
+  // ✅ 学号下拉 options（value 也用 username；label 反过来展示 username + name）
+  const usernameOptions = useMemo(() => {
+    return (suggestions ?? []).map((u) => ({
+      value: u.username,
+      label: (
+        <Space size={8}>
+          <Text>{u.username}</Text>
+          <Text type="secondary">({u.name})</Text>
+        </Space>
+      ),
+    }));
+  }, [suggestions]);
+
+  const pickByUsername = (username: string) => {
+    const picked = (suggestions ?? []).find((x) => x.username === username);
     if (!picked) return;
-    onPickSuggestion(picked);
-    // UI 同步：把“姓名”写回表单（username 会由父层 values 回填后 effect setFieldsValue）
-    form.setFieldValue("name", picked.name);
+    onPickUser(picked);
+    // UI 侧立即同步，父层 values 回填也会再次 setFieldsValue（幂等）
+    form.setFieldsValue({
+      name: picked.name,
+      username: picked.username,
+    } as any);
   };
 
   return (
@@ -137,44 +165,63 @@ export default function AppointRoleModal(props: AppointRoleModalProps) {
           ...(values ?? {}),
         }}
       >
-        {/* 1) 姓名：带联想下拉 */}
+        {/* 1) 姓名：下拉可搜（共用 suggestions） */}
         <Form.Item
           label="姓名"
           name="name"
           rules={[
-            { required: true, message: "请输入姓名" },
+            { required: true, message: "请选择姓名" },
             { whitespace: true, message: "姓名不能为空" },
           ]}
         >
           <Select
             showSearch
             allowClear
-            placeholder="输入姓名（模糊匹配）"
-            filterOption={false} // ✅ 交给后端/父层搜索
-            options={sugOptions}
+            placeholder="输入姓名或学号进行搜索"
+            filterOption={false}
+            // ✅ Select 的 value 是表单字段 name（string），这里不直接把 username 放到 name 里
+            // 所以我们用 onSelect 去 pick，并在 pick 时 setFieldsValue 把 name/username 写回
+            // options 的 value 统一用 username（唯一）
+            options={nameOptions}
             notFoundContent={
               searchingSuggestion ? <Spin size="small" /> : "暂无匹配"
             }
-            onSearch={(v) => void onNameInputChange(v)}
-            onChange={(v) => {
-              // allowClear 时 v 可能为 undefined
-              if (!v) {
-                // 清空时也通知父层清 suggestions
-                void onNameInputChange("");
-                form.setFieldValue("username", "" as any);
-              }
+            onSearch={(v) => void onSearchUser(v)}
+            onClear={() => {
+              clearPickedUser();
+              void onSearchUser("");
+              form.setFieldsValue({ name: "", username: "" } as any);
             }}
-            onSelect={handleSelectSuggestion}
+            onSelect={(username) => pickByUsername(String(username))}
+            // ✅ 让输入框显示“name”
+            // 这里通过 Form 的 name 字段控制显示：父层回填 values.name -> effect setFieldsValue
+            // 因此不用额外配置 labelInValue
           />
         </Form.Item>
 
-        {/* 2) 学号：只读自动回填 */}
+        {/* 2) 学号：下拉可搜（共用 suggestions） */}
         <Form.Item
           label="学号"
           name="username"
-          rules={[{ required: true, message: "请选择姓名以自动回填学号" }]}
+          rules={[{ required: true, message: "请选择学号" }]}
         >
-          <Input placeholder="选择姓名后自动回填" readOnly />
+          <Select
+            showSearch
+            allowClear
+            placeholder="输入学号或姓名进行搜索"
+            filterOption={false}
+            options={usernameOptions}
+            notFoundContent={
+              searchingSuggestion ? <Spin size="small" /> : "暂无匹配"
+            }
+            onSearch={(v) => void onSearchUser(v)}
+            onClear={() => {
+              clearPickedUser();
+              void onSearchUser("");
+              form.setFieldsValue({ name: "", username: "" } as any);
+            }}
+            onSelect={(username) => pickByUsername(String(username))}
+          />
         </Form.Item>
 
         {/* 3) 部门：动态下拉 */}

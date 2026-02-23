@@ -26,11 +26,26 @@ const noopNotify: Notify = () => {
   // noop
 };
 
-/** 任命弹窗内部状态 */
+/**
+ * 任命弹窗内部状态
+ * ✅ 改造点：
+ * - nameInput / usernameInput 不再分别维护
+ * - 改为 sharedSearchKey：姓名/学号两个下拉共用一个搜索输入（Search）
+ * - values 仍作为“回填到表单”的桥梁（name/username 必须强一致）
+ */
 type AppointModalState = {
   open: boolean;
-  nameInput: string;
+
+  /** ✅ 两个下拉共用的搜索关键字（可输入姓名/学号） */
+  sharedSearchKey: string;
+
+  /** ✅ 当前搜索返回的候选（姓名+学号都有） */
   suggestions: UserSuggestion[];
+
+  /** ✅ 当前已选择的用户（唯一真相源，用于强一致） */
+  selectedUser: UserSuggestion | null;
+
+  /** ✅ 回填到表单的值（始终与 selectedUser 一致） */
   values: Partial<AppointRoleFormValues>;
 };
 
@@ -116,8 +131,9 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   // ======================================================
   const [appointModal, setAppointModal] = useState<AppointModalState>({
     open: false,
-    nameInput: "",
+    sharedSearchKey: "",
     suggestions: [],
+    selectedUser: null,
     values: {},
   });
 
@@ -128,8 +144,9 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
     await ensureDepartmentsLoaded();
     setAppointModal({
       open: true,
-      nameInput: "",
+      sharedSearchKey: "",
       suggestions: [],
+      selectedUser: null,
       values: {},
     });
   }, [ensureDepartmentsLoaded]);
@@ -138,12 +155,17 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
     setAppointModal((s) => ({ ...s, open: false }));
   }, []);
 
-  const onNameInputChange = useCallback(
-    async (nameKey: string) => {
-      setAppointModal((s) => ({ ...s, nameInput: nameKey }));
+  /**
+   * ✅ 共用搜索：姓名/学号两端都调这个
+   * - key 既可以是姓名，也可以是学号（后端 /user/pages 支持）
+   */
+  const onSearchUser = useCallback(
+    async (keyInput: string) => {
+      setAppointModal((s) => ({ ...s, sharedSearchKey: keyInput }));
 
-      const key = nameKey.trim();
+      const key = keyInput.trim();
       if (!key) {
+        // 清空搜索：只清 suggestions，不强行清 selected（由 UI 的 clear 触发清 selected）
         setAppointModal((s) => ({ ...s, suggestions: [] }));
         return;
       }
@@ -170,15 +192,37 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
     [notify],
   );
 
-  const onPickSuggestion = useCallback((u: UserSuggestion) => {
+  /**
+   * ✅ 选择用户：姓名/学号任一端选中，都走这里
+   * - 统一写入 selectedUser（唯一真相源）
+   * - 同步 values：保证 name/username 永远一致
+   */
+  const onPickUser = useCallback((u: UserSuggestion) => {
     setAppointModal((s) => ({
       ...s,
-      nameInput: u.name,
+      sharedSearchKey: `${u.name} ${u.username}`.trim(),
       suggestions: [],
+      selectedUser: u,
       values: {
         ...s.values,
         name: u.name,
         username: u.username,
+      },
+    }));
+  }, []);
+
+  /**
+   * ✅ 清空选择（用于：任一端 allowClear / 手动改输入导致不可信）
+   * - 清掉 selectedUser，同时把 name/username 置空，避免“不一致”
+   */
+  const clearPickedUser = useCallback(() => {
+    setAppointModal((s) => ({
+      ...s,
+      selectedUser: null,
+      values: {
+        ...s.values,
+        name: "",
+        username: "",
       },
     }));
   }, []);
@@ -189,6 +233,22 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   const submitAppoint = useCallback(
     async (values: AppointRoleFormValues) => {
       if (appointSubmittingRef.current) return;
+
+      /**
+       * ✅ 强一致校验：
+       * - 必须选中过用户（selectedUser）
+       * - 并且表单里的 name/username 必须与 selectedUser 对齐
+       * 这样可以防止：用户手动改了一边导致两者不一致
+       */
+      const picked = appointModal.selectedUser;
+      if (!picked) {
+        notify({ kind: "error", msg: "请从下拉中选择用户（姓名或学号）" });
+        return;
+      }
+      if (values.username !== picked.username || values.name !== picked.name) {
+        notify({ kind: "error", msg: "姓名与学号不一致，请重新从下拉选择" });
+        return;
+      }
 
       const payload: AppointRolePayload = {
         username: values.username,
@@ -211,7 +271,7 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
         setSubmittingAppoint(false);
       }
     },
-    [closeAppointModal, notify, table],
+    [appointModal.selectedUser, closeAppointModal, notify, table],
   );
 
   return {
@@ -234,8 +294,17 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
     appointModal,
     openAppointModal,
     closeAppointModal,
-    onNameInputChange,
-    onPickSuggestion,
+
+    /**
+     * ✅ 新 API（替换旧的 onNameInputChange/onPickSuggestion）
+     * - onSearchUser：姓名/学号共用搜索
+     * - onPickUser：姓名/学号任一端选中都回填
+     * - clearPickedUser：任一端清空时调用，保证强一致
+     */
+    onSearchUser,
+    onPickUser,
+    clearPickedUser,
+
     submittingAppoint,
     submitAppoint,
 

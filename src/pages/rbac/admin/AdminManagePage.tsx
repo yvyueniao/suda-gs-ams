@@ -31,8 +31,12 @@ export default function AdminManagePage() {
     appointModal,
     openAppointModal,
     closeAppointModal,
-    onNameInputChange,
-    onPickSuggestion,
+
+    // ✅ 新：姓名/学号共用搜索 + 选中用户 + 清空
+    onSearchUser,
+    onPickUser,
+    clearPickedUser,
+
     submittingAppoint,
     submitAppoint,
     searchingSuggestion,
@@ -136,8 +140,10 @@ export default function AdminManagePage() {
         suggestions={appointModal.suggestions}
         searchingSuggestion={!!searchingSuggestion}
         values={appointModal.values}
-        onNameInputChange={onNameInputChange}
-        onPickSuggestion={onPickSuggestion}
+        // ✅ 新接口：共用搜索 + 选中 + 清空
+        onSearchUser={onSearchUser}
+        onPickUser={onPickUser}
+        clearPickedUser={clearPickedUser}
         submitting={!!submittingAppoint}
         onSubmit={submitAppoint}
       />
