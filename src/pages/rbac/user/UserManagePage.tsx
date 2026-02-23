@@ -299,7 +299,7 @@ export default function UserManagePage() {
         />
       </Card>
 
-      {/* ✅ 新增：录入加分弹窗 */}
+      {/* ✅ 新增：录入加分弹窗（双下拉：姓名/学号） */}
       <SpecialScoreModal
         open={specialScore.open}
         onClose={specialScore.closeModal}
@@ -308,7 +308,9 @@ export default function UserManagePage() {
         value={specialScore.value}
         options={specialScore.options}
         onNameInput={specialScore.onNameInput}
+        onUsernameInput={specialScore.onUsernameInput}
         onPickUser={specialScore.onPickUser}
+        clearPickedUser={specialScore.clearPickedUser}
         onTypeChange={specialScore.onTypeChange}
         onScoreChange={specialScore.onScoreChange}
         onSubmit={specialScore.submit}

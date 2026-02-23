@@ -5,8 +5,9 @@
  *
  * ✅ 职责（features 层业务编排）：
  * - 打开/关闭“录入加分”弹窗（open 状态）
- * - 姓名输入 -> 走 /user/pages 做模糊查询（key=nameText），生成 AutoComplete 选项
- * - 用户选择姓名后 -> 自动回填学号（username）
+ * - ✅ 姓名/学号 任意输入 -> 走 /user/pages 做模糊查询（key=keyword），生成下拉候选（共用一套）
+ * - ✅ 选择任意候选 -> 同时回填 name + username（双向一致）
+ * - ✅ 修改任意一方输入 -> 另一方清空（防止出现不一致）
  * - 选择加分类型 + 输入分数 -> 提交到 /activity/special
  *
  * ✅ 约定：
@@ -37,13 +38,13 @@ const noopNotify: Notify = () => {
 };
 
 type FormValue = {
-  /** 姓名输入框文本（AutoComplete 的 value） */
+  /** 姓名输入框文本 */
   name: string;
-  /** 选择后回填的学号（第二列） */
+  /** 学号输入框文本 */
   username: string;
-  /** 加分类型（第三列） */
+  /** 加分类型 */
   type: SpecialScoreType;
-  /** 加分分数/次数（第四列） */
+  /** 加分分数/次数 */
   score: number | undefined;
 };
 
@@ -96,29 +97,18 @@ export function useUserSpecialScore(options?: {
   }, []);
 
   // ======================================================
-  // 1) 姓名模糊搜索 -> options
-  // - 走 /user/pages 使用 key 进行模糊查询（后端通常支持 name/username）
+  // 1) ✅ 共用搜索：姓名/学号任意输入 -> options
+  // - 走 /user/pages 使用 key 进行模糊查询（后端支持 name/username）
   // - 仅保留最后一次请求结果（防竞态）
+  // - ✅ 只负责“拉候选 + 维护 optionsList”，不直接改 value（value 的互斥清空在 onNameInput/onUsernameInput 里做）
   // ======================================================
-  const onNameInput = useCallback(
-    async (nameText: string) => {
-      const key = normalizeText(nameText);
-
-      // 输入变化：先更新 name；如果用户改了名字，学号要清空（避免错配）
-      setValue((s) => {
-        const oldName = normalizeText(s.name);
-        const nextName = nameText;
-        const shouldClearUsername = s.username && key !== oldName;
-        return {
-          ...s,
-          name: nextName,
-          username: shouldClearUsername ? "" : s.username,
-        };
-      });
+  const searchCandidates = useCallback(
+    async (keyword: string) => {
+      const key = normalizeText(keyword);
 
       if (!key) {
         setOptionsList([]);
-        setValue((s) => ({ ...s, username: "" }));
+        setSearching(false);
         return;
       }
 
@@ -132,13 +122,12 @@ export function useUserSpecialScore(options?: {
           key,
         });
 
-        // 仅处理最后一次请求
         if (reqId !== lastReqIdRef.current) return;
 
         const mapped: UserNameOption[] = (list ?? [])
           .map((u) => ({
-            username: normalizeText(u.username),
-            name: normalizeText(u.name),
+            username: normalizeText((u as any).username),
+            name: normalizeText((u as any).name),
           }))
           .filter((x) => x.username && x.name);
 
@@ -146,9 +135,7 @@ export function useUserSpecialScore(options?: {
       } catch (err: any) {
         if (reqId !== lastReqIdRef.current) return;
         setOptionsList([]);
-
-        // ✅ 失败提示：尽量使用后端 msg（ApiError.message），没有再兜底
-        notify({ kind: "error", msg: err?.message ?? "姓名搜索失败" });
+        notify({ kind: "error", msg: err?.message ?? "用户搜索失败" });
       } finally {
         if (reqId === lastReqIdRef.current) setSearching(false);
       }
@@ -157,7 +144,69 @@ export function useUserSpecialScore(options?: {
   );
 
   // ======================================================
-  // 2) 选择某个候选 -> 自动回填学号
+  // 2) ✅ 双输入（互斥防护）
+  // - 改姓名：若已选中的 username 存在且姓名发生变化 -> 清空 username
+  // - 改学号：若已选中的 name 存在且学号发生变化 -> 清空 name
+  // - 两者都调用同一套 searchCandidates（共用候选）
+  // ======================================================
+  const onNameInput = useCallback(
+    async (nameText: string) => {
+      const nextName = nameText;
+      const nextKey = normalizeText(nameText);
+
+      setValue((s) => {
+        const prevName = normalizeText(s.name);
+        // ✅ 如果用户手动改了姓名（且之前已有学号），为了不出现不一致，清空学号
+        const shouldClearUsername = !!s.username && nextKey !== prevName;
+        return {
+          ...s,
+          name: nextName,
+          username: shouldClearUsername ? "" : s.username,
+        };
+      });
+
+      if (!nextKey) {
+        setOptionsList([]);
+        // 清空姓名时，学号也清空（避免残留）
+        setValue((s) => ({ ...s, username: "" }));
+        return;
+      }
+
+      await searchCandidates(nextKey);
+    },
+    [searchCandidates],
+  );
+
+  const onUsernameInput = useCallback(
+    async (usernameText: string) => {
+      const nextUsername = usernameText;
+      const nextKey = normalizeText(usernameText);
+
+      setValue((s) => {
+        const prevUsername = normalizeText(s.username);
+        // ✅ 如果用户手动改了学号（且之前已有姓名），为了不出现不一致，清空姓名
+        const shouldClearName = !!s.name && nextKey !== prevUsername;
+        return {
+          ...s,
+          username: nextUsername,
+          name: shouldClearName ? "" : s.name,
+        };
+      });
+
+      if (!nextKey) {
+        setOptionsList([]);
+        // 清空学号时，姓名也清空（避免残留）
+        setValue((s) => ({ ...s, name: "" }));
+        return;
+      }
+
+      await searchCandidates(nextKey);
+    },
+    [searchCandidates],
+  );
+
+  // ======================================================
+  // 3) ✅ 选择某个候选 -> 同时回填 name + username（双向一致）
   // ======================================================
   const onPickUser = useCallback((opt: UserNameOption) => {
     setValue((s) => ({
@@ -168,7 +217,22 @@ export function useUserSpecialScore(options?: {
   }, []);
 
   // ======================================================
-  // 3) 选择加分类型 / 输入分数
+  // 4) ✅ 清空已选用户（两列一起清，候选也清）
+  // ======================================================
+  const clearPickedUser = useCallback(() => {
+    setValue((s) => ({
+      ...s,
+      name: "",
+      username: "",
+    }));
+    setOptionsList([]);
+    setSearching(false);
+    // 让正在飞的请求失效
+    lastReqIdRef.current += 1;
+  }, []);
+
+  // ======================================================
+  // 5) 选择加分类型 / 输入分数
   // ======================================================
   const onTypeChange = useCallback((type: SpecialScoreType) => {
     setValue((s) => ({ ...s, type }));
@@ -182,7 +246,7 @@ export function useUserSpecialScore(options?: {
   }, []);
 
   // ======================================================
-  // 4) 提交到 /activity/special
+  // 6) 提交到 /activity/special
   // ======================================================
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -194,13 +258,13 @@ export function useUserSpecialScore(options?: {
     const username = normalizeText(value.username);
     const score = value.score;
 
-    // ✅ 前置校验（这些提示属于前端交互，不依赖后端）
+    // ✅ 前置校验
     if (!name) {
-      notify({ kind: "info", msg: "请输入姓名" });
+      notify({ kind: "info", msg: "请输入姓名或从下拉选择用户" });
       return;
     }
     if (!username) {
-      notify({ kind: "info", msg: "请从匹配列表中选择用户（需要回填学号）" });
+      notify({ kind: "info", msg: "请输入学号或从下拉选择用户" });
       return;
     }
     if (typeof score !== "number" || Number.isNaN(score)) {
@@ -222,28 +286,21 @@ export function useUserSpecialScore(options?: {
     setSubmitting(true);
 
     try {
-      /**
-       * ✅ 关键修复：
-       * specialAddScore 调用 request()，成功时返回的是后端 data（通常 string）
-       * code!=200 已经在 http 层抛 ApiError 了，所以这里不需要判断 res.code/res.msg
-       */
-      const serverMsg = await specialAddScore(payload); // string | unknown
+      const serverMsg = await specialAddScore(payload);
 
       notify({
         kind: "success",
         msg: String(serverMsg ?? "").trim(),
       });
 
-      // ✅ 成功后回调（例如 table.reload）
       try {
         await options?.onAfterSubmit?.();
       } catch {
-        // 不影响主流程
+        // ignore
       }
 
       closeModal();
     } catch (err: any) {
-      // ✅ 失败提示：优先使用后端 msg（ApiError.message）
       notify({ kind: "error", msg: err?.message ?? "录入失败" });
       throw err;
     } finally {
@@ -271,8 +328,15 @@ export function useUserSpecialScore(options?: {
     searching,
     options: optionsList,
 
+    // ✅ 双输入（共用候选）
     onNameInput,
+    onUsernameInput,
+
+    // ✅ 选择/清空（双向一致）
     onPickUser,
+    clearPickedUser,
+
+    // type/score
     onTypeChange,
     onScoreChange,
 
