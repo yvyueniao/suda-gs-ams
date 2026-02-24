@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
@@ -31,6 +32,14 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react(), mockPlugin(USE_MOCK)], // 在开发模式中启用 mock 数据
 
     base: BASE,
+
+    // ✅ 新增：Sentry Source Maps 需要（dist 里会生成 .map 文件）
+    // - 生产环境通常建议开（方便反混淆堆栈）
+    // - 注意：source map 属于“源码信息”，请确保只上传到 Sentry，
+    //   不要把 dist/*.map 公开托管给用户访问（可在服务器侧禁掉 .map 访问）
+    build: {
+      sourcemap: true,
+    },
 
     server: {
       host: true, // ✅ 允许局域网访问（等价于 0.0.0.0）

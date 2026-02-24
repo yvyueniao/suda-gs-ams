@@ -1,3 +1,4 @@
+//src\app\hooks\useAppBootstrap.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 

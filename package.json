@@ -8,11 +8,15 @@
     "dev:mock": "cross-env VITE_USE_MOCK=true vite",
     "dev:real": "cross-env VITE_USE_MOCK=false vite",
     "build": "tsc -b && vite build",
+    "sentry:release": "node ./scripts/sentry-release.mjs",
+    "build:with-sentry": "npm run build && npm run sentry:release",
+    "build:sentry": "npm run build:with-sentry",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@sentry/react": "^10.39.0",
     "antd": "^6.2.2",
     "axios": "^1.13.4",
     "react": "^18.3.1",
@@ -22,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@sentry/cli": "^3.2.2",
     "@types/node": "^25.2.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
