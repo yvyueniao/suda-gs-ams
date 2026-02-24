@@ -8,7 +8,7 @@
  * - 尽量不影响原有用户管理页面逻辑：作为一个“可插拔弹窗”
  */
 
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import {
   Modal,
   Form,
@@ -94,12 +94,6 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
     onSubmit,
   } = props;
 
-  // ✅ 关键：避免 AutoComplete “输入时 onSearch + onChange 都触发”导致双请求
-  // - 我们只在 onChange 里触发搜索
-  // - 选中下拉会触发一次 onSelect + 一次 onChange；用 ref 吞掉“选中导致的 onChange”
-  const pickingNameRef = useRef(false);
-  const pickingUsernameRef = useRef(false);
-
   const nameOptions = useMemo(() => {
     // AutoComplete 需要：{ value, label }
     return (options ?? []).map((x) => ({
@@ -168,32 +162,25 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <AutoComplete
               value={value.name}
               options={nameOptions as any}
-              // ✅ 删除 onSearch：避免输入触发两次请求（onSearch + onChange）
+              // ✅ 只在 onSearch 触发搜索，避免 onSearch + onChange 双触发造成双请求
+              onSearch={(text) => {
+                if (disabled) return;
+                void onNameInput(text);
+              }}
               onChange={(text) => {
                 if (disabled) return;
-
-                // ✅ 若刚刚选择了下拉项，这次 onChange 是“选择导致的”，吞掉，避免再请求一次
-                if (pickingNameRef.current) {
-                  pickingNameRef.current = false;
-                  return;
-                }
 
                 // allowClear：清空时两列一起清更安全
                 if (!text) {
                   clearPickedUser?.();
                   void onNameInput("");
-                  return;
                 }
-
-                void onNameInput(text);
+                // ✅ 非清空不在 onChange 触发搜索，交给 onSearch
               }}
               onSelect={(_val, option: any) => {
                 if (disabled) return;
                 const raw = option?._raw as UserNameOption | undefined;
-                if (raw) {
-                  pickingNameRef.current = true;
-                  onPickUser(raw);
-                }
+                if (raw) onPickUser(raw);
               }}
               placeholder="输入姓名 / 选择下拉"
               allowClear={!disabled}
@@ -212,31 +199,24 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <AutoComplete
               value={value.username}
               options={usernameOptions as any}
-              // ✅ 删除 onSearch：避免输入触发两次请求（onSearch + onChange）
+              // ✅ 只在 onSearch 触发搜索，避免 onSearch + onChange 双触发造成双请求
+              onSearch={(text) => {
+                if (disabled) return;
+                void onUsernameInput(text);
+              }}
               onChange={(text) => {
                 if (disabled) return;
-
-                // ✅ 若刚刚选择了下拉项，这次 onChange 是“选择导致的”，吞掉，避免再请求一次
-                if (pickingUsernameRef.current) {
-                  pickingUsernameRef.current = false;
-                  return;
-                }
 
                 if (!text) {
                   clearPickedUser?.();
                   void onUsernameInput("");
-                  return;
                 }
-
-                void onUsernameInput(text);
+                // ✅ 非清空不在 onChange 触发搜索，交给 onSearch
               }}
               onSelect={(_val, option: any) => {
                 if (disabled) return;
                 const raw = option?._raw as UserNameOption | undefined;
-                if (raw) {
-                  pickingUsernameRef.current = true;
-                  onPickUser(raw);
-                }
+                if (raw) onPickUser(raw);
               }}
               placeholder="输入学号 / 选择下拉"
               allowClear={!disabled}

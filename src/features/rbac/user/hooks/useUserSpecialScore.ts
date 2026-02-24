@@ -20,6 +20,12 @@
  * - 响应拦截器会在 code !== 200 时直接 throw ApiError（err.message 就是后端 msg）
  * - 因此 specialAddScore 返回值是：后端的 data（通常是 string，如“成功添加1条记录”）
  * - 成功：try 不抛错；失败：catch 到 ApiError
+ *
+ * ✅ 本次关键优化（立刻减少通信量）：
+ * - debounce：把“输入触发的高频请求”合并为最后一次
+ * - 最小输入长度：避免 1 个字就打接口
+ * - 缓存 TTL：短时间内重复 keyword 直接命中缓存，不再请求
+ * - 去重：同一个 keyword 在短时间内重复触发（例如 AutoComplete 的 onSearch + onChange）只会请求一次
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -59,6 +65,16 @@ function errToMsg(err: unknown, fallback: string) {
   return msg || fallback;
 }
 
+/** ✅ 搜索配置：可按需要微调 */
+const SEARCH_DEBOUNCE_MS = 1000;
+const SEARCH_MIN_LEN = 2;
+const SEARCH_CACHE_TTL_MS = 30_000; // 30s：足够降噪，又不至于太旧
+
+type CacheValue = {
+  ts: number;
+  list: UserNameOption[];
+};
+
 export function useUserSpecialScore(options?: {
   onNotify?: Notify;
   /** ✅ 成功提交后给页面层一个回调（例如 table.reload） */
@@ -86,6 +102,22 @@ export function useUserSpecialScore(options?: {
   const [optionsList, setOptionsList] = useState<UserNameOption[]>([]);
   const lastReqIdRef = useRef(0);
 
+  /** ✅ debounce timer + keyword 去重 */
+  const debounceTimerRef = useRef<number | null>(null);
+  const lastScheduledKeyRef = useRef<string>(""); // 最近一次“计划要搜”的 key
+  const lastExecutedKeyRef = useRef<string>(""); // 最近一次“真正执行请求/读缓存”的 key
+
+  /** ✅ TTL cache：key -> results */
+  const cacheRef = useRef<Map<string, CacheValue>>(new Map());
+
+  /** 清理 debounce */
+  const clearDebounce = useCallback(() => {
+    if (debounceTimerRef.current != null) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+  }, []);
+
   /** 关闭时清空（避免残留） */
   const closeModal = useCallback(() => {
     setOpen(false);
@@ -97,9 +129,16 @@ export function useUserSpecialScore(options?: {
     });
     setOptionsList([]);
     setSearching(false);
+
+    clearDebounce();
+
     // ✅ 让正在飞的请求失效（避免 close 后“回填候选”）
     lastReqIdRef.current += 1;
-  }, []);
+
+    // ✅ 重置去重 key（避免下次打开时“同 key 不触发”）
+    lastScheduledKeyRef.current = "";
+    lastExecutedKeyRef.current = "";
+  }, [clearDebounce]);
 
   const openModal = useCallback(() => {
     // ✅ 只打开，不做任何加载/重置（符合你之前的要求）
@@ -108,64 +147,106 @@ export function useUserSpecialScore(options?: {
 
   // ======================================================
   // 1) ✅ 共用搜索：姓名/学号任意输入 -> options
-  // - 走 /user/pages 使用 key 进行模糊查询（后端支持 name/username）
+  // - debounce + 最小输入长度 + TTL 缓存 + 去重
   // - 仅保留最后一次请求结果（防竞态）
   // - ✅ 只负责“拉候选 + 维护 optionsList”，不直接改 value
   // ======================================================
   const searchCandidates = useCallback(
-    async (keyword: string) => {
+    (keyword: string) => {
       const key = normalizeText(keyword);
 
+      // 1) 清空：立即清 UI + 让飞行中请求失效
       if (!key) {
-        // ✅ 清空搜索时：让飞行中的请求失效，避免晚到结果覆盖 UI
+        clearDebounce();
+
         lastReqIdRef.current += 1;
+        lastScheduledKeyRef.current = "";
+        lastExecutedKeyRef.current = "";
 
         setOptionsList([]);
         setSearching(false);
         return;
       }
 
-      const reqId = ++lastReqIdRef.current;
-      setSearching(true);
+      // 2) 最小长度：不打接口（也不进入 searching）
+      if (key.length < SEARCH_MIN_LEN) {
+        clearDebounce();
 
-      try {
-        const { list } = await getUserPages({
-          pageNum: 1,
-          pageSize: 20,
-          key,
-        });
-
-        // ✅ 只接收最后一次请求
-        if (reqId !== lastReqIdRef.current) return;
-
-        const mapped: UserNameOption[] = (list ?? [])
-          .map((u) => ({
-            username: normalizeText((u as any).username),
-            name: normalizeText((u as any).name),
-          }))
-          .filter((x) => x.username && x.name);
-
-        setOptionsList(mapped);
-      } catch (err) {
-        if (reqId !== lastReqIdRef.current) return;
+        lastReqIdRef.current += 1; // 让飞行中请求失效（避免晚到覆盖）
+        lastScheduledKeyRef.current = key;
+        lastExecutedKeyRef.current = "";
 
         setOptionsList([]);
-        notify({ kind: "error", msg: errToMsg(err, "用户搜索失败") });
-      } finally {
-        if (reqId === lastReqIdRef.current) setSearching(false);
+        setSearching(false);
+        return;
       }
+
+      // 3) 去重：同一个 key（例如 AutoComplete 的 onSearch+onChange）重复触发，直接忽略
+      if (key === lastScheduledKeyRef.current) return;
+      lastScheduledKeyRef.current = key;
+
+      // 4) debounce：只保留最后一次
+      clearDebounce();
+      debounceTimerRef.current = window.setTimeout(async () => {
+        // debounce 期间又输入了别的 key，就放弃本次
+        if (lastScheduledKeyRef.current !== key) return;
+
+        // 5) 执行层去重：同 key 不重复执行（避免某些边界情况）
+        if (key === lastExecutedKeyRef.current) return;
+        lastExecutedKeyRef.current = key;
+
+        // 6) 先查缓存（TTL）
+        const now = Date.now();
+        const cached = cacheRef.current.get(key);
+        if (cached && now - cached.ts <= SEARCH_CACHE_TTL_MS) {
+          setOptionsList(cached.list);
+          setSearching(false);
+          return;
+        }
+
+        const reqId = ++lastReqIdRef.current;
+        setSearching(true);
+
+        try {
+          const { list } = await getUserPages({
+            pageNum: 1,
+            pageSize: 20,
+            key,
+          });
+
+          // ✅ 只接收最后一次请求
+          if (reqId !== lastReqIdRef.current) return;
+
+          const mapped: UserNameOption[] = (list ?? [])
+            .map((u) => ({
+              username: normalizeText((u as any).username),
+              name: normalizeText((u as any).name),
+            }))
+            .filter((x) => x.username && x.name);
+
+          // ✅ 写缓存（即使空数组也缓存，避免短时间反复打空请求）
+          cacheRef.current.set(key, { ts: Date.now(), list: mapped });
+
+          setOptionsList(mapped);
+        } catch (err) {
+          if (reqId !== lastReqIdRef.current) return;
+
+          setOptionsList([]);
+          notify({ kind: "error", msg: errToMsg(err, "用户搜索失败") });
+        } finally {
+          if (reqId === lastReqIdRef.current) setSearching(false);
+        }
+      }, SEARCH_DEBOUNCE_MS);
     },
-    [notify],
+    [clearDebounce, notify],
   );
 
   // ======================================================
   // 2) ✅ 双输入（互斥防护）
-  // - 改姓名：若已选中的 username 存在且姓名发生变化 -> 清空 username
-  // - 改学号：若已选中的 name 存在且学号发生变化 -> 清空 name
   // - 两者都调用同一套 searchCandidates（共用候选）
   // ======================================================
   const onNameInput = useCallback(
-    async (nameText: string) => {
+    (nameText: string) => {
       const nextName = nameText;
       const nextKey = normalizeText(nameText);
 
@@ -184,13 +265,14 @@ export function useUserSpecialScore(options?: {
         };
       });
 
-      await searchCandidates(nextKey);
+      // ✅ 注意：这里不 await（保持输入流畅），debounce 会合并请求
+      searchCandidates(nextKey);
     },
     [searchCandidates],
   );
 
   const onUsernameInput = useCallback(
-    async (usernameText: string) => {
+    (usernameText: string) => {
       const nextUsername = usernameText;
       const nextKey = normalizeText(usernameText);
 
@@ -208,7 +290,7 @@ export function useUserSpecialScore(options?: {
         };
       });
 
-      await searchCandidates(nextKey);
+      searchCandidates(nextKey);
     },
     [searchCandidates],
   );
@@ -216,17 +298,26 @@ export function useUserSpecialScore(options?: {
   // ======================================================
   // 3) ✅ 选择某个候选 -> 同时回填 name + username（双向一致）
   // ======================================================
-  const onPickUser = useCallback((opt: UserNameOption) => {
-    setValue((s) => ({
-      ...s,
-      name: opt.name,
-      username: opt.username,
-    }));
-    // ✅ 选中后通常不需要继续展示候选（避免误选/视觉噪音）
-    setOptionsList([]);
-    setSearching(false);
-    lastReqIdRef.current += 1; // 让飞行中的请求失效
-  }, []);
+  const onPickUser = useCallback(
+    (opt: UserNameOption) => {
+      setValue((s) => ({
+        ...s,
+        name: opt.name,
+        username: opt.username,
+      }));
+
+      // ✅ 选中后通常不需要继续展示候选（避免误选/视觉噪音）
+      setOptionsList([]);
+      setSearching(false);
+
+      // ✅ 取消 debounce + 让飞行中的请求失效
+      clearDebounce();
+      lastReqIdRef.current += 1;
+      lastScheduledKeyRef.current = "";
+      lastExecutedKeyRef.current = "";
+    },
+    [clearDebounce],
+  );
 
   // ======================================================
   // 4) ✅ 清空已选用户（两列一起清，候选也清）
@@ -239,9 +330,14 @@ export function useUserSpecialScore(options?: {
     }));
     setOptionsList([]);
     setSearching(false);
+
+    clearDebounce();
+
     // ✅ 让正在飞的请求失效
     lastReqIdRef.current += 1;
-  }, []);
+    lastScheduledKeyRef.current = "";
+    lastExecutedKeyRef.current = "";
+  }, [clearDebounce]);
 
   // ======================================================
   // 5) 选择加分类型 / 输入分数

@@ -1,6 +1,6 @@
 // src/features/rbac/admin/hooks/useAdminManagePage.ts
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Notify } from "../../../../shared/ui";
 
@@ -137,13 +137,41 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   });
 
   const [searchingSuggestion, setSearchingSuggestion] = useState(false);
-  const searchingRef = useRef(false);
+
+  /**
+   * ✅ 关键修复：搜索请求“防抖 + 最小输入长度 + TTL 缓存 + 只保留最后一次结果”
+   */
+  const MIN_KEY_LEN = 2; // 最小输入长度：1 个字就搜 = 噪音太大
+  const DEBOUNCE_MS = 1000; // 防抖：输入停顿后再发
+  const CACHE_TTL_MS = 30_000; // 30s TTL：短期重复输入直接复用
+
+  const debounceTimerRef = useRef<number | null>(null);
+  const lastReqIdRef = useRef(0);
+
+  // key -> { at, list }
+  const cacheRef = useRef<Map<string, { at: number; list: UserSuggestion[] }>>(
+    new Map(),
+  );
+
+  /**
+   * ✅ 用 ref 持有最新 selectedUser，避免 submitAppoint 依赖它导致函数抖动
+   * （这里把你原来“用 useMemo 做副作用”的写法改成 useEffect，符合 React 约定）
+   */
+  const pickedUserRef = useRef<UserSuggestion | null>(
+    appointModal.selectedUser,
+  );
+  useEffect(() => {
+    pickedUserRef.current = appointModal.selectedUser;
+  }, [appointModal.selectedUser]);
 
   /**
    * ✅ 按你的要求：openModal 只打开，不再加载 departments
    * （部门列表由页面 init 调用 loadDepartments 来保证）
    */
   const openAppointModal = useCallback(() => {
+    // 打开时顺手让“上一轮搜索”全部失效，避免抖动回填
+    lastReqIdRef.current += 1;
+
     setAppointModal({
       open: true,
       sharedSearchKey: "",
@@ -154,42 +182,78 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   }, []);
 
   const closeAppointModal = useCallback(() => {
+    // 关闭时取消未触发的 debounce，且让飞行中的请求失效
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    lastReqIdRef.current += 1;
+
     setAppointModal((s) => ({ ...s, open: false }));
   }, []);
 
   /**
    * ✅ 共用搜索：姓名/学号两端都调这个
    * - key 既可以是姓名，也可以是学号（后端 /user/pages 支持）
+   *
+   * 修复点：
+   * 1) debounce：输入停顿后发请求
+   * 2) 最小长度：减少“每敲一个字就请求”
+   * 3) TTL 缓存：短时间重复输入不发请求
+   * 4) 只接收最后一次：防竞态覆盖
    */
   const onSearchUser = useCallback(
     async (keyInput: string) => {
       setAppointModal((s) => ({ ...s, sharedSearchKey: keyInput }));
 
       const key = keyInput.trim();
-      if (!key) {
-        // 清空搜索：只清 suggestions，不强行清 selected（由 UI 的 clear 触发清 selected）
+
+      // ✅ 取消上一次 debounce
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+
+      // 空/过短：直接清候选，不请求
+      if (!key || key.length < MIN_KEY_LEN) {
+        lastReqIdRef.current += 1; // 让飞行中的请求失效
+        setSearchingSuggestion(false);
         setAppointModal((s) => ({ ...s, suggestions: [] }));
         return;
       }
 
-      // ✅ 防并发：上一次还没结束就不再发
-      if (searchingRef.current) return;
+      // ✅ TTL cache 命中：直接用缓存
+      const now = Date.now();
+      const cached = cacheRef.current.get(key);
+      if (cached && now - cached.at <= CACHE_TTL_MS) {
+        lastReqIdRef.current += 1; // 让之前飞行中的请求失效
+        setSearchingSuggestion(false);
+        setAppointModal((s) => ({ ...s, suggestions: cached.list }));
+        return;
+      }
 
-      searchingRef.current = true;
+      const reqId = ++lastReqIdRef.current;
       setSearchingSuggestion(true);
 
-      try {
-        const list = await searchUserSuggestionsByName({ key, pageSize: 20 });
-        setAppointModal((s) => ({
-          ...s,
-          suggestions: Array.isArray(list) ? list : [],
-        }));
-      } catch {
-        notify({ kind: "error", msg: "搜索用户失败" });
-      } finally {
-        searchingRef.current = false;
-        setSearchingSuggestion(false);
-      }
+      debounceTimerRef.current = window.setTimeout(async () => {
+        try {
+          const list = await searchUserSuggestionsByName({ key, pageSize: 20 });
+
+          // ✅ 只接收最后一次请求
+          if (reqId !== lastReqIdRef.current) return;
+
+          const finalList = Array.isArray(list) ? list : [];
+          cacheRef.current.set(key, { at: Date.now(), list: finalList });
+
+          setAppointModal((s) => ({ ...s, suggestions: finalList }));
+        } catch {
+          if (reqId !== lastReqIdRef.current) return;
+          notify({ kind: "error", msg: "搜索用户失败" });
+          setAppointModal((s) => ({ ...s, suggestions: [] }));
+        } finally {
+          if (reqId === lastReqIdRef.current) setSearchingSuggestion(false);
+        }
+      }, DEBOUNCE_MS);
     },
     [notify],
   );
@@ -200,6 +264,14 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
    * - 同步 values：保证 name/username 永远一致
    */
   const onPickUser = useCallback((u: UserSuggestion) => {
+    // 选中后：清候选 + 让飞行请求失效 + 取消 debounce
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    lastReqIdRef.current += 1;
+
+    setSearchingSuggestion(false);
     setAppointModal((s) => ({
       ...s,
       sharedSearchKey: `${u.name} ${u.username}`.trim(),
@@ -218,8 +290,17 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
    * - 清掉 selectedUser，同时把 name/username 置空，避免“不一致”
    */
   const clearPickedUser = useCallback(() => {
+    // 清空也顺手取消 debounce + 让飞行请求失效
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    lastReqIdRef.current += 1;
+
+    setSearchingSuggestion(false);
     setAppointModal((s) => ({
       ...s,
+      suggestions: [],
       selectedUser: null,
       values: {
         ...s.values,
@@ -231,18 +312,6 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
 
   const [submittingAppoint, setSubmittingAppoint] = useState(false);
   const appointSubmittingRef = useRef(false);
-
-  /**
-   * ✅ 用 ref 持有最新 selectedUser，避免 submitAppoint 依赖它导致函数抖动
-   */
-  const pickedUserRef = useRef<UserSuggestion | null>(
-    appointModal.selectedUser,
-  );
-  useMemo(() => {
-    pickedUserRef.current = appointModal.selectedUser;
-    return null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appointModal.selectedUser]);
 
   const submitAppoint = useCallback(
     async (values: AppointRoleFormValues) => {
