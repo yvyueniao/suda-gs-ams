@@ -14,7 +14,7 @@
 // - ✅ 关闭后不允许继续发送（isClosed + sendMessage 内部兜底）
 // - ✅ 发送成功后默认 reload 一次，确保与后端一致（避免本地拼接导致顺序/时间不一致）
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { FeedbackMessageItem, FeedbackState } from "../types";
 import {
@@ -22,6 +22,16 @@ import {
   fetchFeedbackContent,
   sendFeedbackMessage,
 } from "../api";
+
+/**
+ * ✅ 关键修复：in-flight 去重（跨 StrictMode 重挂载也生效）
+ * - key: sessionId
+ * - value: 当前正在进行的 fetch Promise
+ * 说明：
+ * - StrictMode 开发态会“卸载再挂载”，组件内 ref/state 都会重置
+ * - 只有模块级缓存才能跨挂载共享，从而真正避免“同一时刻发两次请求”
+ */
+const inflightContent = new Map<string, Promise<FeedbackMessageItem[]>>();
 
 export type UseFeedbackDetailOptions = {
   /** 会话 ID（必填） */
@@ -72,22 +82,52 @@ export function useFeedbackDetail(options: UseFeedbackDetailOptions) {
 
   const isClosed = useMemo(() => state === 2, [state]);
 
+  // ✅ 防止卸载后 setState 警告
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // ---------------------------
   // fetch / reload
   // ---------------------------
   const reload = useCallback(async () => {
-    if (!sessionId) return;
+    const sid = String(sessionId ?? "").trim();
+    if (!sid) return;
 
-    setLoading(true);
-    setError(null);
+    // ✅ 若已有同 sessionId 的请求在飞行：复用它（不再发第二次网络请求）
+    const existing = inflightContent.get(sid);
+    const task =
+      existing ??
+      (async () => {
+        try {
+          const res = await fetchFeedbackContent({ sessionId: sid });
+          return res;
+        } finally {
+          // ✅ 无论成功失败，都要清掉 in-flight，避免卡死
+          inflightContent.delete(sid);
+        }
+      })();
+
+    if (!existing) inflightContent.set(sid, task);
+
+    // UI loading/error 仍按“本次调用”来表现（不影响去重）
+    if (mountedRef.current) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
-      const res = await fetchFeedbackContent({ sessionId });
-      setMessages(res);
+      const res = await task;
+      if (mountedRef.current) setMessages(res);
     } catch (e) {
-      setError(e);
+      if (mountedRef.current) setError(e);
+      throw e;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [sessionId]);
 
@@ -101,7 +141,8 @@ export function useFeedbackDetail(options: UseFeedbackDetailOptions) {
   // ---------------------------
   const sendMessage = useCallback(
     async (input: SendMessageInput) => {
-      if (!sessionId) return false;
+      const sid = String(sessionId ?? "").trim();
+      if (!sid) return false;
 
       const content = (input.content ?? "").trim();
       if (!content) return false;
@@ -114,7 +155,7 @@ export function useFeedbackDetail(options: UseFeedbackDetailOptions) {
 
       try {
         await sendFeedbackMessage({
-          sessionId,
+          sessionId: sid,
           content,
           file: input.file,
         });
@@ -136,7 +177,8 @@ export function useFeedbackDetail(options: UseFeedbackDetailOptions) {
   // close session（admin）
   // ---------------------------
   const closeSession = useCallback(async () => {
-    if (!sessionId) return false;
+    const sid = String(sessionId ?? "").trim();
+    if (!sid) return false;
     if (!canClose) return false;
 
     // 已关闭就不重复调用
@@ -146,8 +188,9 @@ export function useFeedbackDetail(options: UseFeedbackDetailOptions) {
     setCloseError(null);
 
     try {
-      await closeFeedback({ sessionId });
+      await closeFeedback({ sessionId: sid });
       setState(2); // 本地标记为已解决/已关闭
+
       // 可选：关闭后也 reload 一次（有些后端会同时写一条“已解决”的系统消息）
       await reload();
       return true;
