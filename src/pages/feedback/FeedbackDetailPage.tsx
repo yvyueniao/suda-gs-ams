@@ -32,6 +32,7 @@ import type { UploadProps } from "antd";
 
 import { getUser } from "../../shared/session/session";
 import { confirmAsync, notify } from "../../shared/ui";
+import { SafeLink } from "../../shared/components/SafeLink";
 
 import type { FeedbackState } from "../../features/feedback/types";
 import { useFeedbackDetail } from "../../features/feedback/hooks/useFeedbackDetail";
@@ -266,14 +267,15 @@ export default function FeedbackDetailPage() {
                             <span className="chat-attach__name">
                               {fileNameFromUrl(m.fileUrl)}
                             </span>
-                            <a
+
+                            {/* ✅ 统一外链安全（noopener/noreferrer + 可扩展白名单/协议校验） */}
+                            <SafeLink
                               className="chat-attach__link"
                               href={m.fileUrl}
                               target="_blank"
-                              rel="noreferrer"
                             >
                               打开
-                            </a>
+                            </SafeLink>
                           </div>
                         ) : null}
                       </div>

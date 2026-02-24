@@ -1,11 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/logo.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>苏大计算机学院研究生会活动管理系统</title>
+
+    <!-- 🔐 仅在非本地环境启用 CSP（避免影响 Vite 开发模式） -->
+    <script>
+      (function () {
+        const isLocal =
+          location.hostname === "localhost" ||
+          location.hostname === "127.0.0.1";
+
+        if (!isLocal) {
+          const meta = document.createElement("meta");
+          meta.httpEquiv = "Content-Security-Policy";
+          meta.content = `
+            default-src 'self';
+            base-uri 'self';
+            object-src 'none';
+            frame-ancestors 'none';
+            img-src 'self' data: blob:;
+            font-src 'self' data:;
+            style-src 'self' 'unsafe-inline';
+            script-src 'self';
+            connect-src 'self' https: http:;
+            form-action 'self';
+            upgrade-insecure-requests;
+          `;
+          document.head.appendChild(meta);
+        }
+      })();
+    </script>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

@@ -17,6 +17,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Tag } from "antd";
 
 import type { CandidateRow, ApplicationState, ActivityType } from "../../types";
+import { SafeLink } from "../../../../../shared/components/SafeLink";
 
 /**
  * 状态文案
@@ -148,9 +149,9 @@ export function buildCandidatesColumns(): ColumnsType<CandidateRow> {
       sorter: false,
       render: (url: string | null) =>
         url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer">
+          <SafeLink href={url} target="_blank">
             查看附件
-          </a>
+          </SafeLink>
         ) : (
           "-"
         ),

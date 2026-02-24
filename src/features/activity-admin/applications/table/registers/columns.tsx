@@ -16,6 +16,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Tag } from "antd";
 
 import type { RegisterRow, ApplicationState, ActivityType } from "../../types";
+import { SafeLink } from "../../../../../shared/components/SafeLink";
 
 /**
  * 状态文案
@@ -147,9 +148,9 @@ export function buildRegistersColumns(): ColumnsType<RegisterRow> {
       width: 220,
       render: (url: string | null) =>
         url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer">
+          <SafeLink href={url} target="_blank">
             查看附件
-          </a>
+          </SafeLink>
         ) : (
           "-"
         ),
