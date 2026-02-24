@@ -56,7 +56,7 @@ export function initSentry() {
      * - development：全开方便调试
      * - 生产：低采样防止数据爆炸
      */
-    tracesSampleRate: environment === "development" ? 1.0 : 0.2,
+    tracesSampleRate: environment === "development" ? 0.1 : 0.2,
 
     sendDefaultPii: false,
   });

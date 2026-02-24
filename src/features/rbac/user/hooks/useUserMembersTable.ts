@@ -72,16 +72,43 @@ export function useUserMembersTable(params: {
   // 2) fetcher：只把 page/pageSize/keyword 传给后端
   // - 后端字段：pageNum/pageSize/key
   // - 后端只分页，不负责筛选/排序
+  //
+  // ✅ 关键修复：对同参数的并发/重复调用做“请求去重”
+  // - 解决：进入页面/输入触发导致的短时间重复请求（含 StrictMode 开发期的双触发）
+  // - 同一个 key（page/pageSize/keyword）在飞行中时复用同一个 Promise
   // ======================================================
+  const inFlightRef = useRef<
+    Map<string, Promise<{ list: UserListItem[]; total: number }>>
+  >(new Map());
+
   const fetchPage: TableFetcher<UserListItem, UserFilters> = useCallback(
     async (qq) => {
-      const { list, total } = await getUserPages({
-        pageNum: qq.page,
+      const key = JSON.stringify({
+        page: qq.page,
         pageSize: qq.pageSize,
-        key: qq.keyword?.trim() ? qq.keyword.trim() : undefined,
+        keyword: qq.keyword?.trim() ? qq.keyword.trim() : "",
       });
 
-      return { list, total };
+      const cached = inFlightRef.current.get(key);
+      if (cached) return cached;
+
+      const task = (async () => {
+        const { list, total } = await getUserPages({
+          pageNum: qq.page,
+          pageSize: qq.pageSize,
+          key: qq.keyword?.trim() ? qq.keyword.trim() : undefined,
+        });
+        return { list, total };
+      })();
+
+      inFlightRef.current.set(key, task);
+
+      try {
+        return await task;
+      } finally {
+        // ✅ 不论成功失败，都释放 inFlight（避免 Map 越积越多）
+        inFlightRef.current.delete(key);
+      }
     },
     [],
   );
