@@ -8,8 +8,10 @@
     "dev:mock": "cross-env VITE_USE_MOCK=true vite",
     "dev:real": "cross-env VITE_USE_MOCK=false vite",
     "build": "tsc -b && vite build",
+    "build:preview": "tsc -b && vite build --mode preview",
     "sentry:release": "node ./scripts/sentry-release.mjs",
     "build:with-sentry": "npm run build && npm run sentry:release",
+    "build:with-sentry:preview": "npm run build:preview && npm run sentry:release",
     "build:sentry": "npm run build:with-sentry",
     "lint": "eslint .",
     "preview": "vite preview"
