@@ -1,4 +1,3 @@
-//src\app\hooks\useAppBootstrap.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -6,6 +5,9 @@ import { getMenuList, getUserInfo } from "../../features/auth/api";
 import type { MenuNode, User } from "../../features/auth/types";
 import { ApiError } from "../../shared/http/error";
 import { getUser, setUser } from "../../shared/session/session";
+
+// 引入 Sentry 用户追踪 API
+import { setSentryUser } from "../telemetry/sentry";
 
 export function useAppBootstrap() {
   const navigate = useNavigate();
@@ -38,6 +40,9 @@ export function useAppBootstrap() {
       // ✅ 落库 user（token 刷新交给 shared/http 拦截器做；这里不动 shared）
       setUser(info.user);
       setUserState(info.user);
+
+      // ✅ 调用 Sentry 设置用户信息
+      setSentryUser(info.user);
 
       const menus = await getMenuList();
       if (!aliveRef.current) return;

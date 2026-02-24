@@ -1,4 +1,3 @@
-// src/pages/login/LoginPage.tsx
 import { useMemo, useState } from "react";
 import { Button, Card, Form, Input, Typography } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
@@ -7,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useLogin } from "../../features/auth/hooks/useLogin";
 import { useAsyncAction } from "../../shared/actions";
 import ForgotPasswordModal from "./ForgotPasswordModal";
+import { track } from "../../shared/telemetry/track";
 
 type LoginFormValues = {
   username: string;
@@ -26,11 +26,15 @@ export default function LoginPage() {
 
   // ===== 忘记密码弹窗 =====
   const [forgotOpen, setForgotOpen] = useState(false);
-  const openForgot = () => setForgotOpen(true);
+
+  const openForgot = () => {
+    track({ event: "login_open_forgot_password" });
+    setForgotOpen(true);
+  };
+
   const closeForgot = () => setForgotOpen(false);
 
   // ✅ 登录 action：统一 loading / 错误提示 / 成功提示
-  // ⚠️ 错误提示优先使用后端 msg（前提：shared/http 将 msg 归一到 ApiError.message）
   const loginAction = useAsyncAction<void>({
     successMessage: "登录成功",
     errorMessage: "登录失败，请重试",
@@ -46,10 +50,18 @@ export default function LoginPage() {
   const handleSubmit = () =>
     loginAction.run(async () => {
       const values = await form.validateFields();
+
+      // ✅ UI 行为埋点：用户触发登录提交（不含账号明文/密码）
+      track({
+        event: "login_submit",
+        data: {
+          username_len: String(values.username ?? "").trim().length,
+        },
+      });
+
       await doLogin(String(values.username).trim(), String(values.password));
     });
 
-  // ✅ 点击“忘记密码？”时再取一次当前输入的 username，保证是最新值
   const initialForgotUsername = String(
     form.getFieldValue("username") ?? "",
   ).trim();

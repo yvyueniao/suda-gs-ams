@@ -5,6 +5,8 @@ import { Form, message } from "antd";
 import { useAsyncAction } from "../../../shared/actions";
 import { sendVerifyCode, forgetPassword } from "../api";
 import type { ForgetPasswordPayload, OperationResult } from "../types";
+import { track } from "../../../shared/telemetry/track";
+import { ApiError } from "../../../shared/http/error";
 
 type ForgotFormValues = {
   username: string;
@@ -78,11 +80,21 @@ export function useForgotPassword() {
     (open: boolean, initialUsername?: string) => {
       if (!open) return;
 
+      const u = String(initialUsername ?? "").trim();
+
       form.setFieldsValue({
-        username: String(initialUsername ?? "").trim(),
+        username: u,
         verifyCode: "",
         newPassword: "",
         newPassword2: "",
+      });
+
+      // ✅ UI 行为埋点：打开忘记密码（不记录账号明文）
+      track({
+        event: "forgot_open",
+        data: {
+          initial_username_len: u.length,
+        },
       });
     },
     [form],
@@ -100,14 +112,51 @@ export function useForgotPassword() {
 
   const handleSendCode = useCallback(() => {
     return sendAction.run(async () => {
+      const startedAt = Date.now();
       const username = String(form.getFieldValue("username") ?? "").trim();
 
       // 倒计时中重复点：不提示、不报错
       if (countdown > 0) return false;
 
-      await sendVerifyCode({ username });
-      startCountdown(COUNTDOWN_SECONDS);
-      return true;
+      // ✅ 触发行为（可选）：点击发送验证码
+      track({
+        event: "forgot_send_code_click",
+        data: { username_len: username.length },
+      });
+
+      try {
+        await sendVerifyCode({ username });
+        startCountdown(COUNTDOWN_SECONDS);
+
+        // ✅ 业务级埋点：发送验证码成功
+        track({
+          event: "forgot_send_code_success",
+          data: {
+            username_len: username.length,
+            cost_ms: Date.now() - startedAt,
+          },
+        });
+
+        return true;
+      } catch (e: any) {
+        const apiErr = e instanceof ApiError ? e : null;
+
+        // ✅ 业务级埋点：发送验证码失败（值得作为事件）
+        track({
+          event: "forgot_send_code_fail",
+          level: "warning",
+          asEvent: true,
+          data: {
+            username_len: username.length,
+            code: apiErr?.code,
+            status: apiErr?.status,
+            biz_code: apiErr?.bizCode,
+            cost_ms: Date.now() - startedAt,
+          },
+        });
+
+        throw e;
+      }
     });
   }, [sendAction, form, countdown, startCountdown]);
 
@@ -127,6 +176,7 @@ export function useForgotPassword() {
   const handleResetPassword = useCallback(
     async (onSuccess?: () => void) => {
       return resetAction.run(async () => {
+        const startedAt = Date.now();
         const v = await form.validateFields();
 
         const payload: ForgetPasswordPayload = {
@@ -135,15 +185,50 @@ export function useForgotPassword() {
           newPassword: v.newPassword,
         };
 
-        const res = await forgetPassword(payload);
+        // ✅ 触发行为（可选）：点击重置
+        track({
+          event: "forgot_reset_click",
+          data: { username_len: payload.username.length },
+        });
 
-        // ✅ 成功提示：优先后端 data（字符串）
-        message.success(res || "密码已重置，请使用新密码登录");
+        try {
+          const res = await forgetPassword(payload);
 
-        // 关闭弹窗等交给调用方
-        onSuccess?.();
+          // ✅ 成功提示：优先后端 data（字符串）
+          message.success(res || "密码已重置，请使用新密码登录");
 
-        return res as OperationResult;
+          // ✅ 业务级埋点：重置成功
+          track({
+            event: "forgot_reset_success",
+            data: {
+              username_len: payload.username.length,
+              cost_ms: Date.now() - startedAt,
+            },
+          });
+
+          // 关闭弹窗等交给调用方
+          onSuccess?.();
+
+          return res as OperationResult;
+        } catch (e: any) {
+          const apiErr = e instanceof ApiError ? e : null;
+
+          // ✅ 业务级埋点：重置失败（很关键，建议作为事件）
+          track({
+            event: "forgot_reset_fail",
+            level: "warning",
+            asEvent: true,
+            data: {
+              username_len: payload.username.length,
+              code: apiErr?.code,
+              status: apiErr?.status,
+              biz_code: apiErr?.bizCode,
+              cost_ms: Date.now() - startedAt,
+            },
+          });
+
+          throw e;
+        }
       });
     },
     [resetAction, form],

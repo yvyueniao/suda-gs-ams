@@ -1,4 +1,4 @@
-//src\main.tsx
+// src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -13,6 +13,9 @@ import { appTheme } from "./app/theme/theme";
 
 // ✅ Sentry（错误 + 性能）初始化
 import { initSentry } from "./app/telemetry/sentry";
+
+// ✅ React 渲染期错误兜底（防白屏 + 上报 Sentry）
+import { ErrorBoundary } from "./app/telemetry/ErrorBoundary";
 
 import "antd/dist/reset.css";
 import "./app/styles/auth.css";
@@ -31,10 +34,12 @@ initSentry();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConfigProvider locale={zhCN} theme={appTheme}>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <App />
-      </BrowserRouter>
-    </ConfigProvider>
+    <ErrorBoundary>
+      <ConfigProvider locale={zhCN} theme={appTheme}>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <App />
+        </BrowserRouter>
+      </ConfigProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );
