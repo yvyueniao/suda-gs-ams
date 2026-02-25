@@ -121,11 +121,11 @@ export default function ActivityAdminPage() {
           </Space>
         }
       />
-
       <SmartTable
         bizKey="activity.admin"
         enableColumnResize
         sticky
+        scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
         columns={columns}
         dataSource={t.rows}
         rowKey="id"
@@ -145,7 +145,6 @@ export default function ActivityAdminPage() {
           t.onQueryChange({ page: 1 });
         }}
       />
-
       <ActivityUpsertModal
         open={m.modal.open}
         mode={m.modal.mode}

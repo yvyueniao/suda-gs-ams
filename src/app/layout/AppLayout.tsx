@@ -136,10 +136,13 @@ export default function AppLayout() {
     <MenuFoldOutlined />
   );
 
-  const userLabel = `${user?.name ?? "未登录"}（${user ? roleLabel(user.role) : "-"}）`;
+  const userLabel = `${user?.name ?? "未登录"}（${
+    user ? roleLabel(user.role) : "-"
+  }）`;
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    // ✅ 关键：用 className 控制“页面不滚动，只滚内容区”
+    <Layout className="app-root">
       <Header className="app-header">
         <div className="app-header__left">
           <Button
@@ -182,7 +185,8 @@ export default function AppLayout() {
         </div>
       </Header>
 
-      <Layout>
+      {/* ✅ 关键：中间区域固定高度；侧边栏不随内容滚动 */}
+      <Layout className="app-body">
         <AppNav
           isMobile={isMobile}
           collapsed={collapsed}
@@ -195,10 +199,12 @@ export default function AppLayout() {
           drawerWidth={260}
         />
 
-        <Content style={{ padding: isMobile ? 12 : 16 }}>
-          <div className="app-content">
-            <Outlet />
-          </div>
+        {/* ✅ 关键：Content 自己滚动（不要再套一层 div.app-content） */}
+        <Content
+          className="app-content"
+          style={{ padding: isMobile ? 12 : 16 }}
+        >
+          <Outlet />
         </Content>
       </Layout>
 

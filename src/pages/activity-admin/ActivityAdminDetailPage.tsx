@@ -80,212 +80,225 @@ export default function ActivityAdminDetailPage() {
   return (
     <div className="activity-admin-page">
       <div className="activity-admin-container">
-        <Card>
-          <Space direction="vertical" size={12} style={{ width: "100%" }}>
-            {/* Header */}
-            <div className="activity-admin-detail-header">
-              <div>
-                <Title level={4} style={{ margin: 0 }}>
-                  活动 / 讲座详情
-                </Title>
+        <div
+          style={{
+            height: "calc(113vh - 56px - 48px - 24px - 120px)",
+            overflow: "auto",
+          }}
+        >
+          <Card>
+            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+              {/* Header */}
+              <div className="activity-admin-detail-header">
+                <div>
+                  <Title level={4} style={{ margin: 0 }}>
+                    活动 / 讲座详情
+                  </Title>
 
-                <Text type="secondary">{d.headerSubtitle}</Text>
+                  <Text type="secondary">{d.headerSubtitle}</Text>
+                </div>
+
+                <Space>
+                  <Button onClick={back}>返回</Button>
+
+                  <Can roles={[0, 1, 2, 3]}>
+                    <Button
+                      type="primary"
+                      onClick={d.openEdit}
+                      disabled={!d.detail}
+                    >
+                      修改
+                    </Button>
+                  </Can>
+                </Space>
               </div>
 
-              <Space>
-                <Button onClick={back}>返回</Button>
+              <Divider />
 
-                <Can roles={[0, 1, 2, 3]}>
-                  <Button
-                    type="primary"
-                    onClick={d.openEdit}
-                    disabled={!d.detail}
-                  >
-                    修改
-                  </Button>
-                </Can>
-              </Space>
-            </div>
-
-            <Divider />
-
-            {d.loading ? (
-              <Spin />
-            ) : d.error ? (
-              <Empty
-                description={
-                  d.error instanceof ApiError
-                    ? d.error.message
-                    : d.error instanceof Error
+              {d.loading ? (
+                <Spin />
+              ) : d.error ? (
+                <Empty
+                  description={
+                    d.error instanceof ApiError
                       ? d.error.message
-                      : "加载失败"
-                }
-              />
-            ) : !d.detail ? (
-              <Empty description="暂无数据" />
-            ) : (
-              <>
-                {/* 基本信息 */}
-                <div className="activity-admin-section">
-                  <div className="activity-admin-section-title">基本信息</div>
+                      : d.error instanceof Error
+                        ? d.error.message
+                        : "加载失败"
+                  }
+                />
+              ) : !d.detail ? (
+                <Empty description="暂无数据" />
+              ) : (
+                <>
+                  {/* 基本信息 */}
+                  <div className="activity-admin-section">
+                    <div className="activity-admin-section-title">基本信息</div>
 
-                  <div className="activity-admin-panel">
-                    <Descriptions
-                      bordered
-                      size="small"
-                      column={2}
-                      items={[
-                        { key: "name", label: "名称", children: d.detail.name },
-                        {
-                          key: "type",
-                          label: "类型",
-                          children: renderTypeTag(d.detail.type),
-                        },
-                        {
-                          key: "state",
-                          label: "状态",
-                          children: renderStateTag(d.detail.state),
-                        },
-                        {
-                          key: "department",
-                          label: "部门",
-                          children: d.detail.department,
-                        },
-                        {
-                          key: "location",
-                          label: "地点",
-                          children: d.detail.location,
-                        },
-                        {
-                          key: "score",
-                          label: "分数",
-                          children: <Tag color="gold">{d.detail.score}</Tag>,
-                        },
-                        {
-                          key: "fullNum",
-                          label: "人数上限",
-                          children: d.detail.fullNum,
-                        },
-                        {
-                          key: "registeredNum",
-                          label: "已报名",
-                          children: d.detail.registeredNum,
-                        },
-                        {
-                          key: "candidateNum",
-                          label: "候补人数",
-                          children: d.detail.candidateNum,
-                        },
-                        {
-                          key: "candidateSuccNum",
-                          label: "候补成功",
-                          children: d.detail.candidateSuccNum,
-                        },
-                        {
-                          key: "candidateFailNum",
-                          label: "候补失败",
-                          children: d.detail.candidateFailNum,
-                        },
-                        {
-                          key: "time",
-                          label: "创建时间",
-                          children: d.detail.time,
-                        },
-                        {
-                          key: "signStartTime",
-                          label: "报名开始",
-                          children: d.detail.signStartTime,
-                        },
-                        {
-                          key: "signEndTime",
-                          label: "报名截止",
-                          children: d.detail.signEndTime,
-                        },
-                        {
-                          key: "activityStime",
-                          label: "活动开始",
-                          children: d.detail.activityStime,
-                        },
-                        {
-                          key: "activityEtime",
-                          label: "活动结束",
-                          children: d.detail.activityEtime,
-                        },
-                      ]}
-                    />
+                    <div className="activity-admin-panel">
+                      <Descriptions
+                        bordered
+                        size="small"
+                        column={2}
+                        items={[
+                          {
+                            key: "name",
+                            label: "名称",
+                            children: d.detail.name,
+                          },
+                          {
+                            key: "type",
+                            label: "类型",
+                            children: renderTypeTag(d.detail.type),
+                          },
+                          {
+                            key: "state",
+                            label: "状态",
+                            children: renderStateTag(d.detail.state),
+                          },
+                          {
+                            key: "department",
+                            label: "部门",
+                            children: d.detail.department,
+                          },
+                          {
+                            key: "location",
+                            label: "地点",
+                            children: d.detail.location,
+                          },
+                          {
+                            key: "score",
+                            label: "分数",
+                            children: <Tag color="gold">{d.detail.score}</Tag>,
+                          },
+                          {
+                            key: "fullNum",
+                            label: "人数上限",
+                            children: d.detail.fullNum,
+                          },
+                          {
+                            key: "registeredNum",
+                            label: "已报名",
+                            children: d.detail.registeredNum,
+                          },
+                          {
+                            key: "candidateNum",
+                            label: "候补人数",
+                            children: d.detail.candidateNum,
+                          },
+                          {
+                            key: "candidateSuccNum",
+                            label: "候补成功",
+                            children: d.detail.candidateSuccNum,
+                          },
+                          {
+                            key: "candidateFailNum",
+                            label: "候补失败",
+                            children: d.detail.candidateFailNum,
+                          },
+                          {
+                            key: "time",
+                            label: "创建时间",
+                            children: d.detail.time,
+                          },
+                          {
+                            key: "signStartTime",
+                            label: "报名开始",
+                            children: d.detail.signStartTime,
+                          },
+                          {
+                            key: "signEndTime",
+                            label: "报名截止",
+                            children: d.detail.signEndTime,
+                          },
+                          {
+                            key: "activityStime",
+                            label: "活动开始",
+                            children: d.detail.activityStime,
+                          },
+                          {
+                            key: "activityEtime",
+                            label: "活动结束",
+                            children: d.detail.activityEtime,
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* 描述 */}
-                <div className="activity-admin-section">
-                  <div className="activity-admin-section-title">描述</div>
+                  {/* 描述 */}
+                  <div className="activity-admin-section">
+                    <div className="activity-admin-section-title">描述</div>
 
-                  <div className="activity-admin-desc">
-                    <Paragraph className="activity-admin-desc-content">
-                      {d.detail.description || <Text type="secondary">-</Text>}
-                    </Paragraph>
+                    <div className="activity-admin-desc">
+                      <Paragraph className="activity-admin-desc-content">
+                        {d.detail.description || (
+                          <Text type="secondary">-</Text>
+                        )}
+                      </Paragraph>
+                    </div>
                   </div>
-                </div>
 
-                {/* 报名管理 */}
-                <div className="activity-admin-section">
-                  <div className="activity-admin-section-title">报名管理</div>
+                  {/* 报名管理 */}
+                  <div className="activity-admin-section">
+                    <div className="activity-admin-section-title">报名管理</div>
 
-                  <div className="activity-admin-panel">
-                    <Tabs
-                      activeKey={activeTab}
-                      onChange={(k) =>
-                        setActiveTab(
-                          k as "registers" | "candidates" | "supplements",
-                        )
-                      }
-                      items={[
-                        {
-                          key: "registers",
-                          label: "报名人员列表",
-                          children: (
-                            <RegisterListPanel activityId={d.detail.id} />
-                          ),
-                        },
-                        {
-                          key: "candidates",
-                          label: "候补人员列表",
-                          children: (
-                            <CandidateListPanel activityId={d.detail.id} />
-                          ),
-                        },
-                        {
-                          key: "supplements",
-                          label: "补报名人员列表",
-                          children: (
-                            <SupplementListPanel activityId={d.detail.id} />
-                          ),
-                        },
-                      ]}
-                    />
+                    <div className="activity-admin-panel">
+                      <Tabs
+                        activeKey={activeTab}
+                        onChange={(k) =>
+                          setActiveTab(
+                            k as "registers" | "candidates" | "supplements",
+                          )
+                        }
+                        items={[
+                          {
+                            key: "registers",
+                            label: "报名人员列表",
+                            children: (
+                              <RegisterListPanel activityId={d.detail.id} />
+                            ),
+                          },
+                          {
+                            key: "candidates",
+                            label: "候补人员列表",
+                            children: (
+                              <CandidateListPanel activityId={d.detail.id} />
+                            ),
+                          },
+                          {
+                            key: "supplements",
+                            label: "补报名人员列表",
+                            children: (
+                              <SupplementListPanel activityId={d.detail.id} />
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </Space>
+                </>
+              )}
+            </Space>
 
-          {/* UpsertModal（edit 模式） */}
-          <ActivityUpsertModal
-            open={d.modalOpen}
-            mode="edit"
-            editing={d.detail}
-            onCancel={d.closeEdit}
-            onSubmitCreate={async () => undefined}
-            onSubmitUpdate={async (payload: UpdateActivityPayload) => {
-              // ✅ 统一由 hook 编排（会自动 close + reload）
-              return await d.submitUpdate(payload);
-            }}
-            onSuccess={async () => {
-              // ✅ hook 内部已 close + reload，这里无需重复
-              return;
-            }}
-          />
-        </Card>
+            {/* UpsertModal（edit 模式） */}
+            <ActivityUpsertModal
+              open={d.modalOpen}
+              mode="edit"
+              editing={d.detail}
+              onCancel={d.closeEdit}
+              onSubmitCreate={async () => undefined}
+              onSubmitUpdate={async (payload: UpdateActivityPayload) => {
+                // ✅ 统一由 hook 编排（会自动 close + reload）
+                return await d.submitUpdate(payload);
+              }}
+              onSuccess={async () => {
+                // ✅ hook 内部已 close + reload，这里无需重复
+                return;
+              }}
+            />
+          </Card>
+        </div>
       </div>
     </div>
   );

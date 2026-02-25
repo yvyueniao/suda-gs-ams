@@ -101,11 +101,11 @@ export default function EnrollPage() {
           </Space>
         }
       />
-
       <SmartTable<EnrollTableRow>
         bizKey="activityApply.list"
         enableColumnResize
         sticky
+        scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
         columns={table.columns}
         dataSource={table.dataSource}
         rowKey="id"
@@ -116,7 +116,6 @@ export default function EnrollPage() {
         onQueryChange={table.onQueryChange}
         onFiltersChange={table.onFiltersChange}
       />
-
       {/* 报名结果弹窗 */}
       <ApplyResultModal
         open={applyFlow.modal.open}

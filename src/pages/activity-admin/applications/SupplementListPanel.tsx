@@ -91,6 +91,7 @@ export default function SupplementListPanel(props: SupplementListPanelProps) {
         bizKey="activity.admin.supplements"
         enableColumnResize
         sticky
+        scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
         columns={columns}
         dataSource={t.rows}
         rowKey={(r) => `${r.activityId}-${r.username}-${r.state}-${r.time}`}

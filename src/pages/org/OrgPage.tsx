@@ -102,6 +102,7 @@ export default function OrgPage() {
         bizKey="org.department"
         enableColumnResize
         sticky
+        scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
         columns={columns}
         dataSource={t.rows}
         rowKey="id"
@@ -111,7 +112,6 @@ export default function OrgPage() {
         error={t.error}
         onQueryChange={t.onQueryChange}
       />
-
       <CreateDepartmentModal
         open={createOpen}
         onCancel={() => setCreateOpen(false)}

@@ -48,41 +48,142 @@ let mockOldPassword = "123";
  * Mock 数据：报名记录（对齐 MyActivityItem /activity/userApplications）
  * - ✅ 必须包含 activityName
  * - ✅ checkOut mock 给全（前端类型是可选）
+ * - ✅ 扩充到 200 条，便于压测：搜索/排序/分页/导出/列设置
  * ----------------------------- */
-const mockApplications = [
-  {
-    activityId: 1,
-    activityName: "夜跑活动",
-    username: "20254227087",
+const mockApplications = (() => {
+  // 先保留你原来的两条（完全不改）
+  const base = [
+    {
+      activityId: 1,
+      activityName: "夜跑活动1",
+      username: "20254227087",
 
-    type: 0,
-    state: 0,
-    score: 1,
+      type: 0,
+      state: 0,
+      score: 1,
 
-    time: "2026-02-01 13:09:13",
-    attachment: null,
+      time: "2026-02-01 13:09:13",
+      attachment: null,
 
-    checkIn: true,
-    checkOut: false,
-    getScore: true,
-  },
-  {
-    activityId: 2,
-    activityName: "学术讲座：扩散模型入门与实践",
-    username: "20254227087",
+      checkIn: true,
+      checkOut: false,
+      getScore: true,
+    },
+    {
+      activityId: 2,
+      activityName: "学术讲座：扩散模型入门与实践",
+      username: "20254227087",
 
-    type: 1,
-    state: 1,
-    score: 5,
+      type: 1,
+      state: 1,
+      score: 5,
 
-    time: "2026-02-01 13:10:24",
-    attachment: null,
+      time: "2026-02-01 13:10:24",
+      attachment: null,
 
-    checkIn: false,
-    checkOut: false,
-    getScore: true,
-  },
-];
+      checkIn: false,
+      checkOut: false,
+      getScore: true,
+    },
+  ];
+
+  // 生成其余 198 条（总数 200）
+  const result: any[] = [...base];
+
+  const activityNames = [
+    "夜跑活动",
+    "羽毛球训练营",
+    "志愿服务：校园清洁",
+    "社团交流：破冰活动",
+    "创新创业分享会",
+    "研究生心理健康讲座",
+    "学术讲座：Transformer 实战",
+    "学术讲座：扩散模型采样加速",
+    "讲座：科研写作与投稿",
+    "讲座：工程化与前端可观测性",
+    "活动：迎新志愿服务",
+    "活动：体育嘉年华",
+  ];
+
+  // 0:报名成功/1:候补中/2:候补成功/3:候补失败/4:审核中/5:审核失败
+  const states = [0, 0, 0, 2, 1, 3, 4, 5]; // 让成功占比更高
+
+  function pad2(n: number) {
+    return String(n).padStart(2, "0");
+  }
+
+  // 从 2026-02-01 之后按分钟递增，保证 time 看起来合理
+  // 这里把范围铺到 2~3 月，便于你排序/搜索体验
+  let day = 1;
+  let hour = 9;
+  let minute = 0;
+
+  for (let i = 3; i <= 200; i++) {
+    // 名称、类型、状态分布
+    const name = activityNames[i % activityNames.length] + `${i}`;
+    const type = i % 3 === 0 ? 1 : 0; // 约 1/3 讲座
+    const state = states[i % states.length];
+
+    // 分数：活动一般 1~5，讲座一般 2~10（做点波动）
+    const score = type === 1 ? (i % 9) + 2 : (i % 5) + 1;
+
+    // 签到签退：成功/候补成功更可能签到；候补中/审核中一般未签到
+    const checkIn = state === 0 || state === 2 ? i % 4 !== 0 : false; // 75% 左右
+    const checkOut = checkIn ? i % 6 === 0 : false; // 一部分签退
+
+    // 是否加分：只有成功/候补成功才可能加分
+    const getScore = state === 0 || state === 2 ? i % 7 !== 0 : false;
+
+    // 附件：少量记录有附件
+    const attachment =
+      i % 17 === 0
+        ? `http://localhost:8088/plik-proxy/file/mock/${i}/upload_${i}_证明材料.pdf`
+        : null;
+
+    // 时间推进：每条 + 7~13 分钟（让数据更像真实）
+    minute += 7 + (i % 7); // 7~13
+    while (minute >= 60) {
+      minute -= 60;
+      hour += 1;
+    }
+    while (hour >= 24) {
+      hour -= 24;
+      day += 1;
+    }
+
+    // 控制日期别跑太离谱（2月最多到 28）
+    // 超过 28 之后滚到 3 月
+    let month = 2;
+    let dayInMonth = day;
+    if (dayInMonth > 28) {
+      month = 3;
+      dayInMonth = dayInMonth - 28;
+    }
+
+    const time = `2026-${pad2(month)}-${pad2(dayInMonth)} ${pad2(
+      hour,
+    )}:${pad2(minute)}:${pad2(i % 60)}`;
+
+    result.push({
+      activityId: i,
+      activityName: name,
+      username: "20254227087",
+
+      type,
+      state,
+      score,
+
+      time,
+      attachment,
+
+      checkIn,
+      checkOut,
+      getScore,
+    });
+  }
+
+  return result;
+})();
 
 /** -----------------------------
  * Mock 数据：活动详情（对齐 ActivityDetail /activity/searchById）

@@ -63,7 +63,7 @@ export default function AppNav({
     />
   );
 
-  // ✅ 移动端：Drawer
+  // ✅ 移动端：Drawer（独立滚动，不影响页面布局）
   if (isMobile) {
     return (
       <Drawer
@@ -72,7 +72,7 @@ export default function AppNav({
         open={drawerOpen}
         onClose={onCloseDrawer}
         width={drawerWidth}
-        bodyStyle={{ padding: 0 }}
+        bodyStyle={{ padding: 0, overflow: "auto" }}
         className="app-drawer"
       >
         {menu}
@@ -80,7 +80,10 @@ export default function AppNav({
     );
   }
 
-  // ✅ 桌面端：Sider
+  // ✅ 桌面端：Sider 固定在可视区高度内（跟随 Header），自身可滚动
+  // 说明：
+  // - 你的 AppLayout 已把中间区域做成固定高度的 flex 容器（app-body）
+  // - 这里让 Sider: height:100% + overflow:auto，确保页面滚动时左侧不“消失”
   return (
     <Sider
       width={siderWidth}
@@ -89,6 +92,11 @@ export default function AppNav({
       collapsed={collapsed}
       trigger={null} // 由 Header 按钮控制折叠
       className="app-sider"
+      style={{
+        height: "100%",
+        overflow: "auto",
+        borderRight: "1px solid rgba(17, 24, 39, 0.06)",
+      }}
     >
       {menu}
     </Sider>

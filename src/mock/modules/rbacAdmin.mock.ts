@@ -53,7 +53,7 @@ const users: User[] = [
   {
     id: 1,
     username: "20254227087",
-    name: "梁靖松",
+    name: "梁靖松1",
     invalid: true,
     role: 4,
     menuPermission: null,
@@ -115,6 +115,172 @@ const users: User[] = [
     department: null,
   },
 ];
+
+// ===============================
+// ✅ 自动补齐 users 到 200 条（稳定可复现）
+// - 不手写长数组，避免维护灾难
+// - 每次启动 mock 数据一致（固定 seed）
+// ===============================
+
+/** 简单可复现随机数（LCG） */
+function createRng(seed = 20260225) {
+  let s = seed >>> 0;
+  return () => {
+    // LCG: X_{n+1} = (aX_n + c) mod 2^32
+    s = (1664525 * s + 1013904223) >>> 0;
+    return s / 2 ** 32;
+  };
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function fmt(dt: Date) {
+  const y = dt.getFullYear();
+  const m = pad2(dt.getMonth() + 1);
+  const d = pad2(dt.getDate());
+  const hh = pad2(dt.getHours());
+  const mm = pad2(dt.getMinutes());
+  const ss = pad2(dt.getSeconds());
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+}
+
+function pick<T>(rng: () => number, arr: T[]) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+function clampInt(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, Math.floor(v)));
+}
+
+function seedUsersTo(target = 200) {
+  const rng = createRng(20260225);
+
+  const familyNames = [
+    "赵",
+    "钱",
+    "孙",
+    "李",
+    "周",
+    "吴",
+    "郑",
+    "王",
+    "冯",
+    "陈",
+    "褚",
+    "卫",
+    "蒋",
+    "沈",
+    "韩",
+    "杨",
+    "朱",
+    "秦",
+    "尤",
+    "许",
+    "何",
+    "吕",
+    "施",
+    "张",
+  ];
+  const givenNames = [
+    "一",
+    "二",
+    "三",
+    "四",
+    "五",
+    "六",
+    "七",
+    "八",
+    "九",
+    "十",
+    "子涵",
+    "雨桐",
+    "浩然",
+    "梓轩",
+    "欣怡",
+    "佳宁",
+    "宇航",
+    "明哲",
+    "思远",
+    "若曦",
+    "晨曦",
+    "子墨",
+    "亦辰",
+    "可欣",
+  ];
+  const majors = [
+    "软件工程",
+    "计算机科学与技术",
+    "网络空间安全",
+    "人工智能",
+    "数据科学与大数据技术",
+    "信息安全",
+    "电子信息",
+    "计算机技术",
+  ];
+  const grades = ["1", "2", "研一", "研二"];
+  const roles: Role[] = [4, 4, 4, 4, 4, 3, 2, 1, 0]; // 普通用户更多，少量高权限
+
+  // 基准时间：2026-02-01 ~ 2026-02-25 之间
+  const base = new Date("2026-02-01T08:00:00");
+
+  const usernameSet = new Set(users.map((u) => u.username));
+
+  while (users.length < target) {
+    const id = users.length + 1;
+
+    // 从 20254227090 往后生成（避免和你已有的 087/088/089 冲突）
+    let seq = 86 + id; // id=4 => 90；id=200 => 286（够用）
+    let username = `20254227${String(seq).padStart(3, "0")}`;
+    while (usernameSet.has(username)) {
+      seq += 1;
+      username = `20254227${String(seq).padStart(3, "0")}`;
+    }
+    usernameSet.add(username);
+
+    const name = `${pick(rng, familyNames)}${pick(rng, givenNames)}${id}`;
+    const major = pick(rng, majors);
+    const grade = pick(rng, grades);
+    const role = pick(rng, roles);
+
+    // invalid=true 表示“正常”这一口径你前面用过，这里保持大多数正常
+    const invalid = rng() < 0.88;
+
+    // 时间：createTime 在 base 后 0~24 天，lastLoginTime 在 createTime 后 0~12 天
+    const createOffsetDays = clampInt(rng() * 25, 0, 24);
+    const createOffsetMins = clampInt(rng() * 24 * 60, 0, 1439);
+    const createDt = new Date(base);
+    createDt.setDate(createDt.getDate() + createOffsetDays);
+    createDt.setMinutes(createDt.getMinutes() + createOffsetMins);
+
+    const loginOffsetDays = clampInt(rng() * 13, 0, 12);
+    const loginOffsetMins = clampInt(rng() * 24 * 60, 0, 1439);
+    const loginDt = new Date(createDt);
+    loginDt.setDate(loginDt.getDate() + loginOffsetDays);
+    loginDt.setMinutes(loginDt.getMinutes() + loginOffsetMins);
+
+    users.push({
+      id,
+      username,
+      name,
+      role,
+      department: null, // 初始不挂部门；后面 appointRole 会挂
+      invalid,
+      menuPermission: null,
+      email: `${username}@qq.com`,
+      major,
+      grade,
+      createTime: fmt(createDt),
+      lastLoginTime: fmt(loginDt),
+      serviceScore: clampInt(rng() * 51, 0, 50),
+      lectureNum: clampInt(rng() * 31, 0, 30),
+    });
+  }
+}
+
+// ✅ 补齐到 200 条
+seedUsersTo(200);
 
 const members: User[] = [
   {

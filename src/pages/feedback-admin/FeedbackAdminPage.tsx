@@ -106,11 +106,11 @@ export default function FeedbackAdminPage() {
         }
         right={rightActions}
       />
-
       <SmartTable<FeedbackSessionItem, Record<string, any>>
         bizKey="feedback.all"
         rowKey="sessionId"
         columns={columns}
+        scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
         dataSource={table.rows}
         loading={table.loading}
         error={table.error}

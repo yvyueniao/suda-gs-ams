@@ -174,6 +174,7 @@ export default function FeedbackCenterPage() {
       <SmartTable<FeedbackSessionItem, Record<string, any>>
         bizKey="feedback.mine"
         rowKey="sessionId"
+        scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
         loading={list.loading}
         error={list.error}
         dataSource={list.rows}
@@ -184,7 +185,6 @@ export default function FeedbackCenterPage() {
         onFiltersChange={(filters) => list.onQueryChange({ filters })}
         enableColumnResize
       />
-
       <CreateFeedbackModal
         open={createOpen}
         loading={creating}

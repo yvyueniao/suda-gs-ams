@@ -118,6 +118,7 @@ export default function AdminManagePage() {
           bizKey="rbac.admin.members"
           enableColumnResize
           sticky
+          scroll={{ y: "calc(86.5vh - 56px - 48px - 24px - 120px)" }}
           rowKey="username"
           columns={columns}
           dataSource={table.rows}
