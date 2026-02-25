@@ -1,23 +1,94 @@
-import { Card, Typography } from "antd";
+// src/pages/system/AuditPage.tsx
+
+import { useMemo } from "react";
+import { Button, Card, Space, Typography } from "antd";
+
+import {
+  TableToolbar,
+  SmartTable,
+  ColumnSettings,
+} from "../../shared/components/table";
+
+import { useSystemLogsTable } from "../../features/system/hooks/useSystemLogsTable";
+import { buildSystemLogColumns } from "../../features/system/table/columns";
+import { systemLogColumnPresets } from "../../features/system/table/presets";
+
+const { Title, Text } = Typography;
 
 export default function AuditPage() {
+  const t = useSystemLogsTable();
+
+  const columns = useMemo(() => {
+    const base = buildSystemLogColumns({
+      sorter: t.query.sorter as any,
+    });
+    return t.applyPresetsToAntdColumns(base);
+  }, [t.query.sorter, t.applyPresetsToAntdColumns]);
+
   return (
-    <Card>
-      <Typography.Title level={3} style={{ marginTop: 0 }}>
-        操作日志
-      </Typography.Title>
+    <Card
+      title={
+        <Space
+          style={{ width: "100%", justifyContent: "space-between" }}
+          align="center"
+          wrap
+        >
+          <Space direction="vertical" size={0}>
+            <Title level={4} style={{ margin: 0 }}>
+              系统日志
+            </Title>
+          </Space>
+        </Space>
+      }
+    >
+      <TableToolbar
+        left={
+          <Space direction="vertical" size={0}>
+            <Title level={5} style={{ margin: 0 }}>
+              日志列表
+            </Title>
+          </Space>
+        }
+        showSearch
+        searchMode="change"
+        debounceMs={300}
+        searchPlaceholder="搜索用户名/姓名/路径/IP/归属地/请求内容"
+        keyword={t.query.keyword}
+        onKeywordChange={t.setKeyword}
+        onReset={t.reset}
+        onRefresh={t.reload}
+        loading={t.loading}
+        right={
+          <Space>
+            <Button onClick={() => t.exportCsv()} loading={t.exporting}>
+              导出 CSV
+            </Button>
 
-      <Typography.Paragraph>
-        记录系统关键操作：谁在什么时候对活动/反馈/用户做了什么（便于追溯与审计）。
-      </Typography.Paragraph>
+            <ColumnSettings
+              presets={systemLogColumnPresets}
+              visibleKeys={t.visibleKeys}
+              onChange={t.setVisibleKeys}
+              orderedKeys={t.orderedKeys}
+              onOrderChange={t.setOrderedKeys}
+              onReset={t.resetToDefault}
+            />
+          </Space>
+        }
+      />
 
-      <Typography.Title level={5}>下一步</Typography.Title>
-      <Typography.Paragraph>
-        - 日志列表（筛选：模块/操作者/时间）
-        <br />
-        - 日志详情（操作前后对比，可选）
-        <br />- 导出
-      </Typography.Paragraph>
+      <SmartTable
+        bizKey="system.logs"
+        enableColumnResize
+        sticky
+        columns={columns}
+        dataSource={t.rows}
+        rowKey={(row) => `${row.time}-${row.username}-${row.path}`}
+        query={t.query}
+        total={t.total}
+        loading={t.loading}
+        error={t.error}
+        onQueryChange={t.onQueryChange}
+      />
     </Card>
   );
 }

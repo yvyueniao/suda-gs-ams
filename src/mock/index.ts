@@ -15,7 +15,8 @@ import { setupActivityAdminMock } from "./modules/activityAdmin.mock";
 import { setupActivityApplicationsMock } from "./modules/activityApplications.mock"; // ⭐ 详情页三列表
 import { setupRbacAdminMock } from "./modules/rbacAdmin.mock";
 import { setupRbacUserMock } from "./modules/rbacUser.mock";
-import { setupFeedbackMock } from "./modules/feedback.mock"; // ⭐ 新增：反馈中心
+import { setupFeedbackMock } from "./modules/feedback.mock"; // ⭐ 反馈中心
+import { setupSystemLogsMock } from "./modules/system-logs.mock"; // ⭐ 新增：系统日志
 
 export function setupMock(middlewares: Connect.Server) {
   if (!mockConfig.enabled) return;
@@ -26,13 +27,13 @@ export function setupMock(middlewares: Connect.Server) {
   setupAuthMock(middlewares);
 
   // ======================================================
-  // 7) 反馈中心（⭐ 新增）
+  // 7) 反馈中心
   // - /session/myFeedbacks
   // - /session/allFeedback
   // - /session/createFeedback
   // - /session/close
   // - /session/content
-  // - /activity/upload
+  // - /session/upload
   // ======================================================
   setupFeedbackMock(middlewares);
 
@@ -76,7 +77,12 @@ export function setupMock(middlewares: Connect.Server) {
   setupRbacUserMock(middlewares);
 
   // ======================================================
+  // 10) 系统管理 · 系统日志（⭐ 新增）
+  // - /lll2lll5loo8og7gs3ss3plog01
+  // ======================================================
+  setupSystemLogsMock(middlewares);
+
+  // ======================================================
   // 后续模块在这里注册即可（vite.config.ts 永远不动）
   // ======================================================
-  // setupAuditMock(middlewares);
 }
