@@ -33,7 +33,7 @@ export function buildSystemLogColumns(params?: {
       sortOrder: sortOrderOf(sorter, "time"),
     },
     {
-      title: "用户名",
+      title: "学号",
       dataIndex: "username",
       key: "username",
       width: 140,

@@ -23,7 +23,7 @@ export const systemLogColumnPresets: TableColumnPreset<SystemLogItem>[] = [
   },
   {
     key: "username",
-    title: "用户名",
+    title: "学号",
     width: 140,
   },
   {
