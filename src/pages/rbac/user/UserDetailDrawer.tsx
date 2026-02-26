@@ -195,7 +195,13 @@ export default function UserDetailDrawer(props: UserDetailDrawerProps) {
           ) : (
             <>
               <TableToolbar
-                left={<span />}
+                left={
+                  <Space>
+                    <Title level={5} style={{ margin: 0 }}>
+                      用户报名活动列表
+                    </Title>
+                  </Space>
+                }
                 showSearch
                 keyword={appsTable.query?.keyword}
                 // ✅ 这里的 kw 可能是 undefined（TableToolbar 允许）
