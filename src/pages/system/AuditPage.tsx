@@ -13,7 +13,7 @@ import { useSystemLogsTable } from "../../features/system/hooks/useSystemLogsTab
 import { buildSystemLogColumns } from "../../features/system/table/columns";
 import { systemLogColumnPresets } from "../../features/system/table/presets";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function AuditPage() {
   const t = useSystemLogsTable();

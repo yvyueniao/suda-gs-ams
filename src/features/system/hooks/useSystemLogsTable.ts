@@ -1,6 +1,6 @@
 // src/features/system/hooks/useSystemLogsTable.ts
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   useTableQuery,
@@ -64,7 +64,7 @@ export function useSystemLogsTable() {
 
   /**
    * 2️⃣ 后端分页：只在 “首次 + reload()” 时请求
-   * ✅ 关键：把 useTableData 改成 autoDeps="reload"，彻底切断“query引用变化”导致的请求风暴
+   * ✅ autoDeps="reload"：彻底切断“query引用变化”导致的请求风暴
    */
   const d = useTableData<SystemLogItem, { page: number; pageSize: number }>(
     { page, pageSize },
@@ -79,9 +79,7 @@ export function useSystemLogsTable() {
   );
 
   /**
-   * ✅ 我们自己控制何时 reload：
-   * - 首次会请求一次（useTableData 自带）
-   * - page/pageSize 变化时，手动触发 reload（一次）
+   * ✅ page/pageSize 变化时，手动触发 reload（一次）
    */
   const lastPagingRef = useRef<{ page: number; pageSize: number } | null>(null);
   useEffect(() => {
@@ -103,16 +101,26 @@ export function useSystemLogsTable() {
 
   /**
    * 3️⃣ 本地 keyword 搜索 + 本地排序（仅当前页）
+   * 🚫 关键：不要二次分页（否则第 2 页会被 slice 成空）
    */
   const localOptions = useMemo(() => buildSystemLogLocalQueryOptions(), []);
 
+  // ✅ 本地用的 query：强制 page=1，避免 applyLocalQuery 再切一次分页
+  const localQuery = useMemo(() => {
+    return {
+      ...query,
+      page: 1,
+      pageSize: 999999, // 足够大即可
+    };
+  }, [query]);
+
   const local = useMemo(() => {
     return applyLocalQuery<SystemLogItem, Record<string, any>>(
-      d.list ?? [],
-      query,
+      d.list ?? [], // ✅ 当前页数据
+      localQuery, // ✅ 禁用二次分页
       localOptions,
     );
-  }, [d.list, query, localOptions]);
+  }, [d.list, localQuery, localOptions]);
 
   /**
    * 4️⃣ 列偏好（显隐 / 顺序 / 宽度）
@@ -141,7 +149,7 @@ export function useSystemLogsTable() {
    */
   const onQueryChange = useCallback(
     (next: Partial<TableQuery<Record<string, any>>>) => {
-      // pagination
+      // pagination（✅ 触发后端翻页）
       const nextPage = normalizePage(
         typeof next.page === "number" ? next.page : page,
         page,
@@ -154,14 +162,14 @@ export function useSystemLogsTable() {
         setPage(nextPage, nextPageSize);
       }
 
-      // sorter（只前端）
+      // sorter（只前端，对当前页生效）
       if ("sorter" in next) {
         if (!sameSorter(query.sorter as any, next.sorter as any)) {
           setSorter(next.sorter);
         }
       }
 
-      // keyword（只前端；变更回第一页）
+      // keyword（只前端；变更回第一页，同时触发一次后端请求 page=1）
       if ("keyword" in next) {
         const nk = String(next.keyword ?? "");
         const ck = String(query.keyword ?? "");
@@ -185,7 +193,9 @@ export function useSystemLogsTable() {
   );
 
   return {
-    rows: local.list,
+    // ✅ rows：用 local.filtered（当前页做完搜索/排序后的结果）
+    rows: local.filtered,
+    // ✅ total：用后端 total（分页器页数才正确）
     total: d.total ?? 0,
 
     loading: d.loading,

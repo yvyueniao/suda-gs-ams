@@ -59,16 +59,37 @@ export type FetchSystemLogsPayload = {
 };
 
 // ======================================================
-// Page Result（前端统一分页结构）
+// Backend Page Structure（严格对齐后端）
+// ======================================================
+
+/**
+ * 后端分页返回结构（真实接口）
+ *
+ * 接口返回：
+ * data: {
+ *   total: number,
+ *   logs: SystemLogItem[]
+ * }
+ */
+export type SystemLogPageData = {
+  /** 日志总条数 */
+  total: number;
+
+  /** 当前页日志列表 */
+  logs: SystemLogItem[];
+};
+
+// ======================================================
+// Frontend Page Result（前端统一分页结构）
 // ======================================================
 
 /**
  * 前端统一分页返回结构
  *
  * ⚠️ 说明：
- * 后端示例返回 data: SystemLogItem[]
- * 但接口说明是分页查询，因此前端统一适配为：
- * { list, total }
+ * - 后端返回 { total, logs }
+ * - 前端统一适配为 { list, total }
+ * - logs → list 在 api 层做映射
  */
 export type SystemLogPageResult = {
   list: SystemLogItem[];

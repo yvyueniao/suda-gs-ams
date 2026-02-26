@@ -15,9 +15,9 @@
 
 import { request } from "../../shared/http/client";
 import type {
-  SystemLogItem,
   FetchSystemLogsPayload,
   SystemLogPageResult,
+  SystemLogPageData,
 } from "./types";
 
 /**
@@ -25,39 +25,29 @@ import type {
  *
  * POST /lll2lll5loo8og7gs3ss3plog01
  *
- * ⚠️ 说明：
- * 你给的接口示例返回 data: SystemLogItem[]
- * 但接口语义是分页查询。
+ * 后端返回结构：
+ * data: {
+ *   total: number,
+ *   logs: SystemLogItem[]
+ * }
  *
- * 为保证兼容性：
- * - 若后端返回数组 → total = 数组长度
- * - 若后端返回 { list/logs/records, count/total } → 自动适配
+ * 前端统一结构：
+ * { list, total }
+ *
+ * 因此在此处做字段映射：
+ * logs → list
  */
 export async function fetchSystemLogs(
   payload: FetchSystemLogsPayload,
 ): Promise<SystemLogPageResult> {
-  const resp = await request<any>({
+  const data = await request<SystemLogPageData>({
     url: "/lll2lll5loo8og7gs3ss3plog01",
     method: "POST",
     data: payload,
   });
 
-  // 情况 1：后端直接返回数组
-  if (Array.isArray(resp)) {
-    return {
-      list: resp as SystemLogItem[],
-      total: resp.length,
-    };
-  }
-
-  // 情况 2：后端返回分页结构
-  const list: SystemLogItem[] = resp?.list ?? resp?.logs ?? resp?.records ?? [];
-
-  const total: number =
-    resp?.count ?? resp?.total ?? resp?.totalCount ?? list.length;
-
   return {
-    list,
-    total,
+    list: Array.isArray(data?.logs) ? data.logs : [],
+    total: Number(data?.total ?? 0),
   };
 }
