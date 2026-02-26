@@ -9,11 +9,13 @@ import {
   Descriptions,
   Alert,
   Spin,
+  Button,
+  Space,
 } from "antd";
 import type { UploadProps } from "antd";
-import { InboxOutlined } from "@ant-design/icons";
+import { InboxOutlined, DownloadOutlined } from "@ant-design/icons";
 
-const { Text } = Typography;
+const { Text, Link } = Typography;
 
 export type ImportPreviewStats = {
   total: number;
@@ -37,6 +39,13 @@ export type ImportUsersModalProps = {
   /** 点击“确认导入” */
   onConfirmImport: () => void | Promise<unknown>;
 };
+
+/**
+ * ✅ 导入模板下载地址
+ * - 模板文件建议放在：public/templates/user-import-template.xlsx
+ * - Vite 会把 public 下的文件原样拷贝，访问路径以 / 开头
+ */
+const TEMPLATE_URL = "/templates/user-import-template.xlsx";
 
 export default function ImportUsersModal(props: ImportUsersModalProps) {
   const {
@@ -72,6 +81,8 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
     showUploadList: true,
   };
 
+  const disabled = !!parsing || !!submitting;
+
   return (
     <Modal
       title="批量导入用户"
@@ -91,10 +102,45 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
         <Alert
           type="info"
           showIcon
-          message="请上传 xls/xlsx 文件（模板固定中文表头：学号/密码/姓名/邮箱/专业/年级）"
+          message={
+            <Space direction="vertical" size={4}>
+              <Text>
+                请上传 xls/xlsx
+                文件（模板固定中文表头：学号/密码/姓名/邮箱/专业/年级）
+              </Text>
+
+              {/* ✅ 新增：下载导入模板 */}
+              <Space size={8} wrap>
+                <Button
+                  type="link"
+                  icon={<DownloadOutlined />}
+                  href={TEMPLATE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                  disabled={disabled}
+                  style={{ padding: 0 }}
+                >
+                  下载导入模板
+                </Button>
+
+                <Text type="secondary">
+                  若无法下载，可复制打开：
+                  <Link
+                    href={TEMPLATE_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    disabled={disabled}
+                  >
+                    {TEMPLATE_URL}
+                  </Link>
+                </Text>
+              </Space>
+            </Space>
+          }
         />
 
-        <Upload.Dragger {...uploadProps} disabled={!!parsing || !!submitting}>
+        <Upload.Dragger {...uploadProps} disabled={disabled}>
           <p className="ant-upload-drag-icon">
             <InboxOutlined />
           </p>
