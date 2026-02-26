@@ -19,31 +19,26 @@ import type { UserCreatePayload } from "../../../features/rbac/user/types";
 
 import { useUserManagePage } from "../../../features/rbac/user/hooks/useUserManagePage";
 import { useUserSpecialScore } from "../../../features/rbac/user/hooks/useUserSpecialScore";
+import { useUsersScoreByTimeExport } from "../../../features/rbac/user/hooks/useUsersScoreByTimeExport";
+
+// ✅ 新增：用户详情-报名记录表格 hook（触发 /activity/usernameApplications）
+import { useUserApplicationsTable } from "../../../features/rbac/user/hooks/useUserApplicationsTable";
 
 import CreateUserModal from "./CreateUserModal";
 import ImportUsersModal from "./ImportUsersModal";
 import ImportResultModal from "./ImportResultModal";
 import UserDetailDrawer from "./UserDetailDrawer";
 import SpecialScoreModal from "./SpecialScoreModal";
+import ExportByTimeModal from "./ExportByTimeModal";
 
 const { Title } = Typography;
+
 // 🔒 删除功能开关（上线时改为 true 即可）
 const ENABLE_DELETE = false;
 
-/**
- * ✅ 导入结果适配：
- * - ImportResultModal 需要：统一返回壳（code/msg/data/timestamp）
- * - hooks 的 result.result 可能是结构化统计，也可能是后端壳（你们后端有时返回 data 文本）
- * - 这里做“展示适配”，不改 hooks 也能跑
- *
- * ✅ 关键改动：
- * - msg 优先用后端给出的（如果有）
- * - code 也尽量用后端的（如果有），否则再做兜底推断
- */
 function adaptImportResult(result: any) {
   if (!result) return null;
 
-  // ✅ 若本身就是壳（code/msg/data/timestamp），直接用（优先后端）
   if (typeof result === "object" && result) {
     const anyR = result as any;
 
@@ -60,28 +55,33 @@ function adaptImportResult(result: any) {
     }
   }
 
-  // 否则按“结构化统计”拼装展示
-  const successCount = Number(result.successCount ?? 0);
-  const failCount = Number(result.failCount ?? 0);
+  const successCount = Number((result as any).successCount ?? 0);
+  const failCount = Number((result as any).failCount ?? 0);
 
   const lines: string[] = [];
   lines.push(`成功：${successCount} 条`);
   lines.push(`失败：${failCount} 条`);
 
-  if (Array.isArray(result.failedUsernames) && result.failedUsernames.length) {
-    lines.push(`失败学号：${result.failedUsernames.join(", ")}`);
+  if (
+    Array.isArray((result as any).failedUsernames) &&
+    (result as any).failedUsernames.length
+  ) {
+    lines.push(`失败学号：${(result as any).failedUsernames.join(", ")}`);
   }
 
-  if (Array.isArray(result.failedDetails) && result.failedDetails.length) {
-    const detailText = result.failedDetails
+  if (
+    Array.isArray((result as any).failedDetails) &&
+    (result as any).failedDetails.length
+  ) {
+    const detailText = (result as any).failedDetails
       .slice(0, 20)
       .map((x: any) => `- ${x.username ?? "-"}：${x.reason ?? "-"}`)
       .join("\n");
     lines.push(`失败明细（最多展示 20 条）：\n${detailText}`);
   }
 
-  if (result.failedFileUrl) {
-    lines.push(`失败名单下载：${String(result.failedFileUrl)}`);
+  if ((result as any).failedFileUrl) {
+    lines.push(`失败名单下载：${String((result as any).failedFileUrl)}`);
   }
 
   return {
@@ -115,7 +115,6 @@ export default function UserManagePage() {
     importFlow,
   } = useUserManagePage({ onNotify: notify });
 
-  // ✅ 新增：录入加分（尽量不动旧逻辑：独立 hook + 独立弹窗）
   const specialScore = useUserSpecialScore({
     onNotify: notify,
     onAfterSubmit: () => {
@@ -123,9 +122,18 @@ export default function UserManagePage() {
     },
   });
 
+  const exportByTime = useUsersScoreByTimeExport({
+    onNotify: notify,
+  });
+
+  // ✅ 新增：详情 Drawer 下半部分（报名记录表）
+  // 仅在 Drawer 打开时才传入 username，避免无意义请求
+  const apps = useUserApplicationsTable({
+    username: detail.open ? detail.data?.username : null,
+  });
+
   const hasSelection = selectedUsernames.length > 0;
 
-  // 创建用户操作
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -135,12 +143,10 @@ export default function UserManagePage() {
     setCreating(true);
     try {
       await insertUser(payload);
-      // ✅ 这里接口返回 void，没有后端 msg 可用，只能用前端文案
       notify({ kind: "success", msg: "创建成功" });
       setCreateOpen(false);
       table.reload();
     } catch (err: any) {
-      // ✅ 如果 shared/http 抛的是 ApiError，err.message 就是后端 msg（优先用它）
       notify({ kind: "error", msg: err?.message ?? "创建失败，请稍后重试" });
       throw err;
     } finally {
@@ -148,7 +154,6 @@ export default function UserManagePage() {
     }
   };
 
-  // 批量删除操作
   const confirmBatchDelete = async () => {
     if (!hasSelection) return;
 
@@ -161,12 +166,10 @@ export default function UserManagePage() {
 
     if (!confirmed) return;
 
-    // ✅ batch hook 内部会优先吐后端 msg（我们在 hooks 里已改），这里只负责链路
     await runBatchDelete();
     table.reload();
   };
 
-  // 批量封锁操作
   const confirmBatchLock = async () => {
     if (!hasSelection) return;
 
@@ -179,12 +182,10 @@ export default function UserManagePage() {
 
     if (!confirmed) return;
 
-    // ✅ batch hook 内部会优先吐后端 msg（我们在 hooks 里已改），这里只负责链路
     await runBatchLock();
     table.reload();
   };
 
-  // Import Flow（✅ 按 hooks 真实结构拿）
   const previewOpen = !!importFlow.preview.open;
   const previewStats = importFlow.preview.stats ?? null;
 
@@ -194,13 +195,13 @@ export default function UserManagePage() {
     [importFlow.result.result],
   );
 
-  // ✅ 防止“重复打开导入/录入加分/创建”等
   const busy =
     !!creating ||
     !!locking ||
     !!deleting ||
     !!importFlow.submitting ||
-    !!specialScore.submitting;
+    !!specialScore.submitting ||
+    !!exportByTime.exporting;
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
@@ -217,7 +218,6 @@ export default function UserManagePage() {
               </Title>
             </Space>
 
-            {/* ✅ 主操作：标题右侧 */}
             <Button
               type="primary"
               onClick={() => setCreateOpen(true)}
@@ -242,17 +242,14 @@ export default function UserManagePage() {
           onKeywordChange={table.setKeyword}
           onRefresh={table.reload}
           onReset={table.reset}
-          // ✅ 选中信息区：让批量操作更“名正言顺”
           selectedCount={selectedUsernames.length}
           onClearSelection={() => setSelectedUsernames([])}
           right={
             <Space>
-              {/* ✅ 正常显示：录入加分 */}
               <Button onClick={specialScore.openModal} disabled={busy}>
                 录入加分
               </Button>
 
-              {/* ✅ 仅管理员（role=0）可见：批量导入 */}
               <Can roles={[0]}>
                 <Button onClick={importFlow.openPreview} disabled={busy}>
                   批量导入
@@ -268,7 +265,6 @@ export default function UserManagePage() {
               </Button>
 
               <Tooltip title={!ENABLE_DELETE ? "删除功能暂未开放" : undefined}>
-                {/* disabled 按钮不触发事件，必须包一层 span 才能显示 Tooltip */}
                 <span>
                   <Button
                     danger
@@ -281,16 +277,7 @@ export default function UserManagePage() {
                 </span>
               </Tooltip>
 
-              <Button
-                loading={!!table.exporting}
-                onClick={() =>
-                  table.exportCsv?.({
-                    filenameBase: "用户管理-用户列表",
-                    notify: (type, text) => notify({ kind: type, msg: text }),
-                  })
-                }
-                disabled={busy}
-              >
+              <Button onClick={exportByTime.openModal} disabled={busy}>
                 导出
               </Button>
 
@@ -329,7 +316,16 @@ export default function UserManagePage() {
         />
       </Card>
 
-      {/* ✅ 新增：录入加分弹窗（双下拉：姓名/学号） */}
+      {/* ✅ 按时间段导出弹窗（你说现在不需要列设置：所以不传 presets/visibleKeys/...） */}
+      <ExportByTimeModal
+        open={exportByTime.open}
+        onClose={exportByTime.closeModal}
+        loading={exportByTime.exporting}
+        value={exportByTime.range}
+        onChangeRange={exportByTime.setTimeRange}
+        onConfirm={exportByTime.exportByTime}
+      />
+
       <SpecialScoreModal
         open={specialScore.open}
         onClose={specialScore.closeModal}
@@ -346,7 +342,6 @@ export default function UserManagePage() {
         onSubmit={specialScore.submit}
       />
 
-      {/* 创建用户 */}
       <CreateUserModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -354,7 +349,6 @@ export default function UserManagePage() {
         onSubmit={submitCreate}
       />
 
-      {/* 导入用户：预览弹窗 */}
       <ImportUsersModal
         open={previewOpen}
         onClose={importFlow.closePreview}
@@ -367,23 +361,47 @@ export default function UserManagePage() {
         }}
       />
 
-      {/* 导入结果弹窗：用“展示适配”后的壳结构 */}
       <ImportResultModal
         open={resultOpen}
         onClose={importFlow.closeResult}
         result={adaptedResult}
         onDownloadFailed={(url) => {
-          // ✅ 这里仅弹提示（下载动作以后再接）
           notify({ kind: "info", msg: `失败名单下载：${url}` });
         }}
       />
 
-      {/* 详情 Drawer */}
       <UserDetailDrawer
         open={detail.open}
         onClose={closeDetail}
         loading={detail.loading}
         detail={detail.data ?? null}
+        sourceApi="/user/inforUsername"
+        appsTable={{
+          rows: apps.table.rows,
+          total: apps.table.total,
+          loading: apps.table.loading,
+          error: apps.table.error,
+
+          query: apps.table.query,
+          onQueryChange: apps.table.onQueryChange,
+
+          setKeyword: apps.table.setKeyword,
+          reload: apps.table.reload,
+          reset: apps.table.reset,
+
+          exporting: apps.table.exporting,
+          exportCsv: apps.table.exportCsv,
+
+          columns: apps.columns,
+          presets: apps.presets,
+          columnPrefs: {
+            visibleKeys: apps.columnPrefs.visibleKeys,
+            setVisibleKeys: apps.columnPrefs.setVisibleKeys,
+            resetToDefault: apps.columnPrefs.resetToDefault,
+            orderedKeys: (apps.columnPrefs as any).orderedKeys,
+            setOrderedKeys: (apps.columnPrefs as any).setOrderedKeys,
+          },
+        }}
       />
     </Space>
   );

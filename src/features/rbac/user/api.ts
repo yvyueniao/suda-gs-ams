@@ -23,6 +23,11 @@ import type {
   UserInfo,
   SpecialScorePayload,
   SpecialScoreResult,
+
+  // ✅ 新增类型
+  UsernameApplicationItem,
+  UsersScoreByTimePayload,
+  UsersScoreByTimeItem,
 } from "./types";
 
 /**
@@ -131,9 +136,7 @@ export async function unlockUser(payload: UnlockUserPayload): Promise<void> {
  * 7) 用户详情
  * POST /user/inforUsername
  *
- * ✅ 按你们 shared/http/request 的规则：
- * - 若后端是统一壳 => request 会解壳直接返回 data（也就是 UserInfo）
- * - 所以这里不需要再兼容 “未解壳” 的情况
+ * ✅ request 已解壳 => 直接返回 UserInfo
  * ======================================
  */
 export async function getUserInfo(username: string): Promise<UserInfo> {
@@ -148,10 +151,8 @@ export async function getUserInfo(username: string): Promise<UserInfo> {
  * ======================================
  * 8) ✅ 录入加分
  * POST /activity/special
- * body: { username, type, score }
  *
- * ✅ 后端统一壳：{ code, msg, data: string, timestamp }
- * ✅ request 会解壳：这里只会拿到 data（string）
+ * ✅ request 解壳 => 返回 data（通常是 string）
  * ======================================
  */
 export async function specialAddScore(
@@ -159,6 +160,44 @@ export async function specialAddScore(
 ): Promise<SpecialScoreResult> {
   return request<SpecialScoreResult>({
     url: "/activity/special",
+    method: "POST",
+    data: payload,
+  });
+}
+
+/**
+ * ======================================
+ * 9) ✅ 根据 username 查询其相关活动
+ * POST /activity/usernameApplications
+ *
+ * ✅ request 解壳 => 返回 data（UsernameApplicationItem[]）
+ * ======================================
+ */
+export async function getUsernameApplications(
+  username: string,
+): Promise<UsernameApplicationItem[]> {
+  return request<UsernameApplicationItem[]>({
+    url: "/activity/usernameApplications",
+    method: "POST",
+    data: { username },
+  });
+}
+
+/**
+ * ======================================
+ * 10) ✅ 根据时间段获取用户活动/讲座分数
+ * POST /user/usersScoreByTime
+ *
+ * body: { startTime, endTime }
+ *
+ * ✅ request 解壳 => 返回 data（UsersScoreByTimeItem[]）
+ * ======================================
+ */
+export async function usersScoreByTime(
+  payload: UsersScoreByTimePayload,
+): Promise<UsersScoreByTimeItem[]> {
+  return request<UsersScoreByTimeItem[]>({
+    url: "/user/usersScoreByTime",
     method: "POST",
     data: payload,
   });
