@@ -9,7 +9,7 @@
  */
 
 /** 默认每页条数 */
-export const TABLE_DEFAULT_PAGE_SIZE = 10;
+export const TABLE_DEFAULT_PAGE_SIZE = 20;
 
 /** 分页可选条数（用于 Pagination / PageSize 切换） */
 export const TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];

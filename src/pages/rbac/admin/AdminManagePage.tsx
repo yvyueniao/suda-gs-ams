@@ -1,7 +1,6 @@
 // src/pages/rbac/admin/AdminManagePage.tsx
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useCallback } from "react";
 import { Button, Card, Space, Typography, message } from "antd";
-import type { FilterValue } from "antd/es/table/interface";
 
 import {
   ColumnSettings,
@@ -32,11 +31,10 @@ export default function AdminManagePage() {
     openAppointModal,
     closeAppointModal,
 
-    // ✅ 新：姓名/学号共用搜索 + 选中用户 + 清空
     onSearchUser,
     onPickUser,
     clearPickedUser,
-
+    appointModalKey,
     submittingAppoint,
     submitAppoint,
     searchingSuggestion,
@@ -51,6 +49,12 @@ export default function AdminManagePage() {
     void loadDepartments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ✅ 关闭弹窗时：顺手清理选择态（避免下次打开残留）
+  const handleCloseModal = useCallback(() => {
+    clearPickedUser();
+    closeAppointModal();
+  }, [clearPickedUser, closeAppointModal]);
 
   return (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
@@ -76,7 +80,6 @@ export default function AdminManagePage() {
         bodyStyle={{ paddingTop: 12 }}
       >
         <TableToolbar
-          /** 左侧标题 */
           left={
             <Space>
               <Title level={5} style={{ margin: 0 }}>
@@ -127,21 +130,18 @@ export default function AdminManagePage() {
           total={table.total}
           query={table.query}
           onQueryChange={table.onQueryChange}
-          onFiltersChange={(filters: Record<string, FilterValue | null>) => {
-            table.onQueryChange({ filters });
-          }}
         />
       </Card>
 
       <AppointRoleModal
+        key={appointModalKey}
         open={appointModal.open}
-        onClose={closeAppointModal}
+        onClose={handleCloseModal}
         departments={departments ?? []}
         loadingDepartments={!!loadingDepartments}
         suggestions={appointModal.suggestions}
         searchingSuggestion={!!searchingSuggestion}
         values={appointModal.values}
-        // ✅ 新接口：共用搜索 + 选中 + 清空
         onSearchUser={onSearchUser}
         onPickUser={onPickUser}
         clearPickedUser={clearPickedUser}

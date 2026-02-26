@@ -66,10 +66,6 @@ export type SpecialScoreModalProps = {
   onSubmit: () => void | Promise<unknown>;
 };
 
-/**
- * 你第三列“加分类型”的选项
- * - 我这里先给出一个默认枚举（0/1），你之后可以按真实后端 type 口径改文案即可
- */
 const TYPE_OPTIONS: Array<{ label: string; value: SpecialScoreType }> = [
   { label: "社会服务加分", value: 0 },
   { label: "讲座次数加分", value: 1 },
@@ -94,30 +90,33 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
     onSubmit,
   } = props;
 
+  /**
+   * ✅ 关键修复：
+   * AutoComplete 的 option.value 必须唯一，否则线上同名会导致虚拟列表复用错乱（滚动后“全变一样”）
+   * => 姓名端/学号端统一都用 username 做 value（唯一键）
+   * 显示姓名/学号仍放在 label 里即可
+   */
   const nameOptions = useMemo(() => {
-    // AutoComplete 需要：{ value, label }
     return (options ?? []).map((x) => ({
-      value: x.name, // ✅ 选中后输入框显示“姓名”
+      value: x.username, // ✅ 唯一键
       label: (
         <Space size={8}>
           <Text>{x.name}</Text>
           <Text type="secondary">{x.username}</Text>
         </Space>
       ),
-      _raw: x,
     }));
   }, [options]);
 
   const usernameOptions = useMemo(() => {
     return (options ?? []).map((x) => ({
-      value: x.username, // ✅ 选中后输入框显示“学号”
+      value: x.username, // ✅ 唯一键
       label: (
         <Space size={8}>
           <Text>{x.username}</Text>
           <Text type="secondary">{x.name}</Text>
         </Space>
       ),
-      _raw: x,
     }));
   }, [options]);
 
@@ -128,8 +127,12 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
     !Number.isNaN(value.score) &&
     value.score >= 0;
 
-  // ✅ 提交/搜索中：禁用输入，避免用户在提交过程中改值导致“UI 显示”和“hook 校验”不同步
   const disabled = !!submitting;
+
+  const pickByUsername = (username: string) => {
+    const raw = (options ?? []).find((x) => x.username === username);
+    if (raw) onPickUser(raw);
+  };
 
   return (
     <Modal
@@ -153,7 +156,7 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             gap: 12,
           }}
         >
-          {/* 1) 姓名：双下拉之一（共用候选） */}
+          {/* 1) 姓名：显示姓名，但选择 value 用 username（唯一） */}
           <Form.Item
             label="姓名"
             required
@@ -162,25 +165,24 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <AutoComplete
               value={value.name}
               options={nameOptions as any}
-              // ✅ 只在 onSearch 触发搜索，避免 onSearch + onChange 双触发造成双请求
               onSearch={(text) => {
                 if (disabled) return;
                 void onNameInput(text);
               }}
               onChange={(text) => {
                 if (disabled) return;
-
-                // allowClear：清空时两列一起清更安全
                 if (!text) {
                   clearPickedUser?.();
                   void onNameInput("");
                 }
-                // ✅ 非清空不在 onChange 触发搜索，交给 onSearch
               }}
-              onSelect={(_val, option: any) => {
+              /**
+               * ✅ 注意：现在 onSelect 拿到的是 username（唯一），不是 name
+               * 选中后由父层 onPickUser 回填 name + username
+               */
+              onSelect={(username) => {
                 if (disabled) return;
-                const raw = option?._raw as UserNameOption | undefined;
-                if (raw) onPickUser(raw);
+                pickByUsername(String(username));
               }}
               placeholder="输入姓名 / 选择下拉"
               allowClear={!disabled}
@@ -190,7 +192,7 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             />
           </Form.Item>
 
-          {/* 2) 学号：双下拉之二（共用候选） */}
+          {/* 2) 学号：同理，value 本来就是 username，更稳 */}
           <Form.Item
             label="学号"
             required
@@ -199,24 +201,20 @@ export default function SpecialScoreModal(props: SpecialScoreModalProps) {
             <AutoComplete
               value={value.username}
               options={usernameOptions as any}
-              // ✅ 只在 onSearch 触发搜索，避免 onSearch + onChange 双触发造成双请求
               onSearch={(text) => {
                 if (disabled) return;
                 void onUsernameInput(text);
               }}
               onChange={(text) => {
                 if (disabled) return;
-
                 if (!text) {
                   clearPickedUser?.();
                   void onUsernameInput("");
                 }
-                // ✅ 非清空不在 onChange 触发搜索，交给 onSearch
               }}
-              onSelect={(_val, option: any) => {
+              onSelect={(username) => {
                 if (disabled) return;
-                const raw = option?._raw as UserNameOption | undefined;
-                if (raw) onPickUser(raw);
+                pickByUsername(String(username));
               }}
               placeholder="输入学号 / 选择下拉"
               allowClear={!disabled}
