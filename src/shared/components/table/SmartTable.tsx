@@ -29,25 +29,10 @@ export type SmartTableProps<
   loading?: boolean;
   error?: unknown;
 
-  /**
-   * 只负责把“分页/排序（以及你愿意的话 filters）”回传给上层
-   * 上层一般对接：useTableQuery.setPage/setSorter/setFilters
-   */
   onQueryChange: (next: Partial<TableQuery<F>>) => void;
 
-  /**
-   * ✅ filters 变化抛出去（用于“受控筛选”）
-   * 说明：
-   * - antd 的 filters 结构是 Record<string, FilterValue | null>
-   * - 业务可以在页面层把它映射成你自己的 query.filters
-   * - 不在 SmartTable 内部硬编码映射规则，保持解耦
-   */
   onFiltersChange?: (filters: Record<string, FilterValue | null>) => void;
 
-  /**
-   * ✅ 支持关闭分页：pagination={false}
-   * 也支持只传 Partial<TablePaginationConfig>
-   */
   pagination?: false | Partial<TablePaginationConfig>;
 
   className?: string;
@@ -58,20 +43,12 @@ export type SmartTableProps<
   size?: "small" | "middle" | "large";
   emptyText?: string;
 
-  /** ✅ 列宽拖拽：表格唯一 key（用于 localStorage 持久化） */
   bizKey?: string;
-  /** ✅ 是否开启列宽拖拽 */
   enableColumnResize?: boolean;
-  /** ✅ 最小列宽 */
   minColumnWidth?: number;
 
-  /** 透传给 antd Table 的 tableLayout（默认 auto；开启拖拽时建议 fixed） */
   tableLayout?: TableProps<T>["tableLayout"];
-
-  /** ✅ 透传 antd Table 的 scroll（用于固定列/横向滚动） */
   scroll?: TableProps<T>["scroll"];
-
-  /** ✅ 透传 antd Table 的 sticky（表头吸顶/固定列更稳） */
   sticky?: TableProps<T>["sticky"];
 };
 
@@ -139,17 +116,20 @@ export function SmartTable<
     sticky,
   } = props;
 
+  // ✅ 关键：以 query.page/pageSize 为最终真相源（不会被外部 pagination.current 覆盖）
   const mergedPagination: TablePaginationConfig | false = useMemo(() => {
     if (pagination === false) return false;
 
+    const base = (pagination ?? {}) as Partial<TablePaginationConfig>;
+
     return {
+      ...base,
       current: query.page ?? 1,
       pageSize: query.pageSize ?? TABLE_DEFAULT_PAGE_SIZE,
       total,
       showSizeChanger: true,
       pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS.map(String),
       showTotal: (t) => `共 ${t} 条`,
-      ...(pagination ?? {}),
     };
   }, [pagination, query.page, query.pageSize, total]);
 
@@ -159,18 +139,26 @@ export function SmartTable<
     sorter: SorterResult<T> | SorterResult<T>[],
     _extra: TableCurrentDataSource<T>,
   ) => {
-    // ✅ 关键：把 filters 抛出去，否则页面的 filteredValue（受控）不会更新
+    // ✅ 1) 先把 filters 透传给页面（如果页面需要）
     onFiltersChange?.(filters);
 
-    const next: Partial<TableQuery<F>> = {};
-    if (typeof p.current === "number") next.page = p.current;
-    if (typeof p.pageSize === "number") next.pageSize = p.pageSize;
-    next.sorter = toTableSorter<T>(sorter);
+    // ✅ 2) 先抛 sorter + filters（允许上层 setFilters 内部 reset page=1）
+    // ⚠️ 注意：filters 这里不强类型约束，直接作为 query.filters 透传给上层
+    const nextMeta: Partial<TableQuery<F>> = {
+      sorter: toTableSorter<T>(sorter),
+    };
+    (nextMeta as any).filters = filters;
 
-    onQueryChange(next);
+    onQueryChange(nextMeta);
+
+    // ✅ 3) 再抛 page/pageSize（强制以用户点击的页码为准，覆盖任何 reset）
+    const nextPage: Partial<TableQuery<F>> = {};
+    if (typeof p.current === "number") nextPage.page = p.current;
+    if (typeof p.pageSize === "number") nextPage.pageSize = p.pageSize;
+
+    onQueryChange(nextPage);
   };
 
-  // ✅ 列宽拖拽（可选）
   const { columns: resizableColumns, components } = useResizableColumns<T>({
     bizKey,
     columns,
@@ -178,23 +166,14 @@ export function SmartTable<
     minWidth: minColumnWidth,
   });
 
-  // ✅ 开启拖拽时强烈建议 fixed（否则改 th.style.width 可能不生效）
   const resolvedTableLayout = useMemo(() => {
     if (tableLayout) return tableLayout;
     return enableColumnResize ? "fixed" : "auto";
   }, [enableColumnResize, tableLayout]);
 
-  // ✅ 默认 scroll：保证有横向滚动能力，配合 fixed="right" 更稳
   const resolvedScroll = useMemo<TableProps<T>["scroll"]>(() => {
     if (scroll) return scroll;
-
-    // 开启列宽拖拽时：让 x 一定是 number（更稳），并保证可横向滚动
-    if (enableColumnResize) {
-      // 没有传 scroll.x 的情况下，给一个“够用的默认宽度”
-      // （比 x:"max-content" 更稳定，配合 fixed tableLayout）
-      return { x: 1200 };
-    }
-
+    if (enableColumnResize) return { x: 1200 };
     return { x: "max-content" };
   }, [enableColumnResize, scroll]);
 
