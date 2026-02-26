@@ -576,6 +576,75 @@ url：/activity/ownActivity
 
 
 
+#### 根据username查看其相关活动
+
+url：/activity/usernameApplications
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    username: "20254227087"
+}
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "activityId": 1,
+            "username": "20254227087",
+            "state": 0,
+            "time": "2026-02-01 13:09:13",
+            "attachment": null,
+            "checkIn": true,
+            "getScore": true,
+            "type": 0,
+            "score": 1,
+            "checkOut": false,
+            "activityName": "夜跑活动"
+        },
+        {
+            "activityId": 2,
+            "username": "20254227087",
+            "state": 0,
+            "time": "2026-02-01 13:10:24",
+            "attachment": null,
+            "checkIn": false,
+            "getScore": true,
+            "type": 1,
+            "score": 5,
+            "checkOut": false,
+            "activityName": "夜跑活动2"
+        }
+    ],
+    "timestamp": 1770358282379
+}
+
+activityId：报名活动/讲座的ID
+username：用户名
+state：报名状态(0:报名成功/1:候补中/2:候补成功/3:候补失败/4:审核中/5:审核失败)
+time：申请时间
+attachment：附件url地址
+checkIn：是否签到
+getScore：是否能够加分
+type：活动类型(0:活动/1:讲座)
+score：分数
+checkOut：是否签退
+```
+
+
+
 ### 修改活动/讲座信息
 
 url：/activity/updateActivityInfo
@@ -1390,6 +1459,75 @@ users：分页查询条件下，当前页的数据信息
 
 
 
+### 根据时间段获取用户活动/讲座分数
+
+url：/user/usersScoreByTime
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "startTime": "2026-02-04",
+    "endTime": "2026-02-09"
+}
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": [
+        {
+            "id": 23,
+            "username": "20254227033",
+            "name": "徐鹏飞",
+            "invalid": true,
+            "role": 4,
+            "menuPermission": null,
+            "email": "1330362357@qq.com",
+            "major": "计算机",
+            "grade": "研一",
+            "createTime": "2026-02-14 23:07:56",
+            "lastLoginTime": "2026-02-14 23:09:46",
+            "serviceScore": 0,
+            "lectureNum": 0,
+            "department": null
+        },
+        {
+            "id": 1,
+            "username": "20254227087",
+            "name": "梁靖松",
+            "invalid": true,
+            "role": 0,
+            "menuPermission": null,
+            "email": "459802134@qq.com",
+            "major": "软件工程",
+            "grade": "1",
+            "createTime": "2026-02-01 12:00:30",
+            "lastLoginTime": "2026-02-26 11:25:56",
+            "serviceScore": 20,
+            "lectureNum": 20,
+            "department": "文体部"
+        }
+    ],
+    "timestamp": 1772078967305
+}
+```
+
+
+
+
+
+
+
 ## 部门管理
 
 ### 创建部门
@@ -2049,28 +2187,32 @@ pageSize：每页的条数
 {
     "code": 200,
     "msg": "操作成功",
-    "data": [
-        {
-            "username": "20254227087",
-            "name": "梁靖松",
-            "path": "/user/inforUsername",
-            "content": "{\r\n    \"username\": \"20254227033\"\r\n}",
-            "time": "2026-02-25 11:33:22",
-            "ip": "120.228.84.223",
-            "address": "中国|0|湖南省|长沙市|移动"
-        },
-        {
-            "username": "20254227087",
-            "name": "梁靖松",
-            "path": "/activity/special",
-            "content": "{\r\n    \"username\": \"20254227087\",\r\n    \"type\": 1,\r\n    \"score\": 9\r\n}",
-            "time": "2026-02-25 11:31:21",
-            "ip": "0:0:0:0:0:0:0:1",
-            "address": "未知"
-        }
-    ],
-    "timestamp": 1771990898022
+    "data": {
+        "total": 25,
+        "logs": [
+            {
+                "username": "20254227087",
+                "name": "梁靖松",
+                "path": "/session/allFeedback",
+                "content": "[null Or file upload]",
+                "time": "2026-02-26 10:22:17",
+                "ip": "104.194.206.235",
+                "address": "美国|0|华盛顿|西雅图|0"
+            },
+            {
+                "username": "20254227087",
+                "name": "梁靖松",
+                "path": "/activity/activityRegisters",
+                "content": "{\"activityId\":1}",
+                "time": "2026-02-26 10:21:51",
+                "ip": "104.194.206.235",
+                "address": "美国|0|华盛顿|西雅图|0"
+            }
+        ]
+    },
+    "timestamp": 1772072842103
 }
+total：日志总数
 username：操作人的用户名
 name：操作人的姓名
 path：操作人的请求路径

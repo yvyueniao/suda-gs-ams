@@ -67,7 +67,7 @@ function errToMsg(err: unknown, fallback: string) {
 
 /** ✅ 搜索配置：可按需要微调 */
 const SEARCH_DEBOUNCE_MS = 1000;
-const SEARCH_MIN_LEN = 2;
+const SEARCH_MIN_LEN = 1;
 const SEARCH_CACHE_TTL_MS = 30_000; // 30s：足够降噪，又不至于太旧
 
 type CacheValue = {

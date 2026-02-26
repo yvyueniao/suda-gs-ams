@@ -141,7 +141,7 @@ export function useAdminManagePage(options?: { onNotify?: Notify }) {
   /**
    * ✅ 关键修复：搜索请求“防抖 + 最小输入长度 + TTL 缓存 + 只保留最后一次结果”
    */
-  const MIN_KEY_LEN = 2; // 最小输入长度：1 个字就搜 = 噪音太大
+  const MIN_KEY_LEN = 1; // 最小输入长度：1 个字就搜 = 噪音太大
   const DEBOUNCE_MS = 1000; // 防抖：输入停顿后再发
   const CACHE_TTL_MS = 30_000; // 30s TTL：短期重复输入直接复用
 
