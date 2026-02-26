@@ -69,9 +69,7 @@ export function useUserApplicationsTable(params: {
   // ======================================================
   // 1) query：唯一真相源（前端分页）
   // ======================================================
-  const q = useTableQuery<UserApplicationsFilters>({
-    initial: { page: 1, pageSize: 10 },
-  });
+  const q = useTableQuery<UserApplicationsFilters>({});
 
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
 

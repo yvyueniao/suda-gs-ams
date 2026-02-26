@@ -106,15 +106,7 @@ export function useEnrollTable(options?: {
     setPage,
     setSorter,
     reset: resetQuery,
-  } = useTableQuery<EnrollTableFilters>({
-    initial: {
-      page: 1,
-      pageSize: 10,
-      keyword: undefined,
-      filters: {},
-      sorter: undefined,
-    },
-  });
+  } = useTableQuery<EnrollTableFilters>({});
 
   // =========================
   // 2) 数据拉取（一次拉全量）

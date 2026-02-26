@@ -50,9 +50,7 @@ export function useAdminMembersTable(params: {
   }, [onDelete]);
 
   // ✅ query：唯一真相源
-  const q = useTableQuery<AdminMemberFilters>({
-    initial: { page: 1, pageSize: 10 },
-  });
+  const q = useTableQuery<AdminMemberFilters>({});
 
   // ✅ 解构：避免依赖 [q] 导致回调抖动
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;

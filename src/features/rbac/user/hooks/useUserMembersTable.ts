@@ -62,9 +62,7 @@ export function useUserMembersTable(params: {
   // ======================================================
   // 1) query：唯一真相源（后端分页）
   // ======================================================
-  const q = useTableQuery<UserFilters>({
-    initial: { page: 1, pageSize: 10 },
-  });
+  const q = useTableQuery<UserFilters>({});
 
   const { query, setPage, setSorter, setFilters, setKeyword, reset } = q;
 
