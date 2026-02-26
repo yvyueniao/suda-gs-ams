@@ -45,12 +45,10 @@ export const systemLogColumnPresets: TableColumnPreset<SystemLogItem>[] = [
     key: "address",
     title: "IP 归属地",
     width: 200,
-    hidden: true, // 默认隐藏（信息冗余）
   },
   {
     key: "content",
     title: "请求内容",
     width: 320,
-    hidden: true, // 默认隐藏（长文本）
   },
 ];
