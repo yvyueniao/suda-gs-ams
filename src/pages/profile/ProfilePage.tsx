@@ -13,16 +13,9 @@
  * - 异步动作统一：shared/actions（useAsyncAction / useAsyncMapAction）
  * - 弹窗：页面层只“开/关 + 绑定 confirmLoading”，不直接写复杂业务
  *
- * ✅ 本次修改点（让页面更“薄”、更一致）
- * 1) 删除未使用的 import（ActivityDetail、MyActivityItem、ACTIVITY_STATE_LABEL、helpers、Modal、message、renderActivityDetail）
- * 2) 修正 Avatar 静态资源路径：public 下资源用 "/avatar-default.png"（不要写 /public/...）
- * 3) 改邮箱/改密码：用 useAsyncAction 统一 loading + 错误口径 + 成功提示（页面不再 try/catch）
- * 4) TableToolbar：传入 loading，让搜索/刷新/重置禁用口径一致（可选但推荐）
- *
- * ✅ 本次 UI 美化点（不动业务逻辑）
- * - 接入 profile.css：用 className 控制页面容器宽度、头像区、信息区、统计区、表格卡样式
- * - 信息区从“纯 Descriptions”升级为“Header + 统计 + Descriptions”
- * - Descriptions 改为响应式列数，移动端不挤
+ * ✅ 本次修改点
+ * - 修改密码成功后：由于 hook 内已 clearToken/clearUser，这里在 onSuccess 里直接 navigate("/login")
+ *   确保“立刻跳转到登录页”（不依赖路由守卫下一次触发）
  */
 
 import { useMemo, useState } from "react";
@@ -37,6 +30,7 @@ import {
   Spin,
   Typography,
 } from "antd";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   ColumnSettings,
@@ -89,6 +83,9 @@ function renderUserDescriptions(user: UserInfo) {
 }
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const p = useProfile();
   const t = p.myActivitiesTable;
 
@@ -109,10 +106,15 @@ export default function ProfilePage() {
   });
 
   const modifyPasswordAction = useAsyncAction({
-    successMessage: (msg) => (msg ? String(msg) : "修改成功"),
+    successMessage: (msg) => (msg ? String(msg) : "修改成功，请重新登录"),
     errorMessage: "修改失败",
     onSuccess: async () => {
+      // ✅ hook 内已经 clearToken/clearUser
       setPwdOpen(false);
+
+      // ✅ 立刻跳转登录页（不依赖后续路由守卫/接口触发）
+      const from = location.pathname + location.search;
+      navigate("/login", { replace: true, state: { from } });
     },
   });
 
@@ -288,7 +290,7 @@ export default function ProfilePage() {
             }
           />
 
-          {/* 修改密码（✅ 由 useAsyncAction 统一提示/关闭） */}
+          {/* 修改密码（✅ 成功后会强制跳转登录） */}
           <ModifyPasswordModal
             open={pwdOpen}
             confirmLoading={modifyPasswordAction.loading}

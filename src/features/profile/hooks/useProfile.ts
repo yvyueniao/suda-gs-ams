@@ -21,6 +21,10 @@
  * - 本 Hook 返回的 submit* 方法：
  *   - 成功：resolve OperationResult（通常是后端返回的 msg / 或 null）
  *   - 失败：抛出异常（ApiError 或其它），由页面决定如何提示
+ *
+ * ✅ 本次修改（按你的需求）
+ * - 修改密码成功后：清空 token + 清空 user（让登录态立即失效）
+ * - 跳转登录交给页面层做（hook 不碰路由）
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,6 +39,9 @@ import { getMyProfile, modifyPassword, updateEmail } from "../api";
 import { ApiError } from "../../../shared/http/error";
 
 import { useProfileMyActivitiesTable } from "./useProfileMyActivitiesTable";
+
+import { clearToken } from "../../../shared/session/token";
+import { clearUser } from "../../../shared/session/session";
 
 export function useProfile() {
   // =====================================================
@@ -122,6 +129,7 @@ export function useProfile() {
   /**
    * submitModifyPassword
    * - 成功：返回 OperationResult
+   * - 成功后：清空 token + user（强制重新登录）
    * - 失败：抛出异常（让页面 toast）
    */
   const submitModifyPassword = useCallback(
@@ -133,6 +141,11 @@ export function useProfile() {
 
       try {
         const msg = await modifyPassword(payload);
+
+        // ✅ 关键：密码修改成功 -> 强制登出
+        clearToken();
+        clearUser();
+
         return msg;
       } finally {
         submittingPasswordRef.current = false;
