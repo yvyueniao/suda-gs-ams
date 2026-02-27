@@ -166,130 +166,140 @@ export default function ActivityDetailPage() {
   return (
     <div className="activity-apply-page">
       <div className="activity-apply-container">
-        <Card>
-          {/* Header */}
-          <div className="activity-apply-header">
-            <div>
-              <Title level={4} style={{ margin: 0 }}>
-                活动 / 讲座详情
-              </Title>
+        <div
+          style={{
+            height: "calc(113vh - 56px - 48px - 24px - 120px)",
+            overflow: "auto",
+          }}
+        >
+          <Card>
+            {/* Header */}
+            <div className="activity-apply-header">
+              <div>
+                <Title level={4} style={{ margin: 0 }}>
+                  活动 / 讲座详情
+                </Title>
 
-              <Text type="secondary">{headerSubtitle}</Text>
+                <Text type="secondary">{headerSubtitle}</Text>
+              </div>
+
+              <Space>
+                <Button icon={<ArrowLeftOutlined />} onClick={() => nav(-1)}>
+                  返回
+                </Button>
+
+                <Button icon={<ReloadOutlined />} onClick={() => void reload()}>
+                  刷新
+                </Button>
+
+                <Button
+                  type="primary"
+                  disabled={primaryDisabled}
+                  title={primaryDisabled ? disabledReason : undefined}
+                  loading={
+                    detail ? applyActions.rowAction.isLoading(detail.id) : false
+                  }
+                  onClick={() => void handlePrimaryClick()}
+                >
+                  {primary.text}
+                </Button>
+              </Space>
             </div>
 
-            <Space>
-              <Button icon={<ArrowLeftOutlined />} onClick={() => nav(-1)}>
-                返回
-              </Button>
+            <Divider />
 
-              <Button icon={<ReloadOutlined />} onClick={() => void reload()}>
-                刷新
-              </Button>
+            <Spin spinning={loading}>
+              {!Number.isFinite(activityId) ? (
+                <Text type="danger">参数错误：活动 ID 非法</Text>
+              ) : null}
 
-              <Button
-                type="primary"
-                disabled={primaryDisabled}
-                title={primaryDisabled ? disabledReason : undefined}
-                loading={
-                  detail ? applyActions.rowAction.isLoading(detail.id) : false
+              {error ? <Text type="danger">加载失败</Text> : null}
+
+              {detail ? (
+                <>
+                  {/* 基本信息 */}
+                  <div className="activity-apply-section">
+                    <div className="activity-apply-section-title">基本信息</div>
+
+                    <div className="activity-apply-panel">
+                      <Descriptions
+                        bordered
+                        column={2}
+                        items={[
+                          { label: "名称", children: detail.name },
+                          {
+                            label: "类型",
+                            children: renderTypeTag(detail.type),
+                          },
+                          {
+                            label: "活动状态",
+                            children: renderStateTag(detail.state),
+                          },
+                          {
+                            label: "我的报名状态",
+                            children: (
+                              <Tag color={applyTag.color}>{applyTag.label}</Tag>
+                            ),
+                          },
+                          { label: "地点", children: detail.location },
+                          {
+                            label: "分数",
+                            children: <Tag color="gold">{detail.score}</Tag>,
+                          },
+                          { label: "人数上限", children: detail.fullNum },
+
+                          {
+                            label: "成功申请",
+                            children:
+                              (detail.registeredNum ?? 0) +
+                              (detail.candidateSuccNum ?? 0),
+                          },
+
+                          { label: "报名开始", children: detail.signStartTime },
+                          { label: "报名结束", children: detail.signEndTime },
+                          { label: "活动开始", children: detail.activityStime },
+                          { label: "活动结束", children: detail.activityEtime },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 描述 */}
+                  <div className="activity-apply-section">
+                    <div className="activity-apply-section-title">描述</div>
+
+                    <div className="activity-apply-desc">
+                      <Paragraph className="activity-apply-desc-content">
+                        {detail.description || "-"}
+                      </Paragraph>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </Spin>
+          </Card>
+        </div>
+
+        {/* ✅ 报名结果弹窗：严格跟随 applyFlow.modal.kind */}
+        <ApplyResultModal
+          open={applyFlow.modal.open}
+          kind={
+            applyFlow.modal.kind === "REGISTER_OK"
+              ? "REGISTER_SUCCESS"
+              : "REGISTER_FAIL"
+          }
+          message={applyFlow.modal.msg}
+          onClose={applyFlow.closeModal}
+          onCandidate={
+            applyFlow.modal.canCandidate
+              ? async () => {
+                  await applyFlow.startCandidateFromFailModal();
                 }
-                onClick={() => void handlePrimaryClick()}
-              >
-                {primary.text}
-              </Button>
-            </Space>
-          </div>
-
-          <Divider />
-
-          <Spin spinning={loading}>
-            {!Number.isFinite(activityId) ? (
-              <Text type="danger">参数错误：活动 ID 非法</Text>
-            ) : null}
-
-            {error ? <Text type="danger">加载失败</Text> : null}
-
-            {detail ? (
-              <>
-                {/* 基本信息 */}
-                <div className="activity-apply-section">
-                  <div className="activity-apply-section-title">基本信息</div>
-
-                  <div className="activity-apply-panel">
-                    <Descriptions
-                      bordered
-                      column={2}
-                      items={[
-                        { label: "名称", children: detail.name },
-                        { label: "类型", children: renderTypeTag(detail.type) },
-                        {
-                          label: "活动状态",
-                          children: renderStateTag(detail.state),
-                        },
-                        {
-                          label: "我的报名状态",
-                          children: (
-                            <Tag color={applyTag.color}>{applyTag.label}</Tag>
-                          ),
-                        },
-                        { label: "地点", children: detail.location },
-                        {
-                          label: "分数",
-                          children: <Tag color="gold">{detail.score}</Tag>,
-                        },
-                        { label: "人数上限", children: detail.fullNum },
-
-                        {
-                          label: "成功申请",
-                          children:
-                            (detail.registeredNum ?? 0) +
-                            (detail.candidateSuccNum ?? 0),
-                        },
-
-                        { label: "报名开始", children: detail.signStartTime },
-                        { label: "报名结束", children: detail.signEndTime },
-                        { label: "活动开始", children: detail.activityStime },
-                        { label: "活动结束", children: detail.activityEtime },
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                {/* 描述 */}
-                <div className="activity-apply-section">
-                  <div className="activity-apply-section-title">描述</div>
-
-                  <div className="activity-apply-desc">
-                    <Paragraph className="activity-apply-desc-content">
-                      {detail.description || "-"}
-                    </Paragraph>
-                  </div>
-                </div>
-              </>
-            ) : null}
-          </Spin>
-        </Card>
+              : undefined
+          }
+          candidating={applyFlow.modal.candidateLoading}
+        />
       </div>
-
-      {/* ✅ 报名结果弹窗：严格跟随 applyFlow.modal.kind */}
-      <ApplyResultModal
-        open={applyFlow.modal.open}
-        kind={
-          applyFlow.modal.kind === "REGISTER_OK"
-            ? "REGISTER_SUCCESS"
-            : "REGISTER_FAIL"
-        }
-        message={applyFlow.modal.msg}
-        onClose={applyFlow.closeModal}
-        onCandidate={
-          applyFlow.modal.canCandidate
-            ? async () => {
-                await applyFlow.startCandidateFromFailModal();
-              }
-            : undefined
-        }
-        candidating={applyFlow.modal.candidateLoading}
-      />
     </div>
   );
 }

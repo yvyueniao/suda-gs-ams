@@ -140,166 +140,173 @@ export default function ProfilePage() {
   return (
     <div className="profile-page">
       <div className="profile-container">
-        <Space direction="vertical" style={{ width: "100%" }} size={16}>
-          <Card
-            className="profile-user-card"
-            title={
-              <Title level={4} style={{ margin: 0 }}>
-                个人中心
-              </Title>
-            }
-            extra={
-              <Space>
-                <Button type="primary" onClick={() => setEmailOpen(true)}>
-                  修改邮箱
-                </Button>
-                <Button onClick={() => setPwdOpen(true)}>修改密码</Button>
-              </Space>
-            }
-          >
-            {p.loadingProfile ? (
-              <div style={{ padding: 12 }}>
-                <Spin />
-              </div>
-            ) : p.profile ? (
-              <div className="profile-user-info">
-                <div className="profile-avatar-wrapper">
-                  {/* ✅ public 下静态资源：直接用 /xxx.png */}
-                  <Avatar
-                    className="profile-avatar"
-                    size={96}
-                    src="/avatar-default.png"
-                  />
+        <div
+          style={{
+            height: "calc(113vh - 56px - 48px - 24px - 120px)",
+            overflow: "auto",
+          }}
+        >
+          <Space direction="vertical" style={{ width: "100%" }} size={16}>
+            <Card
+              className="profile-user-card"
+              title={
+                <Title level={4} style={{ margin: 0 }}>
+                  个人中心
+                </Title>
+              }
+              extra={
+                <Space>
+                  <Button type="primary" onClick={() => setEmailOpen(true)}>
+                    修改邮箱
+                  </Button>
+                  <Button onClick={() => setPwdOpen(true)}>修改密码</Button>
+                </Space>
+              }
+            >
+              {p.loadingProfile ? (
+                <div style={{ padding: 12 }}>
+                  <Spin />
                 </div>
-
-                <div className="profile-user-meta">
-                  <Title
-                    level={4}
-                    className="profile-user-name"
-                    style={{ marginTop: 0 }}
-                  >
-                    {userName}{" "}
-                    <Text type="secondary" className="profile-user-role">
-                      （{userRole}）
-                    </Text>
-                  </Title>
-
-                  {/* 统计：更适合“数字展示”，别塞在 Descriptions 里 */}
-                  <div className="profile-user-stats">
-                    <div className="profile-stat-item">
-                      <div className="profile-stat-value">
-                        {p.profile.serviceScore ?? 0}
-                      </div>
-                      <div className="profile-stat-label">社会服务分</div>
-                    </div>
-
-                    <div className="profile-stat-item">
-                      <div className="profile-stat-value">
-                        {p.profile.lectureNum ?? 0}
-                      </div>
-                      <div className="profile-stat-label">学术讲座次数</div>
-                    </div>
+              ) : p.profile ? (
+                <div className="profile-user-info">
+                  <div className="profile-avatar-wrapper">
+                    {/* ✅ public 下静态资源：直接用 /xxx.png */}
+                    <Avatar
+                      className="profile-avatar"
+                      size={96}
+                      src="/avatar-default.png"
+                    />
                   </div>
 
-                  {renderUserDescriptions(p.profile)}
+                  <div className="profile-user-meta">
+                    <Title
+                      level={4}
+                      className="profile-user-name"
+                      style={{ marginTop: 0 }}
+                    >
+                      {userName}{" "}
+                      <Text type="secondary" className="profile-user-role">
+                        （{userRole}）
+                      </Text>
+                    </Title>
+
+                    {/* 统计：更适合“数字展示”，别塞在 Descriptions 里 */}
+                    <div className="profile-user-stats">
+                      <div className="profile-stat-item">
+                        <div className="profile-stat-value">
+                          {p.profile.serviceScore ?? 0}
+                        </div>
+                        <div className="profile-stat-label">社会服务分</div>
+                      </div>
+
+                      <div className="profile-stat-item">
+                        <div className="profile-stat-value">
+                          {p.profile.lectureNum ?? 0}
+                        </div>
+                        <div className="profile-stat-label">学术讲座次数</div>
+                      </div>
+                    </div>
+
+                    {renderUserDescriptions(p.profile)}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <Empty description={p.profileErrorMessage || "暂无用户信息"} />
-            )}
-          </Card>
+              ) : (
+                <Empty description={p.profileErrorMessage || "暂无用户信息"} />
+              )}
+            </Card>
 
-          <Card
-            className="profile-activities-card"
-            title={
-              <Title level={4} style={{ margin: 0 }}>
-                我的活动/讲座
-              </Title>
+            <Card
+              className="profile-activities-card"
+              title={
+                <Title level={4} style={{ margin: 0 }}>
+                  我的活动/讲座
+                </Title>
+              }
+              bodyStyle={{ paddingTop: 12 }}
+            >
+              <TableToolbar
+                left={
+                  <Space>
+                    <Title level={5} style={{ margin: 0 }}>
+                      报名记录
+                    </Title>
+                  </Space>
+                }
+                showSearch
+                searchMode="submit"
+                keyword={t.query.keyword}
+                onSearch={(kw) => t.setKeyword(kw)}
+                onReset={t.reset}
+                onRefresh={t.reload}
+                loading={pageBusy}
+                right={
+                  <Space>
+                    <Button onClick={t.exportCsv} loading={t.exporting}>
+                      导出 CSV
+                    </Button>
+
+                    <ColumnSettings
+                      presets={t.presets}
+                      visibleKeys={t.visibleKeys}
+                      onChange={t.setVisibleKeys}
+                      orderedKeys={t.orderedKeys}
+                      onOrderChange={t.setOrderedKeys}
+                      onReset={t.resetColumns}
+                    />
+                  </Space>
+                }
+              />
+
+              <Divider style={{ margin: "10px 0" }} />
+
+              <SmartTable
+                bizKey={t.bizKey}
+                enableColumnResize
+                sticky
+                scroll={{ y: "calc(52.5vh - 56px - 48px - 24px - 120px)" }}
+                columns={t.columns}
+                dataSource={t.list}
+                rowKey="activityId"
+                query={t.query}
+                total={t.total}
+                loading={t.loading}
+                error={t.error}
+                onQueryChange={t.onQueryChange}
+                onFiltersChange={t.onFiltersChange}
+              />
+            </Card>
+          </Space>
+
+          {/* 修改邮箱（✅ 由 useAsyncAction 统一提示/关闭） */}
+          <UpdateEmailModal
+            open={emailOpen}
+            initialEmail={p.profile?.email ?? ""}
+            confirmLoading={updateEmailAction.loading}
+            onCancel={() => setEmailOpen(false)}
+            onSubmit={(payload) =>
+              updateEmailAction.run(() => p.submitUpdateEmail(payload))
             }
-            bodyStyle={{ paddingTop: 12 }}
-          >
-            <TableToolbar
-              left={
-                <Space>
-                  <Title level={5} style={{ margin: 0 }}>
-                    报名记录
-                  </Title>
-                </Space>
-              }
-              showSearch
-              searchMode="submit"
-              keyword={t.query.keyword}
-              onSearch={(kw) => t.setKeyword(kw)}
-              onReset={t.reset}
-              onRefresh={t.reload}
-              loading={pageBusy}
-              right={
-                <Space>
-                  <Button onClick={t.exportCsv} loading={t.exporting}>
-                    导出 CSV
-                  </Button>
+          />
 
-                  <ColumnSettings
-                    presets={t.presets}
-                    visibleKeys={t.visibleKeys}
-                    onChange={t.setVisibleKeys}
-                    orderedKeys={t.orderedKeys}
-                    onOrderChange={t.setOrderedKeys}
-                    onReset={t.resetColumns}
-                  />
-                </Space>
-              }
-            />
+          {/* 修改密码（✅ 由 useAsyncAction 统一提示/关闭） */}
+          <ModifyPasswordModal
+            open={pwdOpen}
+            confirmLoading={modifyPasswordAction.loading}
+            onCancel={() => setPwdOpen(false)}
+            onSubmit={(payload) =>
+              modifyPasswordAction.run(() => p.submitModifyPassword(payload))
+            }
+          />
 
-            <Divider style={{ margin: "10px 0" }} />
-
-            <SmartTable
-              bizKey={t.bizKey}
-              enableColumnResize
-              sticky
-              scroll={{ y: "calc(52.5vh - 56px - 48px - 24px - 120px)" }}
-              columns={t.columns}
-              dataSource={t.list}
-              rowKey="activityId"
-              query={t.query}
-              total={t.total}
-              loading={t.loading}
-              error={t.error}
-              onQueryChange={t.onQueryChange}
-              onFiltersChange={t.onFiltersChange}
-            />
-          </Card>
-        </Space>
-
-        {/* 修改邮箱（✅ 由 useAsyncAction 统一提示/关闭） */}
-        <UpdateEmailModal
-          open={emailOpen}
-          initialEmail={p.profile?.email ?? ""}
-          confirmLoading={updateEmailAction.loading}
-          onCancel={() => setEmailOpen(false)}
-          onSubmit={(payload) =>
-            updateEmailAction.run(() => p.submitUpdateEmail(payload))
-          }
-        />
-
-        {/* 修改密码（✅ 由 useAsyncAction 统一提示/关闭） */}
-        <ModifyPasswordModal
-          open={pwdOpen}
-          confirmLoading={modifyPasswordAction.loading}
-          onCancel={() => setPwdOpen(false)}
-          onSubmit={(payload) =>
-            modifyPasswordAction.run(() => p.submitModifyPassword(payload))
-          }
-        />
-
-        {/* 活动详情 */}
-        <ActivityDetailModal
-          open={t.detailOpen}
-          loading={t.detailLoading}
-          detail={t.detail}
-          currentRow={t.currentRow}
-          onCancel={t.closeDetail}
-        />
+          {/* 活动详情 */}
+          <ActivityDetailModal
+            open={t.detailOpen}
+            loading={t.detailLoading}
+            detail={t.detail}
+            currentRow={t.currentRow}
+            onCancel={t.closeDetail}
+          />
+        </div>
       </div>
     </div>
   );
