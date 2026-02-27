@@ -219,7 +219,7 @@ export type UserNameOption = {
  * POST /activity/usernameApplications
  *
  * ✅ 重要：字段必须对齐你现在 apps.columns.tsx 里用到的 dataIndex/key
- * - activityId / activityName / time / attachment / checkIn / checkOut / getScore / score / state / type / username ...
+ * - id / activityId / activityName / time / attachment / checkIn / checkOut / getScore / score / state / type / username ...
  * ======================================
  */
 
@@ -231,10 +231,13 @@ export type ApplicationState = 0 | 1 | 2 | 3 | 4 | 5;
 
 /**
  * ✅ 报名记录行（表格唯一真相源）
- * - 你现在 apps.columns.tsx 已按这些字段写死了
- * - 所以 types.ts 必须这样定义，避免类型不兼容
+ * - ✅ 新增：id（报名记录ID），用于 /activity/deleteApply 删除“特殊加分记录”
+ * - ⚠️ 注意：这个 id 不一定要在表格展示，但必须在行数据里存在，便于操作列使用
  */
 export interface UsernameApplicationItem {
+  /** ✅ 报名记录ID（后端新增返回，用于删除） */
+  id: number;
+
   activityId: number;
   username: string;
 

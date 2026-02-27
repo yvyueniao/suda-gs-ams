@@ -489,33 +489,33 @@ url：/activity/userApplications
     "msg": "操作成功",
     "data": [
         {
-            "activityId": 1,
+            "id": 10,
+            "activityId": -2,
             "username": "20254227087",
             "state": 0,
-            "time": "2026-02-01 13:09:13",
+            "time": "2026-02-09 13:13:47",
             "attachment": null,
             "checkIn": true,
             "getScore": true,
-            "type": 0,
-            "score": 1,
-            "checkOut": false,
-            "activityName": "夜跑活动"
+            "type": 1,
+            "score": 20,
+            "checkOut": true,
+            "activityName": "特殊加讲座次数"
         },
         {
-            "activityId": 2,
+            "id": 40,
+            "activityId": -2,
             "username": "20254227087",
             "state": 0,
-            "time": "2026-02-01 13:10:24",
+            "time": "2026-02-21 17:17:35",
             "attachment": null,
-            "checkIn": false,
+            "checkIn": true,
             "getScore": true,
             "type": 1,
-            "score": 5,
-            "checkOut": false,
-            "activityName": "夜跑活动2"
+            "score": 9,
+            "checkOut": true,
+            "activityName": "特殊加讲座次数"
         }
-    ],
-    "timestamp": 1770358282379
 }
 
 activityId：报名活动/讲座的ID
@@ -602,33 +602,33 @@ url：/activity/usernameApplications
     "msg": "操作成功",
     "data": [
         {
-            "activityId": 1,
+            "id": 10,
+            "activityId": -2,
             "username": "20254227087",
             "state": 0,
-            "time": "2026-02-01 13:09:13",
+            "time": "2026-02-09 13:13:47",
             "attachment": null,
             "checkIn": true,
             "getScore": true,
-            "type": 0,
-            "score": 1,
-            "checkOut": false,
-            "activityName": "夜跑活动"
+            "type": 1,
+            "score": 20,
+            "checkOut": true,
+            "activityName": "特殊加讲座次数"
         },
         {
-            "activityId": 2,
+            "id": 40,
+            "activityId": -2,
             "username": "20254227087",
             "state": 0,
-            "time": "2026-02-01 13:10:24",
+            "time": "2026-02-21 17:17:35",
             "attachment": null,
-            "checkIn": false,
+            "checkIn": true,
             "getScore": true,
             "type": 1,
-            "score": 5,
-            "checkOut": false,
-            "activityName": "夜跑活动2"
+            "score": 9,
+            "checkOut": true,
+            "activityName": "特殊加讲座次数"
         }
-    ],
-    "timestamp": 1770358282379
 }
 
 activityId：报名活动/讲座的ID
@@ -1109,6 +1109,37 @@ code 200是成功，其他的都有对应错误信息在msg
 ```
 
 
+
+### 删除用户特殊加分
+
+url：/activity/deleteApply
+
+请求方式：POST
+
+请求格式：application/json
+
+请求头：Authorization: token值
+
+请求参数说明：
+
+```json
+{
+    "id": 68
+}
+```
+
+返回值说明：
+
+```json
+{
+    "code": 200,
+    "msg": "操作成功",
+    "data": "成功删除1条申请",
+    "timestamp": 1772165139031
+}
+code 200是成功，其他的都有对应错误信息在msg
+注意：我设置了非特殊无法删除的限制，所以在状态码非200时务必弹出错误提示
+```
 
 
 

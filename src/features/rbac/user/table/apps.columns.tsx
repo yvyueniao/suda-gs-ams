@@ -1,21 +1,26 @@
 // src/features/rbac/user/table/apps.columns.tsx
 
 import type { ColumnsType } from "antd/es/table";
-import { Tag, Typography } from "antd";
+import { Tag, Tooltip, Typography } from "antd";
+
+import { ActionCell } from "../../../../shared/components/table";
 
 import type { UsernameApplicationItem } from "../types";
 
 const { Link, Text } = Typography;
 
 /**
- * 用户详情 - 报名记录表 columns 工厂
+ * 用户详情 - 报名记录表 columns 工厂（纯 UI 列定义层）
  *
- * ✅ 关键修复（你现在遇到的 TS 报错根因）：
- * - 不要在 columns 里自造 UserApplicationRow 类型
- * - 直接以后端接口类型 UsernameApplicationItem 作为表格行类型（唯一真相源）
+ * ✅ 关键点
+ * - 行类型唯一真相源：UsernameApplicationItem（后端 /activity/usernameApplications 返回）
+ * - ❌ 这里不请求接口、不写业务逻辑
+ * - ✅ “删除”只触发回调，由 hook/page 决定怎么调接口、怎么 reload
+ * - ✅ 二次确认：使用 ActionCell 内置 confirm（你们封装好的居中弹窗）
  *
- * ✅ 所有带筛选字段均使用语义颜色 Tag
- * ✅ keyword 只搜索 activityName（在 apps.helpers.ts 中实现）
+ * ✅ 新需求
+ * - 不区分是否特殊加分：所有记录都允许点删除
+ * - 最终是否允许删除由后端决定（前端不做 canDelete 限制）
  */
 
 /* ===============================
@@ -51,18 +56,18 @@ function renderState(state: number) {
   let color: string = "default";
 
   switch (state) {
-    case 0: // 报名成功
-    case 2: // 候补成功
+    case 0:
+    case 2:
       color = "green";
       break;
-    case 3: // 候补失败
-    case 5: // 审核失败
+    case 3:
+    case 5:
       color = "red";
       break;
-    case 1: // 候补中
+    case 1:
       color = "orange";
       break;
-    case 4: // 审核中
+    case 4:
       color = "gold";
       break;
   }
@@ -98,7 +103,16 @@ const BOOL_FILTERS = [
    Columns Factory
 ================================ */
 
-export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
+export function buildUserAppsColumns(params?: {
+  /** ✅ 删除：只触发回调 */
+  onDelete?: (row: UsernameApplicationItem) => void | Promise<unknown>;
+
+  /** ✅ 是否正在删除某条记录（用于行级 loading） */
+  isDeleting?: (id: number) => boolean;
+}): ColumnsType<UsernameApplicationItem> {
+  const onDelete = params?.onDelete;
+  const isDeleting = params?.isDeleting;
+
   return [
     {
       title: "活动名称",
@@ -107,7 +121,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       ellipsis: true,
       render: (val: unknown) => <Text>{String(val ?? "-")}</Text>,
     },
-
     {
       title: "类型",
       dataIndex: "type",
@@ -115,7 +128,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       filters: TYPE_FILTERS,
       render: (val: unknown) => renderType(Number(val ?? 0)),
     },
-
     {
       title: "报名状态",
       dataIndex: "state",
@@ -123,7 +135,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       filters: STATE_FILTERS,
       render: (val: unknown) => renderState(Number(val ?? 0)),
     },
-
     {
       title: "申请时间",
       dataIndex: "time",
@@ -131,16 +142,15 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       sorter: true,
       render: (val: unknown) => <Text>{String(val ?? "-")}</Text>,
     },
-
     {
       title: "分数/次数",
       dataIndex: "score",
       key: "score",
       sorter: true,
+      align: "right",
       render: (val: unknown) =>
         typeof val === "number" ? <Text strong>{val}</Text> : <Text>-</Text>,
     },
-
     {
       title: "签到",
       dataIndex: "checkIn",
@@ -148,7 +158,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       filters: BOOL_FILTERS,
       render: (val: unknown) => renderBool(!!val),
     },
-
     {
       title: "签退",
       dataIndex: "checkOut",
@@ -156,7 +165,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       filters: BOOL_FILTERS,
       render: (val: unknown) => renderBool(!!val),
     },
-
     {
       title: "可加分",
       dataIndex: "getScore",
@@ -164,7 +172,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       filters: BOOL_FILTERS,
       render: (val: unknown) => renderBool(!!val),
     },
-
     {
       title: "活动ID",
       dataIndex: "activityId",
@@ -172,7 +179,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       sorter: true,
       render: (val: unknown) => (val ?? "-") as any,
     },
-
     {
       title: "附件",
       dataIndex: "attachment",
@@ -186,12 +192,53 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
           "-"
         ),
     },
-
     {
       title: "学号",
       dataIndex: "username",
       key: "username",
       render: (val: unknown) => String(val ?? "-"),
+    },
+
+    // =========================
+    // ✅ 操作列：删除（所有记录都允许点）
+    // - 二次确认用 ActionCell.confirm（居中弹窗）
+    // =========================
+    {
+      title: "操作",
+      key: "actions",
+      width: 90,
+      fixed: "right",
+      render: (_: unknown, row) => {
+        const rowId = Number((row as any)?.id);
+        const hasId = Number.isFinite(rowId);
+
+        const disabled = !onDelete || !hasId;
+        return (
+          <span>
+            <ActionCell
+              record={row}
+              actions={[
+                {
+                  key: "delete",
+                  label: "删除",
+                  danger: true,
+                  disabled,
+                  loading: hasId ? isDeleting?.(rowId) : false,
+                  confirm: {
+                    title: "确认删除该条报名记录？",
+                    content: hasId
+                      ? `记录ID：${rowId}${row.activityName ? `，活动：${row.activityName}` : ""}`
+                      : "缺少记录ID",
+                    okText: "删除",
+                    cancelText: "取消",
+                  },
+                  onClick: () => onDelete?.(row),
+                },
+              ]}
+            />
+          </span>
+        );
+      },
     },
   ];
 }

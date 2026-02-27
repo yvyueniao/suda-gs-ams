@@ -15,6 +15,7 @@ export const USER_COLUMN_PRESETS: TableColumnPreset[] = [
   // =========================
   // 身份信息
   // =========================
+  // ✅ ID 不展示，但作为内部唯一标识保留
   { key: "id", title: "ID", width: 80, hidden: true },
 
   { key: "username", title: "学号", width: 130 },
@@ -43,7 +44,7 @@ export const USER_COLUMN_PRESETS: TableColumnPreset[] = [
   { key: "lastLoginTime", title: "上次登录", width: 170 },
 
   // =========================
-  // 操作列
+  // 操作列（固定在最右侧）
   // =========================
   { key: "actions", title: "操作", width: 160 },
 ];

@@ -185,7 +185,25 @@ export async function getUsernameApplications(
 
 /**
  * ======================================
- * 10) ✅ 根据时间段获取用户活动/讲座分数
+ * 10) ✅ 删除用户特殊加分（报名记录删除）
+ * POST /activity/deleteApply
+ *
+ * body: { id }
+ *
+ * ✅ request 解壳 => 返回 data（通常是 string 提示）
+ * ======================================
+ */
+export async function deleteApply(id: number): Promise<string> {
+  return request<string>({
+    url: "/activity/deleteApply",
+    method: "POST",
+    data: { id },
+  });
+}
+
+/**
+ * ======================================
+ * 11) ✅ 根据时间段获取用户活动/讲座分数
  * POST /user/usersScoreByTime
  *
  * body: { startTime, endTime }

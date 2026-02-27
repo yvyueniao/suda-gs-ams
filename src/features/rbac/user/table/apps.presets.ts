@@ -13,6 +13,7 @@ import type { TableColumnPreset } from "../../../../shared/components/table";
  * ✅ 约定（按你最新要求）：
  * - keyword 只搜索 activityName（helpers.ts 里实现）
  * - 前端分页/筛选/排序/导出/列设置/拖拽列宽：复用 shared/table 基建
+ * - ✅ 新增操作列（删除特殊加分记录）
  */
 
 export const USER_APPS_COLUMN_PRESETS: TableColumnPreset[] = [
@@ -38,7 +39,16 @@ export const USER_APPS_COLUMN_PRESETS: TableColumnPreset[] = [
   // =========================
   // 可选信息（默认隐藏）
   // =========================
+  // ✅ 报名记录 id（用于删除 /activity/deleteApply）
+  // 不在表格中展示，仅用于内部逻辑
+  { key: "id", title: "记录ID", width: 90, hidden: true },
+
   { key: "activityId", title: "活动ID", width: 90, hidden: true },
   { key: "attachment", title: "附件", width: 160, hidden: true },
   { key: "username", title: "学号", width: 130, hidden: true },
+
+  // =========================
+  // 操作列
+  // =========================
+  { key: "actions", title: "操作", width: 100 },
 ];
