@@ -126,7 +126,6 @@ export function buildUserColumns(params: {
       key: "serviceScore",
       width: 120,
       sorter: true,
-      align: "right",
     },
     {
       title: "讲座次数",
@@ -134,7 +133,6 @@ export function buildUserColumns(params: {
       key: "lectureNum",
       width: 110,
       sorter: true,
-      align: "right",
     },
 
     // =========================

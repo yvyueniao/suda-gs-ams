@@ -136,7 +136,6 @@ export function buildUserAppsColumns(): ColumnsType<UsernameApplicationItem> {
       title: "分数/次数",
       dataIndex: "score",
       key: "score",
-      align: "right",
       sorter: true,
       render: (val: unknown) =>
         typeof val === "number" ? <Text strong>{val}</Text> : <Text>-</Text>,
