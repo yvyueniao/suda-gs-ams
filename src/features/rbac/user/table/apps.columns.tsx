@@ -1,7 +1,7 @@
 // src/features/rbac/user/table/apps.columns.tsx
 
 import type { ColumnsType } from "antd/es/table";
-import { Tag, Tooltip, Typography } from "antd";
+import { Tag, Typography } from "antd";
 
 import { ActionCell } from "../../../../shared/components/table";
 
