@@ -3,18 +3,13 @@ import { request } from "../../shared/http/client";
 import type {
   LoginData,
   LoginPayload,
+  User,
   UserInfoData,
   MenuNode,
   SendVerifyCodePayload,
   ForgetPasswordPayload,
   OperationResult,
 } from "./types";
-
-/**
- * ===========================
- * 登录 & 鉴权
- * ===========================
- */
 
 /**
  * 登录
@@ -31,20 +26,19 @@ export function login(payload: LoginPayload) {
 /**
  * 验证 token 是否有效
  * POST /token
- * ✅ 新版接口：data: null
- * 只要 code === 200 即为有效
+ * ✅ 只有这个接口：HTTP200+code401 时才清空登录并跳转
  */
-export async function verifyToken(): Promise<void> {
-  await request<null>({
+export function verifyToken() {
+  return request<User>({
     url: "/token",
     method: "POST",
+    meta: { authFail: "logout" },
   });
 }
 
 /**
  * 获取当前用户信息（后端可能刷新 token）
  * POST /user/info
- * data: { user, token }
  */
 export function getUserInfo() {
   return request<UserInfoData>({
@@ -65,15 +59,8 @@ export function getMenuList() {
 }
 
 /**
- * ===========================
- * 忘记密码（无需登录）
- * ===========================
- */
-
-/**
  * 发送验证码
  * POST /user/send-verify-code
- * data: null
  */
 export function sendVerifyCode(payload: SendVerifyCodePayload) {
   return request<null>({
