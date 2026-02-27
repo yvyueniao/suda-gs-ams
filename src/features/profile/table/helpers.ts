@@ -25,6 +25,8 @@
  *
  * ✅ 本次修复：
  * - applicationStateLabel 支持 0-5（报名模块已更新到 6 个状态：0~5）
+ * - ✅ filters 支持多选（数组口径）：type/state/checkIn/checkOut/getScore/canScore
+ *   这样“同时勾选 活动+讲座”会正确显示两类数据
  */
 
 import {
@@ -37,6 +39,17 @@ import type { MyActivityFilters, MyActivityItem } from "../types";
 import { ACTIVITY_TYPE_LABEL, APPLICATION_STATE_LABEL } from "../types";
 
 import { parseTimeMs } from "../../../shared/utils/datetime";
+
+/* =====================================================
+ * 0) 小工具：派生字段
+ * ===================================================== */
+
+/** ✅ 是否加分：只有签到 && 签退 都为 true 才可加分 */
+export function canGetScore(
+  record: Pick<MyActivityItem, "checkIn" | "checkOut">,
+) {
+  return Boolean(record.checkIn) && Boolean(record.checkOut);
+}
 
 /* =====================================================
  * 1) 展示用枚举 → 文本（纯映射）
@@ -95,31 +108,53 @@ export function queryMyActivities(
       ].filter((v): v is string => !!v),
 
     /**
-     * 本地筛选：
-     * - filters 来自 TableQuery.filters
-     * - ✅ 注意：checkOut 可缺失（undefined）
-     *   这里口径：undefined 视为 false（没签退）
-     *   如果你希望“缺失不参与筛选”，按注释里的替代写法改
+     * 本地筛选（✅ 支持多选数组）
+     *
+     * 约定（与 antd 多选 filters 对齐）：
+     * - filters.xxx 为 undefined 或 []：表示“不筛选该字段”
+     * - 否则：只要 record 的值命中数组任意一项即通过
+     *
+     * checkOut 缺失：
+     * - 这里口径：undefined 视为 false（没签退）
+     *   如果你希望“缺失不参与筛选”，看下面注释替代写法
      */
     matchFilters: (r, filters) => {
       if (!filters) return true;
 
-      if (filters.type !== undefined && r.type !== filters.type) return false;
-      if (filters.state !== undefined && r.state !== filters.state)
-        return false;
-      if (filters.checkIn !== undefined && r.checkIn !== filters.checkIn)
-        return false;
-
-      if (filters.checkOut !== undefined) {
-        const normalized = r.checkOut ?? false;
-        if (normalized !== filters.checkOut) return false;
-
-        // 如果你希望“缺失不参与筛选”，改成下面这种：
-        // if (r.checkOut !== undefined && r.checkOut !== filters.checkOut) return false;
+      // ✅ type 多选（活动/讲座）
+      if (filters.type && filters.type.length > 0) {
+        if (!filters.type.includes(r.type)) return false;
       }
 
-      if (filters.getScore !== undefined && r.getScore !== filters.getScore)
-        return false;
+      // ✅ state 多选
+      if (filters.state && filters.state.length > 0) {
+        if (!filters.state.includes(r.state)) return false;
+      }
+
+      // ✅ checkIn 多选（true/false）
+      if (filters.checkIn && filters.checkIn.length > 0) {
+        if (!filters.checkIn.includes(Boolean(r.checkIn))) return false;
+      }
+
+      // ✅ checkOut 多选（true/false）
+      if (filters.checkOut && filters.checkOut.length > 0) {
+        const normalized = r.checkOut ?? false;
+        if (!filters.checkOut.includes(Boolean(normalized))) return false;
+
+        // 如果你希望“缺失不参与筛选”，改成下面这种：
+        // if (r.checkOut !== undefined && !filters.checkOut.includes(Boolean(r.checkOut))) return false;
+      }
+
+      // ✅ getScore 多选
+      if (filters.getScore && filters.getScore.length > 0) {
+        if (!filters.getScore.includes(Boolean(r.getScore))) return false;
+      }
+
+      // ✅ 派生列：是否加分 多选
+      if (filters.canScore && filters.canScore.length > 0) {
+        const v = canGetScore(r);
+        if (!filters.canScore.includes(v)) return false;
+      }
 
       return true;
     },
@@ -157,6 +192,7 @@ export function mapMyActivityForExport(row: MyActivityItem) {
     time: row.time,
     checkIn: boolLabel(row.checkIn), // 转中文
     checkOut: boolLabel(row.checkOut), // 转中文（undefined => "-"）
+    canScore: boolLabel(canGetScore(row)), // ✅ 新增：是否加分（派生）
     getScore: boolLabel(row.getScore), // 转中文
     score: row.score,
   };

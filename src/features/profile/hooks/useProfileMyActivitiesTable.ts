@@ -1,40 +1,4 @@
 // src/features/profile/hooks/useProfileMyActivitiesTable.ts
-/**
- * useProfileMyActivitiesTable
- *
- * ✅ 文件定位
- * - 个人中心「我的活动/讲座」表格的“编排层 Hook”（ProfilePage 直接用它）
- * - 只做：查询状态管理、拉数、本地过滤/排序/分页、列配置持久化、导出、详情弹窗编排
- * - 不做：UI 渲染（交给 SmartTable / TableToolbar / ColumnSettings / ActivityDetailModal）
- *
- * ✅ 数据流（从上到下）
- * 1) useTableQuery：维护 query（page/pageSize/keyword/filters/sorter）
- * 2) useTableData：一次性拉取全量 rawRows（autoDeps="reload" => query 变化不触发请求）
- * 3) queryMyActivities：前端本地过滤/排序/分页，得到 filtered/total/list
- * 4) useColumnPrefs：列显隐/顺序/宽度（localStorage 持久化）
- * 5) buildMyActivitiesColumns：生成基础 columns（ActionCell 触发 “详情”）
- * 6) 受控筛选闭环：
- *    - query.filters -> antd filteredValue（控制勾选态）
- *    - antd filters -> onFiltersChange -> setFilters（回写 query.filters）
- * 7) useLocalExport：导出 CSV（全量模式用 filtered 导出）
- * 8) 详情弹窗：
- *    - openDetail：打开弹窗并请求详情
- *    - closeDetail：关闭弹窗并“作废”未完成请求，防止串线
- *
- * ✅ 本次修复 / 新增
- * - ✅ 引入 useAsyncMapAction：为“详情”提供【按行独立 loading + 防连点】能力
- * - ✅ actions 注入 detailAction：columns.tsx 可直接使用 loading={detailAction.isLoading(id)}
- * - ✅ openDetail 显式约束返回类型（MyActivitiesActions["openDetail"]），避免推断成 Promise<unknown>
- *
- * ✅ 关键设计点
- * - 全量拉取 + 本地查询：分页/搜索/筛选不打接口，体验顺滑
- * - 详情请求防串线：用户连续点不同“详情”，旧请求返回不会覆盖新请求
- *
- * ✅ 本次补齐（你刚提到的“优先用后端返回信息”）
- * - 后端可能返回：{ code:200, msg:"未找到活动", data:{activity:null} }
- * - request<T>() 一般会“只解 data”，所以 getActivityDetail 可能拿到的是 null
- * - 这里约定：detail 可以为 null，弹窗保持 open，UI 层用 Empty 展示（你现在的 ActivityDetailModal 已支持）
- */
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { FilterValue, Key } from "antd/es/table/interface";
@@ -69,8 +33,8 @@ import { queryMyActivities, mapMyActivityForExport } from "../table/helpers";
 
 const BIZ_KEY = "profile.myActivities";
 
-/** 把 antd 的 filter value 归一成你们的字段类型 */
-function normalizeFilterValue<T>(
+/** 把单个值归一化成 number/boolean */
+function normalizeOne<T>(
   raw: unknown,
   kind: "number" | "boolean",
 ): T | undefined {
@@ -87,9 +51,30 @@ function normalizeFilterValue<T>(
   return undefined;
 }
 
-/** 把 query.filters 的单值映射成 antd filteredValue（单选列） */
+/** 把 antd 的 FilterValue 归一成「数组」 */
+function normalizeMany<T>(
+  raw: FilterValue | null,
+  kind: "number" | "boolean",
+): T[] | undefined {
+  if (!raw) return undefined;
+
+  // antd: 多选是数组，单选也可能是数组（受控时我们也会喂数组）
+  const arr = Array.isArray(raw) ? raw : [raw];
+
+  const mapped = arr
+    .map((x) => normalizeOne<T>(x, kind))
+    .filter((x): x is T => x !== undefined);
+
+  // 去重
+  const uniq = Array.from(new Set(mapped as any[])) as T[];
+  return uniq.length ? uniq : undefined;
+}
+
+/** 把 query.filters 的值映射成 antd filteredValue（支持单值/数组） */
 function toFilteredValue(v: unknown): FilterValue | null {
-  return v === undefined ? null : ([v] as Key[]);
+  if (v === undefined || v === null) return null;
+  if (Array.isArray(v)) return v as Key[] as FilterValue; // ✅ 多选：原样喂回去
+  return [v] as Key[];
 }
 
 type ColumnWithFilteredValue<T> = ColumnType<T> & {
@@ -132,7 +117,6 @@ export function useProfileMyActivitiesTable() {
     reload,
   } = useTableData<MyActivityItem, MyActivityFilters>(query, fetcher, {
     auto: true,
-    // ✅ 全量拉取 + 本地查询：query 变化不重复请求，只在首次+手动 reload 时请求
     autoDeps: "reload",
   });
 
@@ -162,36 +146,19 @@ export function useProfileMyActivitiesTable() {
   // =====================================================
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-
-  // ✅ 关键：detail 允许为 null（“未找到活动”）
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
-
   const [currentRow, setCurrentRow] = useState<MyActivityItem | null>(null);
 
-  /**
-   * ✅ 防串线：详情请求版本号
-   * - openDetail 会生成 reqId
-   * - closeDetail 会递增，使之前未完成请求全部“作废”
-   */
   const detailReqIdRef = useRef(0);
 
-  /**
-   * ✅ 行内异步动作：按 activityId 独立 loading（给 ActionCell 用）
-   */
   const detailAction = useAsyncMapAction<number, void>({
     errorMessage: "加载详情失败",
   });
 
-  /**
-   * ✅ openDetail：显式约束类型（避免 Promise<unknown>）
-   * - 返回 Promise<void>（符合 MyActivitiesActions 定义）
-   * - 详情接口可能返回 null：此时弹窗保持 open，detail 置 null（UI 显示 Empty）
-   */
   const openDetail = useCallback<MyActivitiesActions["openDetail"]>(
     async (activityId: number) => {
       const reqId = ++detailReqIdRef.current;
 
-      // ✅ 从用户当前看到的 filtered 中找“当前行”
       const row =
         (filtered ?? []).find((x) => x.activityId === activityId) ?? null;
       setCurrentRow(row);
@@ -203,11 +170,7 @@ export function useProfileMyActivitiesTable() {
       try {
         await detailAction.run(activityId, async () => {
           const d = await getActivityDetail(activityId);
-
-          // ✅ 只接受“最新一次”请求的结果
           if (detailReqIdRef.current !== reqId) return;
-
-          // ✅ 允许 d 为 null（后端返回 activity:null）
           setDetail((d ?? null) as ActivityDetail | null);
         });
       } finally {
@@ -220,7 +183,6 @@ export function useProfileMyActivitiesTable() {
   );
 
   const closeDetail = useCallback(() => {
-    // ✅ 作废所有未完成请求（避免关闭后旧请求回来又 setDetail）
     detailReqIdRef.current += 1;
 
     setDetailOpen(false);
@@ -229,7 +191,6 @@ export function useProfileMyActivitiesTable() {
     setCurrentRow(null);
   }, []);
 
-  // ✅ 兼容：仅获取详情数据（有些页面/旧逻辑会直接调用它）
   const fetchActivityDetail = useCallback(
     async (activityId: number) => getActivityDetail(activityId),
     [],
@@ -239,7 +200,7 @@ export function useProfileMyActivitiesTable() {
   // 6) columns：基础 columns + 受控筛选闭环 + presets 应用
   // =====================================================
   const actions: MyActivitiesActions = useMemo(
-    () => ({ openDetail, detailAction }),
+    () => ({ openDetail, detailAction }) as any,
     [openDetail, detailAction],
   );
 
@@ -249,15 +210,16 @@ export function useProfileMyActivitiesTable() {
   );
 
   const controlledColumns = useMemo(() => {
-    const f = query.filters;
+    const f = query.filters as any;
 
-    // 约定：这些 key 必须与 columns 的 dataIndex/key 对应
+    // ✅ 注意：这里现在支持数组（多选），toFilteredValue 会原样喂回 antd
     const filterMap: Record<string, unknown> = {
       type: f?.type,
       state: f?.state,
       checkIn: f?.checkIn,
       checkOut: f?.checkOut,
       getScore: f?.getScore,
+      canScore: f?.canScore, // ✅ 派生列也纳入受控回显（你新增了 canScore）
     };
 
     const mapColumn = (
@@ -312,39 +274,51 @@ export function useProfileMyActivitiesTable() {
   );
 
   // =====================================================
-  // 9) antd filters -> MyActivityFilters（闭环）
+  // 9) antd filters -> MyActivityFilters（闭环，支持多选）
   // =====================================================
   const onFiltersChange = useCallback(
     (antdFilters: Record<string, FilterValue | null>) => {
-      const pickFirst = (v: FilterValue | null) => {
-        if (!v || !Array.isArray(v) || v.length === 0) return undefined;
-        return v[0];
-      };
+      // ✅ 多选：直接取数组（不要 pickFirst）
+      const typeArr = normalizeMany<ActivityType>(antdFilters.type, "number");
+      const stateArr = normalizeMany<ApplicationState>(
+        antdFilters.state,
+        "number",
+      );
+      const checkInArr = normalizeMany<boolean>(antdFilters.checkIn, "boolean");
+      const checkOutArr = normalizeMany<boolean>(
+        antdFilters.checkOut,
+        "boolean",
+      );
+      const getScoreArr = normalizeMany<boolean>(
+        antdFilters.getScore,
+        "boolean",
+      );
+      const canScoreArr = normalizeMany<boolean>(
+        (antdFilters as any).canScore,
+        "boolean",
+      );
 
-      const next: MyActivityFilters = {
-        type: normalizeFilterValue<ActivityType>(
-          pickFirst(antdFilters.type),
-          "number",
-        ),
-        state: normalizeFilterValue<ApplicationState>(
-          pickFirst(antdFilters.state),
-          "number",
-        ),
-        checkIn: normalizeFilterValue<boolean>(
-          pickFirst(antdFilters.checkIn),
-          "boolean",
-        ),
-        checkOut: normalizeFilterValue<boolean>(
-          pickFirst(antdFilters.checkOut),
-          "boolean",
-        ),
-        getScore: normalizeFilterValue<boolean>(
-          pickFirst(antdFilters.getScore),
-          "boolean",
-        ),
-      };
+      // ✅ “类型：活动/讲座”全选等价于不筛选（否则用户勾俩却只剩一种就很怪）
+      const normalizedType =
+        typeArr && typeArr.length >= 2 ? undefined : typeArr;
 
-      const allEmpty = Object.values(next).every((x) => x === undefined);
+      // ✅ boolean 列：全选(true+false)也等价于不筛选
+      const normalizeBoolAll = (arr?: boolean[]) =>
+        arr && arr.length >= 2 ? undefined : arr;
+
+      const next = {
+        type: normalizedType,
+        state: stateArr,
+        checkIn: normalizeBoolAll(checkInArr),
+        checkOut: normalizeBoolAll(checkOutArr),
+        getScore: normalizeBoolAll(getScoreArr),
+        canScore: normalizeBoolAll(canScoreArr),
+      } as any as MyActivityFilters;
+
+      const allEmpty = Object.values(next as any).every(
+        (x) => x === undefined || (Array.isArray(x) && x.length === 0),
+      );
+
       setFilters(allEmpty ? undefined : next);
     },
     [setFilters],
@@ -361,7 +335,6 @@ export function useProfileMyActivitiesTable() {
   // 对外返回
   // =====================================================
   return {
-    // 表格基础
     bizKey: BIZ_KEY,
     presets,
     columns,
@@ -371,7 +344,6 @@ export function useProfileMyActivitiesTable() {
     error,
     reload,
 
-    // query
     query,
     setKeyword,
     setPage,
@@ -379,23 +351,19 @@ export function useProfileMyActivitiesTable() {
     setFilters,
     reset,
 
-    // SmartTable 事件桥接
     onQueryChange,
     onFiltersChange,
 
-    // 列偏好
     visibleKeys,
     setVisibleKeys,
     orderedKeys,
     setOrderedKeys,
     resetColumns,
 
-    // 导出
     exporting,
     exportError,
     exportCsv,
 
-    // 详情弹窗
     detailOpen,
     detailLoading,
     detail,
@@ -403,10 +371,8 @@ export function useProfileMyActivitiesTable() {
     openDetail,
     closeDetail,
 
-    // ✅ 给 columns.tsx / 页面层使用
     detailAction,
 
-    // 兼容
     fetchActivityDetail,
   };
 }

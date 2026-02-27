@@ -110,13 +110,33 @@ export interface MyActivityItem {
  * 我的活动（表格筛选 filters）
  * =========================== */
 
-/** “我的活动”表格筛选条件（前端本地过滤使用） */
+/**
+ * ✅ “我的活动”表格筛选条件（前端本地过滤使用）
+ *
+ * 修复点：
+ * - 需要支持 antd 多选筛选（FilterValue 是数组）
+ * - type 多选（活动+讲座）必须能同时生效
+ * - 其它列你后续如果也想多选，同样保持数组口径即可
+ */
 export type MyActivityFilters = {
-  type?: ActivityType;
-  state?: ApplicationState;
-  checkIn?: boolean;
-  checkOut?: boolean;
-  getScore?: boolean;
+  /** ✅ 多选：活动/讲座 */
+  type?: ActivityType[];
+
+  /** （可选）如你也想 state 多选，保持数组口径 */
+  state?: ApplicationState[];
+
+  /** （可选）布尔列多选（true/false 同时勾选等价于不筛选） */
+  checkIn?: boolean[];
+  checkOut?: boolean[];
+
+  /**
+   * 后端字段 getScore 的语义你这里是“是否惩罚”在 UI 里用 !v 映射
+   * 这里保持原字段，筛选时按 getScore 的原始布尔值过滤即可
+   */
+  getScore?: boolean[];
+
+  /** ✅ 派生列：是否加分（checkIn && checkOut） */
+  canScore?: boolean[];
 };
 
 /* ===========================
