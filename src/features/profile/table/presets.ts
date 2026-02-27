@@ -35,24 +35,29 @@ export const myActivitiesTablePresets: TableColumnPreset<MyActivityItem>[] = [
   },
   {
     key: "checkIn",
-    title: "签到",
+    title: "是否签到",
     width: 100,
   },
   {
     key: "checkOut",
-    title: "签退",
+    title: "是否签退",
     width: 100,
-    hidden: true, // 默认隐藏，进列设置可打开
+  },
+  // ✅ 新增列：是否加分（前端派生列）
+  {
+    key: "canScore",
+    title: "是否加分",
+    width: 100,
   },
   {
     key: "getScore",
-    title: "可加分",
-    width: 120,
+    title: "是否惩罚",
+    width: 100,
   },
   {
     key: "score",
-    title: "分数",
-    width: 80,
+    title: "分数/次数",
+    width: 150,
   },
   {
     key: "actions",

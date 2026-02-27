@@ -166,11 +166,10 @@ export function buildUserAppsColumns(params?: {
       render: (val: unknown) => renderBool(!!val),
     },
     {
-      title: "可加分",
+      title: "是否惩罚",
       dataIndex: "getScore",
       key: "getScore",
-      filters: BOOL_FILTERS,
-      render: (val: unknown) => renderBool(!!val),
+      render: (val: unknown) => renderBool(!val),
     },
     {
       title: "活动ID",

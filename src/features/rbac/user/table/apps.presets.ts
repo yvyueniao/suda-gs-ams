@@ -34,7 +34,7 @@ export const USER_APPS_COLUMN_PRESETS: TableColumnPreset[] = [
   // =========================
   { key: "checkIn", title: "签到", width: 90 },
   { key: "checkOut", title: "签退", width: 90 },
-  { key: "getScore", title: "可加分", width: 100 },
+  { key: "getScore", title: "是否惩罚", width: 100 },
 
   // =========================
   // 可选信息（默认隐藏）

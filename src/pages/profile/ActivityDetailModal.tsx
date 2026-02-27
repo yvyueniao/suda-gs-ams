@@ -45,6 +45,11 @@ import {
 
 const { Text } = Typography;
 
+/** ✅ 是否加分：只有签到 && 签退 都为 true 才可加分 */
+function canGetScore(row: Pick<MyActivityItem, "checkIn" | "checkOut">) {
+  return Boolean(row.checkIn) && Boolean(row.checkOut);
+}
+
 /**
  * 渲染活动本体详情
  */
@@ -175,9 +180,15 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
               {currentRow ? boolLabel(currentRow.checkOut) : "-"}
             </Text>
 
+            {/* ✅ 新增：是否加分（由签到+签退推导） */}
             <Text type="secondary">
-              可加分：
-              {currentRow ? boolLabel(currentRow.getScore) : "-"}
+              加分：
+              {currentRow ? boolLabel(canGetScore(currentRow)) : "-"}
+            </Text>
+
+            <Text type="secondary">
+              惩罚：
+              {currentRow ? boolLabel(!currentRow.getScore) : "-"}
             </Text>
           </Space>
         </>

@@ -268,7 +268,7 @@ export default function ProfilePage() {
                 scroll={{ y: "calc(52.5vh - 56px - 48px - 24px - 120px)" }}
                 columns={t.columns}
                 dataSource={t.list}
-                rowKey="activityId"
+                rowKey="id"
                 query={t.query}
                 total={t.total}
                 loading={t.loading}
