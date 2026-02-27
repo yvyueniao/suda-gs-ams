@@ -40,8 +40,8 @@ export const activityAdminColumnPresets: TableColumnPreset<ManageableActivityIte
     { key: "activityEtime", title: "活动结束时间", width: 180 },
 
     // =============== 人数统计（分列） ===============
-    { key: "fullNum", title: "总人数", width: 120 },
-    { key: "registeredNum", title: "已报名", width: 120 },
+    { key: "fullNum", title: "总名额", width: 120 },
+    { key: "registeredNum", title: "成功报名", width: 120 },
     { key: "candidateNum", title: "候补人数", width: 120 },
     { key: "candidateSuccNum", title: "候补成功", width: 120 },
     { key: "candidateFailNum", title: "候补失败", width: 120 },

@@ -162,14 +162,14 @@ export function buildActivityAdminColumns(
       render: (v: string) => v,
     },
     {
-      title: "总人数",
+      title: "总名额",
       dataIndex: "fullNum",
       key: "fullNum",
       width: 120,
       sorter: true,
     },
     {
-      title: "已报名",
+      title: "成功报名",
       dataIndex: "registeredNum",
       key: "registeredNum",
       width: 120,

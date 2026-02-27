@@ -153,7 +153,7 @@ export default function ActivityAdminDetailPage() {
                           },
                           {
                             key: "state",
-                            label: "状态",
+                            label: "活动状态",
                             children: renderStateTag(d.detail.state),
                           },
                           {
@@ -168,17 +168,17 @@ export default function ActivityAdminDetailPage() {
                           },
                           {
                             key: "score",
-                            label: "分数",
+                            label: "分数/次数",
                             children: <Tag color="gold">{d.detail.score}</Tag>,
                           },
                           {
                             key: "fullNum",
-                            label: "人数上限",
+                            label: "总名额",
                             children: d.detail.fullNum,
                           },
                           {
                             key: "registeredNum",
-                            label: "已报名",
+                            label: "成功报名",
                             children: d.detail.registeredNum,
                           },
                           {
@@ -203,22 +203,22 @@ export default function ActivityAdminDetailPage() {
                           },
                           {
                             key: "signStartTime",
-                            label: "报名开始",
+                            label: "报名开始时间",
                             children: d.detail.signStartTime,
                           },
                           {
                             key: "signEndTime",
-                            label: "报名截止",
+                            label: "报名截止时间",
                             children: d.detail.signEndTime,
                           },
                           {
                             key: "activityStime",
-                            label: "活动开始",
+                            label: "活动开始时间",
                             children: d.detail.activityStime,
                           },
                           {
                             key: "activityEtime",
-                            label: "活动结束",
+                            label: "活动结束时间",
                             children: d.detail.activityEtime,
                           },
                         ]}

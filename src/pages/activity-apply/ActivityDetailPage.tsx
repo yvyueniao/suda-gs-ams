@@ -246,19 +246,31 @@ export default function ActivityDetailPage() {
                             label: "分数",
                             children: <Tag color="gold">{detail.score}</Tag>,
                           },
-                          { label: "人数上限", children: detail.fullNum },
+                          { label: "总名额", children: detail.fullNum },
 
                           {
-                            label: "成功申请",
+                            label: "成功报名",
                             children:
                               (detail.registeredNum ?? 0) +
                               (detail.candidateSuccNum ?? 0),
                           },
 
-                          { label: "报名开始", children: detail.signStartTime },
-                          { label: "报名结束", children: detail.signEndTime },
-                          { label: "活动开始", children: detail.activityStime },
-                          { label: "活动结束", children: detail.activityEtime },
+                          {
+                            label: "报名开始时间",
+                            children: detail.signStartTime,
+                          },
+                          {
+                            label: "报名结束时间",
+                            children: detail.signEndTime,
+                          },
+                          {
+                            label: "活动开始时间",
+                            children: detail.activityStime,
+                          },
+                          {
+                            label: "活动结束时间",
+                            children: detail.activityEtime,
+                          },
                         ]}
                       />
                     </div>

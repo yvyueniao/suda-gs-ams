@@ -41,12 +41,12 @@ export const activityApplyTablePresets: TableColumnPreset<EnrollTableRow>[] = [
   // 分数/次数
   { key: "score", title: "分数/次数", width: 120 },
 
-  { key: "fullNum", title: "总人数", width: 100 },
+  { key: "fullNum", title: "总名额", width: 100 },
 
   // ✅ 修改：成功申请 = 报名成功 + 候补成功
-  { key: "successApplyNum", title: "成功申请", width: 120 },
+  { key: "successApplyNum", title: "成功报名", width: 120 },
 
-  { key: "candidateNum", title: "候补数", width: 100 },
+  { key: "candidateNum", title: "候补人数", width: 100 },
 
   { key: "applyState", title: "我的报名状态", width: 140 },
 

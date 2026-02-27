@@ -167,7 +167,7 @@ export function buildEnrollColumns(
     },
 
     {
-      title: "总人数",
+      title: "总名额",
       dataIndex: "fullNum",
       key: "fullNum",
       width: 100,
@@ -176,7 +176,7 @@ export function buildEnrollColumns(
 
     // ✅ 改动：已报名 -> 成功申请（成功报名 + 成功候补）
     {
-      title: "成功申请",
+      title: "成功报名",
       dataIndex: "successApplyNum",
       key: "successApplyNum",
       width: 110,
@@ -185,7 +185,7 @@ export function buildEnrollColumns(
     },
 
     {
-      title: "候补数",
+      title: "候补人数",
       dataIndex: "candidateNum",
       key: "candidateNum",
       width: 100,
