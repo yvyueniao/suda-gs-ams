@@ -156,7 +156,8 @@ function createHttpClient(): AxiosInstance {
   /**
    * ✅ 响应拦截：
    * - 只做两件事：
-   *   1) 统一壳 code!=200 -> 抛 ApiError(BIZ_ERROR)
+   *   1) 统一壳 code!=200 -> 抛 ApiError
+   *      ✅ 兼容后端：HTTP 200 + code 401（token 无效）也要清理并跳登录
    *   2) axios error -> 转成 ApiError 并抛出
    *
    * ❌ 不 toast
@@ -170,7 +171,44 @@ function createHttpClient(): AxiosInstance {
       // 非统一壳：直接放过（数组/对象/文件流等）
       if (!isApiEnvelope(data)) return res;
 
-      // 统一壳：code != 200 视为业务失败
+      // ✅ 统一壳：优先处理“鉴权类业务码”（即使 HTTP=200）
+      if (data.code === 401) {
+        clearToken();
+        clearUser();
+
+        try {
+          onUnauthorized?.(data.msg || "未登录或登录已过期");
+        } catch {
+          // ignore
+        }
+
+        const err = new ApiError(
+          data.msg || "未登录或登录已过期",
+          "UNAUTHORIZED",
+          401,
+          401,
+        );
+
+        try {
+          onHttpError?.(err);
+        } catch {
+          // ignore
+        }
+
+        throw err;
+      }
+
+      if (data.code === 403) {
+        const err = new ApiError(data.msg || "没有权限", "FORBIDDEN", 403, 403);
+        try {
+          onHttpError?.(err);
+        } catch {
+          // ignore
+        }
+        throw err;
+      }
+
+      // 统一壳：其他 code != 200 视为业务失败
       if (data.code !== 200) {
         const err = new ApiError(
           data.msg || "请求失败",

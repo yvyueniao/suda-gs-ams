@@ -19,9 +19,9 @@ export default function RequireAuth() {
     return token ? "checking" : "login";
   });
 
-  // ✅ React18 StrictMode 开发环境会执行两次，用 ref 拦住
+  // ✅ React18 StrictMode 防双执行
   const ranRef = useRef(false);
-  // ✅ 防止失败后反复 navigate
+  // ✅ 防止 fatal 状态反复 navigate
   const fatalRef = useRef(false);
 
   useEffect(() => {
@@ -36,18 +36,20 @@ export default function RequireAuth() {
 
     (async () => {
       try {
-        // 1) 校验 token（后端返回 data: User）
-        const u = await verifyToken();
-        setUser(u); // ✅ 立刻写入 session（让角色守卫/页面可用）
+        // ✅ 1) 校验 token（新版 data:null）
+        await verifyToken();
 
-        // 2) 拉用户信息（后端可能刷新 token）
+        // ✅ 2) 拉取最新用户信息（可能刷新 token）
         const info = await getUserInfo();
+
         setUser(info.user);
-        if (info.token) setToken(info.token);
+        if (info.token) {
+          setToken(info.token);
+        }
 
         setState("ok");
       } catch (e: any) {
-        // 401/403：登录态问题 -> 去登录
+        // ✅ token 失效 -> HTTP 401
         if (e instanceof ApiError) {
           if (e.code === "UNAUTHORIZED" || e.code === "FORBIDDEN") {
             clearToken();
@@ -57,8 +59,7 @@ export default function RequireAuth() {
           }
         }
 
-        // 其他错误：服务器挂了/断网/404/500...
-        // ✅ 跳 500，并进入 fatal（终止态，不再请求 token）
+        // 其他异常 -> 500
         if (!fatalRef.current) {
           fatalRef.current = true;
           setState("fatal");
@@ -69,18 +70,20 @@ export default function RequireAuth() {
         }
       }
     })();
-    // ✅ location 只在报错时用来带 from，因此加入依赖更严谨
   }, [navigate, location.pathname, location.search]);
 
-  if (state === "checking") return <Spin fullscreen />;
+  if (state === "checking") {
+    return <Spin fullscreen />;
+  }
 
   if (state === "login") {
     const from = location.pathname + location.search;
     return <Navigate to="/login" replace state={{ from }} />;
   }
 
-  // fatal：已 navigate(/500)，这里返回 null 即可
-  if (state === "fatal") return null;
+  if (state === "fatal") {
+    return null;
+  }
 
   return <Outlet />;
 }

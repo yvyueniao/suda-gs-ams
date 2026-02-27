@@ -1,5 +1,5 @@
 // src/app/layout/AppLayout.tsx
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Layout,
   Typography,
@@ -29,6 +29,11 @@ import { useLayoutNav } from "../hooks/useLayoutNav";
 import { getMenuIcon } from "../menu/menuIconMap";
 import { useAsyncAction } from "../../shared/actions";
 import { confirmAsync } from "../../shared/ui/confirmAsync";
+
+import { verifyToken } from "../../features/auth/api";
+import { ApiError } from "../../shared/http/error";
+import { clearToken } from "../../shared/session/token";
+import { clearUser } from "../../shared/session/session";
 
 const { Header, Content, Footer } = Layout;
 
@@ -125,6 +130,62 @@ export default function AppLayout() {
       await logoutAction.run(() => logout());
     }
   };
+
+  /**
+   * ✅ 路由切换时校验 token（方案 B）
+   * - 防抖：1s（避免连续跳转刷接口）
+   * - 节流：10s（10s 内多次切换只校验一次）
+   *
+   * ✅ 注意：
+   * - 你现在 http 层已经兼容两种“未登录”：
+   *   1) HTTP 401
+   *   2) HTTP 200 + code 401（统一壳）
+   *   所以这里 catch 到 UNAUTHORIZED 直接清理 + 跳登录即可
+   */
+  const lastCheckAtRef = useRef(0);
+  const debounceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // loading 阶段不做（避免 bootstrap 期间重复校验）
+    if (loading) return;
+
+    // 未登录不校验
+    if (!user) return;
+
+    const now = Date.now();
+
+    // ✅ 节流：10s（只有真正发起校验成功后才更新时间，避免“失败后一直被节流挡住”）
+    if (now - lastCheckAtRef.current < 10_000) return;
+
+    // ✅ 防抖：1s
+    if (debounceTimerRef.current) {
+      window.clearTimeout(debounceTimerRef.current);
+    }
+
+    const from = location.pathname + location.search;
+
+    debounceTimerRef.current = window.setTimeout(async () => {
+      try {
+        await verifyToken();
+        lastCheckAtRef.current = Date.now();
+      } catch (e: any) {
+        if (e instanceof ApiError) {
+          if (e.code === "UNAUTHORIZED" || e.code === "FORBIDDEN") {
+            clearToken();
+            clearUser();
+            navigate("/login", { replace: true, state: { from } });
+          }
+        }
+      }
+    }, 1000);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, [location.pathname, location.search, navigate, loading, user]);
 
   if (loading) return <Spin fullscreen />;
 

@@ -1,9 +1,8 @@
-//src\features\auth\api.ts
+// src/features/auth/api.ts
 import { request } from "../../shared/http/client";
 import type {
   LoginData,
   LoginPayload,
-  User,
   UserInfoData,
   MenuNode,
   SendVerifyCodePayload,
@@ -32,10 +31,11 @@ export function login(payload: LoginPayload) {
 /**
  * 验证 token 是否有效
  * POST /token
- * data: User
+ * ✅ 新版接口：data: null
+ * 只要 code === 200 即为有效
  */
-export function verifyToken() {
-  return request<User>({
+export async function verifyToken(): Promise<void> {
+  await request<null>({
     url: "/token",
     method: "POST",
   });
@@ -86,7 +86,6 @@ export function sendVerifyCode(payload: SendVerifyCodePayload) {
 /**
  * 忘记密码 - 重置密码
  * POST /user/forget-password
- * data: string | null
  */
 export function forgetPassword(payload: ForgetPasswordPayload) {
   return request<OperationResult>({
