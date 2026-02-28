@@ -34,7 +34,7 @@ import ExportByTimeModal from "./ExportByTimeModal";
 const { Title } = Typography;
 
 // 🔒 删除功能开关（上线时改为 true 即可）
-const ENABLE_DELETE = false;
+const ENABLE_DELETE = true;
 
 function adaptImportResult(result: any) {
   if (!result) return null;
