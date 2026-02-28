@@ -16,6 +16,9 @@ type ImportPreviewStats = {
   total: number;
   emptyRequiredCount: number;
   duplicateUsernameCount: number;
+
+  /** ✅ 新增：年级格式不合格行数（例如：2024-硕 / 2024-博） */
+  invalidGradeCount: number;
 };
 
 type ImportPreviewState = {
@@ -25,6 +28,9 @@ type ImportPreviewState = {
   stats: ImportPreviewStats;
   /** 可选：把“有问题的行”给 UI 标红 */
   invalidRowIndexes: number[];
+
+  /** ✅ 新增：用于提醒的示例（最多前几条） */
+  invalidGradeExamples: string[];
 };
 
 /**
@@ -66,6 +72,31 @@ function pickFirstMatch(
     if (idx >= 0) return headers[idx];
   }
   return null;
+}
+
+/**
+ * ✅ 年级校验（与你 CreateUserModal 一致口径）
+ * - 格式：YYYY-硕 或 YYYY-博
+ * - 年份范围：2000~2100（可按需调整）
+ */
+function validateGrade(v: unknown): { ok: boolean; msg?: string } {
+  const s = normalizeText(v);
+  if (!s) return { ok: false, msg: "年级为空" };
+
+  const m = /^(\d{4})-(硕|博)$/.exec(s);
+  if (!m) {
+    return {
+      ok: false,
+      msg: "年级格式应为：YYYY-硕 或 YYYY-博（例如：2024-硕）",
+    };
+  }
+
+  const year = Number(m[1]);
+  if (Number.isNaN(year) || year < 2000 || year > 2100) {
+    return { ok: false, msg: "入学年份不合法，请填写 2000-2100 之间的年份" };
+  }
+
+  return { ok: true };
 }
 
 /**
@@ -122,8 +153,10 @@ function mapSheetRowsToPreview(
 function buildStats(rows: UserImportPreviewRow[]): {
   stats: ImportPreviewStats;
   invalidRowIndexes: number[];
+  invalidGradeExamples: string[];
 } {
   const invalidRowIndexes: number[] = [];
+  const invalidGradeExamples: string[] = [];
 
   // 必填：你后端创建用户需要这 6 个
   const requiredKeys: (keyof UserImportPreviewRow)[] = [
@@ -136,12 +169,33 @@ function buildStats(rows: UserImportPreviewRow[]): {
   ];
 
   let emptyRequiredCount = 0;
+  let invalidGradeCount = 0;
 
   rows.forEach((r, idx) => {
     const hasEmpty = requiredKeys.some((k) => !normalizeText(r[k]));
     if (hasEmpty) {
       emptyRequiredCount += 1;
       invalidRowIndexes.push(idx);
+    }
+
+    // ✅ 年级格式校验（仅当 grade 非空时校验；空会被 required 统计到）
+    const grade = normalizeText(r.grade);
+    if (grade) {
+      const vg = validateGrade(grade);
+      if (!vg.ok) {
+        invalidGradeCount += 1;
+        if (!invalidRowIndexes.includes(idx)) invalidRowIndexes.push(idx);
+
+        // 示例：最多收集前 5 条，避免提示过长
+        if (invalidGradeExamples.length < 5) {
+          // Excel 行号：第 1 行为表头，所以数据第 idx 对应 idx+2
+          const excelRowNo = idx + 2;
+          const u = normalizeText(r.username) || "-";
+          invalidGradeExamples.push(
+            `第${excelRowNo}行（学号：${u}）年级="${grade}"`,
+          );
+        }
+      }
     }
   });
 
@@ -171,8 +225,10 @@ function buildStats(rows: UserImportPreviewRow[]): {
       total: rows.length,
       emptyRequiredCount,
       duplicateUsernameCount,
+      invalidGradeCount,
     },
     invalidRowIndexes: invalidRowIndexes.sort((a, b) => a - b),
+    invalidGradeExamples,
   };
 }
 
@@ -220,8 +276,14 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
   const [preview, setPreview] = useState<ImportPreviewState>({
     open: false,
     rows: [],
-    stats: { total: 0, emptyRequiredCount: 0, duplicateUsernameCount: 0 },
+    stats: {
+      total: 0,
+      emptyRequiredCount: 0,
+      duplicateUsernameCount: 0,
+      invalidGradeCount: 0,
+    },
     invalidRowIndexes: [],
+    invalidGradeExamples: [],
   });
 
   const [parsing, setParsing] = useState(false);
@@ -239,8 +301,14 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
     setPreview({
       open: false,
       rows: [],
-      stats: { total: 0, emptyRequiredCount: 0, duplicateUsernameCount: 0 },
+      stats: {
+        total: 0,
+        emptyRequiredCount: 0,
+        duplicateUsernameCount: 0,
+        invalidGradeCount: 0,
+      },
       invalidRowIndexes: [],
+      invalidGradeExamples: [],
     });
   }, []);
 
@@ -295,7 +363,8 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
         });
 
         const rows = mapSheetRowsToPreview(json);
-        const { stats, invalidRowIndexes } = buildStats(rows);
+        const { stats, invalidRowIndexes, invalidGradeExamples } =
+          buildStats(rows);
 
         setPreview({
           open: true,
@@ -303,10 +372,23 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
           rows,
           stats,
           invalidRowIndexes,
+          invalidGradeExamples,
         });
 
         if (rows.length === 0) {
           notify({ kind: "info", msg: "未解析到有效数据（可能是空表）" });
+        } else {
+          // ✅ 新增：年级不合格提醒（解析阶段就提示）
+          if (stats.invalidGradeCount > 0) {
+            const exampleText =
+              invalidGradeExamples.length > 0
+                ? `；示例：${invalidGradeExamples.join("，")}`
+                : "";
+            notify({
+              kind: "info",
+              msg: `⚠️ 存在 ${stats.invalidGradeCount} 行年级格式不合法（应为：YYYY-硕 / YYYY-博）${exampleText}`,
+            });
+          }
         }
       } catch (err) {
         // ✅ 失败提示：优先后端 msg（这里多半是本地解析错误，没有后端 msg，就 fallback）
@@ -352,6 +434,18 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       });
     }
 
+    // ✅ 新增：年级格式不合格提醒（提交前再次提醒）
+    if (preview.stats.invalidGradeCount > 0) {
+      const exampleText =
+        preview.invalidGradeExamples?.length > 0
+          ? `；示例：${preview.invalidGradeExamples.join("，")}`
+          : "";
+      notify({
+        kind: "info",
+        msg: `存在 ${preview.stats.invalidGradeCount} 行年级格式不合法（应为：YYYY-硕 / YYYY-博）${exampleText}`,
+      });
+    }
+
     const payload = previewToPayload(rows);
 
     submittingRef.current = true;
@@ -384,7 +478,14 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [closePreview, notify, openResult, preview.rows, preview.stats]);
+  }, [
+    closePreview,
+    notify,
+    openResult,
+    preview.invalidGradeExamples,
+    preview.rows,
+    preview.stats,
+  ]);
 
   return {
     // preview state

@@ -114,12 +114,35 @@ export default function CreateUserModal(props: CreateUserModalProps) {
         <Form.Item
           label="年级"
           name="grade"
+          normalize={(val) => String(val ?? "").trim()}
           rules={[
             { required: true, message: "请输入年级" },
             { whitespace: true, message: "年级不能为空" },
+            {
+              validator: async (_, value) => {
+                const v = String(value ?? "").trim();
+                if (!v) return;
+
+                // 格式：YYYY-硕 或 YYYY-博
+                const match = /^(\d{4})-(硕|博)$/.exec(v);
+                if (!match) {
+                  throw new Error(
+                    "年级格式应为：YYYY-硕 或 YYYY-博（例如：2024-硕）",
+                  );
+                }
+
+                // 可选：年份合理性校验
+                const year = Number(match[1]);
+                if (year < 2000 || year > 2100) {
+                  throw new Error(
+                    "入学年份不合法，请填写 2000-2100 之间的年份",
+                  );
+                }
+              },
+            },
           ]}
         >
-          <Input placeholder="例如：研一 / 研二 / 博一" maxLength={16} />
+          <Input placeholder="例如：2024-硕 / 2024-博" maxLength={16} />
         </Form.Item>
       </Form>
     </Modal>

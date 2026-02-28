@@ -21,6 +21,9 @@ export type ImportPreviewStats = {
   total: number;
   emptyRequiredCount: number;
   duplicateUsernameCount: number;
+
+  /** ✅ 新增：年级格式不合格 */
+  invalidGradeCount: number;
 };
 
 export type ImportUsersModalProps = {
@@ -63,6 +66,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
       total: previewStats?.total ?? 0,
       emptyRequiredCount: previewStats?.emptyRequiredCount ?? 0,
       duplicateUsernameCount: previewStats?.duplicateUsernameCount ?? 0,
+      invalidGradeCount: previewStats?.invalidGradeCount ?? 0,
     };
   }, [previewStats]);
 
@@ -82,6 +86,11 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
   };
 
   const disabled = !!parsing || !!submitting;
+
+  const hasAnyIssue =
+    stats.emptyRequiredCount > 0 ||
+    stats.duplicateUsernameCount > 0 ||
+    stats.invalidGradeCount > 0;
 
   return (
     <Modal
@@ -173,20 +182,21 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
                 label: "重复学号",
                 children: <Text strong>{stats.duplicateUsernameCount}</Text>,
               },
+              {
+                key: "gradeInvalid",
+                label: "年级格式不合格",
+                children: <Text strong>{stats.invalidGradeCount}</Text>,
+              },
             ]}
           />
 
           {hasParsedRows ? (
             <Alert
               style={{ marginTop: 12 }}
-              type={
-                stats.emptyRequiredCount > 0 || stats.duplicateUsernameCount > 0
-                  ? "warning"
-                  : "success"
-              }
+              type={hasAnyIssue ? "warning" : "success"}
               showIcon
               message={
-                stats.emptyRequiredCount > 0 || stats.duplicateUsernameCount > 0
+                hasAnyIssue
                   ? "检测到部分数据问题，仍可继续导入（建议先修正）"
                   : "数据校验通过，可以导入"
               }
