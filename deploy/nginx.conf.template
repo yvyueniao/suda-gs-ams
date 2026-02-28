@@ -42,12 +42,10 @@ server {
   # 4) 反向代理：/api -> 后端
   # =========================
   location ^~ /api/ {
-    # ⚠️ API_UPSTREAM 必须带尾部 "/"
     proxy_pass ${API_UPSTREAM};
 
     proxy_http_version 1.1;
 
-    # ✅ 建议：让后端收到 upstream 的 host（而不是 localhost）
     proxy_set_header Host $proxy_host;
 
     proxy_set_header X-Real-IP $remote_addr;
