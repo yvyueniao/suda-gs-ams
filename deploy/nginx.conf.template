@@ -2,7 +2,7 @@
 # =========================================
 # 前端：Vite + React SPA
 # 后端：通过 /api 反向代理
-# 后端地址由环境变量 API_UPSTREAM 控制
+# 后端地址由环境变量 API_UPSTREAM 控制（必须以 / 结尾）
 # =========================================
 
 server {
@@ -16,7 +16,7 @@ server {
   index index.html;
 
   # =========================
-  # 2) 禁止访问 sourcemap 文件
+  # 2) 禁止访问 sourcemap 文件（只给 Sentry 用）
   # =========================
   location ~* \.map$ {
     return 404;
@@ -40,23 +40,14 @@ server {
 
   # =========================
   # 4) 反向代理：/api -> 后端
-  #
-  # ⚠️ API_UPSTREAM 必须带尾部 "/"
-  # 例如：
-  #   http://suda_union.zhongyaohui.club/
-  #   http://192.168.1.10:8080/
-  #   https://api.xxx.com/
-  #
-  # ✅ 关键修复：
-  # - 不要把浏览器的 Host(=localhost) 透传给后端
-  # - 用 $proxy_host 让后端收到的 Host 与 upstream 一致
   # =========================
   location ^~ /api/ {
+    # ⚠️ API_UPSTREAM 必须带尾部 "/"
     proxy_pass ${API_UPSTREAM};
 
     proxy_http_version 1.1;
 
-    # ✅ 修复 405：Host 透传导致后端按域名路由失败
+    # ✅ 建议：让后端收到 upstream 的 host（而不是 localhost）
     proxy_set_header Host $proxy_host;
 
     proxy_set_header X-Real-IP $remote_addr;
