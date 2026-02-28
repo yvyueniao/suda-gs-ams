@@ -114,8 +114,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
           message={
             <Space direction="vertical" size={4}>
               <Text>
-                请上传 xls/xlsx
-                文件（模板固定中文表头：学号/密码/姓名/邮箱/专业/年级）
+                请上传 xls/xlsx 文件（模板表头：学号/密码/姓名/邮箱/专业/年级）
               </Text>
 
               {/* ✅ 新增：下载导入模板 */}

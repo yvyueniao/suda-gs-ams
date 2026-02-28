@@ -112,6 +112,10 @@ export default function UserManagePage() {
     detail,
     closeDetail,
 
+    // ✅ 新增：详情联动刷新能力（来自 useUserManagePage）
+    refreshDetail,
+    markDetailDirty,
+
     importFlow,
   } = useUserManagePage({ onNotify: notify });
 
@@ -126,10 +130,21 @@ export default function UserManagePage() {
     onNotify: notify,
   });
 
-  // ✅ 新增：详情 Drawer 下半部分（报名记录表）
+  // ✅ 详情 Drawer 下半部分（报名记录表）
   // 仅在 Drawer 打开时才传入 username，避免无意义请求
+  // ✅ 删除/变更后联动：刷新上半部分详情 + 标记 dirty（用于关闭后刷新用户列表）+ 刷新列表
   const apps = useUserApplicationsTable({
     username: detail.open ? detail.data?.username : null,
+    onAfterMutate: async () => {
+      // 1) 关闭 Drawer 时需要刷新列表（避免“关闭后列表不变”）
+      markDetailDirty();
+
+      // 2) 立即刷新 Drawer 上半部分（serviceScore/lectureNum 等字段变化）
+      await refreshDetail();
+
+      // 3) 如列表也展示分数/次数等字段，可同步刷新用户列表（不等关闭）
+      table.reload();
+    },
   });
 
   const hasSelection = selectedUsernames.length > 0;

@@ -30,6 +30,12 @@ export type UserApplicationsFilters = Record<string, any>;
 
 export function useUserApplicationsTable(params: {
   username: string | null | undefined;
+
+  /**
+   * ✅ 当表格内发生“会影响上层详情/外部列表”的变更时通知上层
+   * 典型：删除报名/加分记录后，需要刷新上半部分详情（分数/次数）以及关闭抽屉后的用户列表
+   */
+  onAfterMutate?: () => void | Promise<void>;
 }) {
   const username = String(params.username ?? "").trim();
 
@@ -93,11 +99,17 @@ export function useUserApplicationsTable(params: {
 
       return del.run(rowId, async () => {
         const serverMsg = await deleteApply(rowId);
+
+        // ✅ 1) 先刷新下半部分表格（保持你原逻辑）
         await d.reload();
+
+        // ✅ 2) 通知上层：刷新“用户详情上半部分/外部列表”等
+        await params.onAfterMutate?.();
+
         return serverMsg;
       });
     },
-    [del, d],
+    [del, d, params],
   );
 
   const columns = useMemo(() => {

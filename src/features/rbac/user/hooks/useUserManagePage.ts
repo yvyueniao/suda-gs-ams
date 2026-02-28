@@ -1,6 +1,6 @@
 // src/features/rbac/user/hooks/useUserManagePage.ts
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { Notify } from "../../../../shared/ui";
 
@@ -41,12 +41,59 @@ export function useUserManagePage(options?: { onNotify?: Notify }) {
     data: undefined,
   });
 
+  /**
+   * ✅ 记录“当前详情来自哪一行”，用于详情刷新（上半部分）
+   * 注意：这里存 row，而不是 username 字符串，避免后续 fetchDetail 需要更多字段时不够用
+   */
+  const currentDetailRowRef = useRef<UserTableRow | null>(null);
+
+  /**
+   * ✅ Drawer 内发生过“会影响列表/详情”的变更时标记 dirty
+   * 例如：在详情下半部分删除加分/报名记录
+   */
+  const detailDirtyRef = useRef(false);
+  const markDetailDirty = useCallback(() => {
+    detailDirtyRef.current = true;
+  }, []);
+
+  /**
+   * ✅ 刷新“上半部分详情数据”
+   * 用于：删除报名/加分后，serviceScore/lectureNum 等字段需要更新
+   */
+  const refreshDetail = useCallback(async () => {
+    const row = currentDetailRowRef.current;
+    if (!row) return;
+
+    setDetail((s) => ({ ...s, loading: true }));
+    try {
+      const info = await rowActions.fetchDetail(row);
+      setDetail({ open: true, loading: false, data: info });
+    } catch {
+      // rowActions 内部已经 notify，这里只复位 loading
+      setDetail((s) => ({ ...s, loading: false }));
+    }
+  }, [rowActions]);
+
+  /**
+   * ✅ 关闭详情：如果期间发生过变更（dirty），则触发用户列表刷新
+   * 通过 ref 注入 reload，避免 hooks 闭包拿到旧值/拿不到 table
+   */
+  const onCloseReloadRef = useRef<null | (() => void)>(null);
+
   const closeDetail = useCallback(() => {
+    if (detailDirtyRef.current) {
+      detailDirtyRef.current = false;
+      onCloseReloadRef.current?.();
+    }
+
+    currentDetailRowRef.current = null;
     setDetail({ open: false, loading: false, data: undefined });
   }, []);
 
   const openDetail = useCallback(
     async (row: UserTableRow) => {
+      currentDetailRowRef.current = row;
+
       setDetail({ open: true, loading: true, data: undefined });
       try {
         const info = await rowActions.fetchDetail(row);
@@ -81,6 +128,9 @@ export function useUserManagePage(options?: { onNotify?: Notify }) {
       await openDetail(row);
     },
   });
+
+  // ✅ 给 closeDetail 用：稳定拿到最新 table.reload
+  onCloseReloadRef.current = table.reload;
 
   // ======================================================
   // 4) 批量操作：封锁 / 删除（删除只批量）
@@ -129,6 +179,10 @@ export function useUserManagePage(options?: { onNotify?: Notify }) {
     detail,
     openDetail,
     closeDetail,
+
+    // ✅ 新增：给详情下半部分（报名/加分列表）联动刷新使用
+    refreshDetail,
+    markDetailDirty,
 
     // batch ops
     deleting: batchActions.deleting,
