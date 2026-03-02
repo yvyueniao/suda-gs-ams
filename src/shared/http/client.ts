@@ -148,6 +148,7 @@ function createHttpClient(): AxiosInstance {
     ) {
       (config.headers as any)["Content-Type"] = "application/json";
     }
+    
 
     return config;
   });

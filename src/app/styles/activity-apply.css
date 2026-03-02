@@ -1,6 +1,7 @@
 /* =========================================================
    Activity Apply Styles
    报名端详情页样式（ActivityDetailPage）
+   ✅ 主题兼容：颜色/背景/边框/圆角跟随 antd token
    ========================================================= */
 
 .activity-apply-container {
@@ -24,24 +25,24 @@
 .activity-apply-section-title {
   font-size: 16px;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
   margin-bottom: 10px;
 }
 
-/* 内容块 */
+/* 内容块（跟随主题） */
 .activity-apply-panel {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
+  border-radius: var(--ant-border-radius, 12px);
   padding: 12px;
-  background: #fff;
+  background: var(--ant-color-bg-container, #fff);
 }
 
-/* 描述块 */
+/* 描述块（跟随主题） */
 .activity-apply-desc {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
+  border-radius: var(--ant-border-radius, 12px);
   padding: 12px;
-  background: #fff;
+  background: var(--ant-color-bg-container, #fff);
 }
 
 .activity-apply-desc-content {

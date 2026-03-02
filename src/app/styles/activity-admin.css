@@ -2,6 +2,7 @@
    Activity Admin Styles
    src/app/styles/activity-admin.css
    只用于：活动/讲座管理端详情页（ActivityAdminDetailPage）
+   ✅ 主题兼容：颜色/背景/边框/圆角跟随 antd token
    ========================================================= */
 
 /* 页面最大宽度（可选） */
@@ -24,28 +25,28 @@
   margin-top: 6px;
 }
 
-/* ✅ 分区标题：更大一点 + 加粗 */
+/* ✅ 分区标题：更大一点 + 加粗（颜色跟随主题） */
 .activity-admin-section-title {
   font-size: 16px;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
   margin: 0 0 10px;
 }
 
-/* 内容面板：把内容区域视觉“包一下”，更像管理后台 */
+/* 内容面板：把内容区域视觉“包一下”，更像管理后台（跟随主题） */
 .activity-admin-panel {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
+  border-radius: var(--ant-border-radius, 12px);
   padding: 12px;
-  background: #fff;
+  background: var(--ant-color-bg-container, #fff);
 }
 
-/* 描述内容块 */
+/* 描述内容块（跟随主题） */
 .activity-admin-desc {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
+  border-radius: var(--ant-border-radius, 12px);
   padding: 12px;
-  background: #fff;
+  background: var(--ant-color-bg-container, #fff);
 }
 
 .activity-admin-desc-content {
@@ -58,9 +59,9 @@
   margin: 6px 0;
 }
 
-/* 让 Descriptions 看起来更“轻”一点 */
+/* 让 Descriptions 看起来更“轻”一点（圆角也跟随主题） */
 .activity-admin-page .ant-descriptions-bordered .ant-descriptions-view {
-  border-radius: 12px;
+  border-radius: var(--ant-border-radius, 12px);
   overflow: hidden;
 }
 

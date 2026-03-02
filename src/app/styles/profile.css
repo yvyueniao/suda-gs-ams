@@ -2,15 +2,9 @@
    Profile Page Styles
    src/app/styles/profile.css
 
-   设计目标：
-   - 更现代：头像 + 信息布局更清晰
-   - 更清爽：减少拥挤，增加留白
-   - 更统一：符合 layout.css / feedback.css / auth.css 风格
-   - 更稳定：不影响其它页面，只作用于 profile-page
-   ========================================================= */
-
-/* =========================================================
-   页面整体容器
+   ✅ 主题兼容：
+   - 圆角跟随 token（支持用户调圆角）
+   - 文字颜色/边框色跟随 token（支持深色模式）
    ========================================================= */
 
 .profile-container {
@@ -23,7 +17,7 @@
    ========================================================= */
 
 .profile-user-card {
-  border-radius: 16px !important;
+  border-radius: var(--ant-border-radius-lg, 16px) !important;
 }
 
 .profile-user-card .ant-card-body {
@@ -55,7 +49,8 @@
     0 6px 18px rgba(0, 0, 0, 0.08),
     0 2px 6px rgba(0, 0, 0, 0.04);
 
-  border: 3px solid #fff;
+  /* ✅ 深色模式下不再“白圈刺眼” */
+  border: 3px solid var(--ant-color-bg-container, #fff);
 }
 
 /* =========================================================
@@ -94,12 +89,12 @@
 .profile-stat-value {
   font-size: 22px;
   font-weight: 600;
-  color: #262626;
+  color: var(--ant-color-text, #262626);
 }
 
 .profile-stat-label {
   font-size: 14px;
-  color: #8c8c8c;
+  color: var(--ant-color-text-secondary, #8c8c8c);
 }
 
 /* =========================================================
@@ -111,7 +106,7 @@
 }
 
 .profile-user-meta .ant-descriptions-item-label {
-  color: #8c8c8c;
+  color: var(--ant-color-text-secondary, #8c8c8c);
 }
 
 .profile-user-meta .ant-descriptions-item-content {
@@ -123,7 +118,7 @@
    ========================================================= */
 
 .profile-activities-card {
-  border-radius: 16px !important;
+  border-radius: var(--ant-border-radius-lg, 16px) !important;
 }
 
 .profile-activities-card .ant-card-body {
@@ -135,11 +130,11 @@
    ========================================================= */
 
 .profile-activities-card .ant-input {
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-sm, 8px);
 }
 
 .profile-activities-card .ant-btn {
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-sm, 8px);
 }
 
 /* =========================================================
@@ -147,7 +142,7 @@
    ========================================================= */
 
 .profile-activities-card .ant-table {
-  border-radius: 12px;
+  border-radius: var(--ant-border-radius, 12px);
   overflow: hidden;
 }
 

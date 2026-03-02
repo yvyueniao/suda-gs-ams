@@ -1,6 +1,36 @@
 /* =========================================================
    页面整体布局修复：只滚内容区，不滚整个页面
+   + 顶部栏按钮 hover：上浮 + 微放大 + 变亮（无背景）
+   + ✅ 主题兼容：背景/边框/次级文字 用 CSS 变量（深浅模式可切）
    ========================================================= */
+
+/* ✅ 主题变量（默认：浅色口径）
+   之后我们只要在 body[data-theme="dark"] 覆盖这些变量即可
+*/
+:root {
+  --app-bg-layout: #f5f7fa;
+  --app-border: rgba(17, 24, 39, 0.06);
+  --app-text-secondary: rgba(17, 24, 39, 0.45);
+
+  /* Header 目前固定深色品牌栏：先保留可覆盖口 */
+  --app-header-bg: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  --app-header-border: rgba(255, 255, 255, 0.06);
+  --app-header-text: rgba(255, 255, 255, 0.92);
+  --app-header-text-weak: rgba(255, 255, 255, 0.85);
+}
+
+/* ✅ 可选：深色模式变量（如果你后面在 ThemeProvider 里给 body 挂 data-theme="dark" 就能生效） */
+body[data-theme="dark"] {
+  --app-bg-layout: #0b1220;
+  --app-border: rgba(255, 255, 255, 0.12);
+  --app-text-secondary: rgba(255, 255, 255, 0.55);
+
+  /* 如果你希望深色模式下 Header 也稍微调整，可以改这里 */
+  --app-header-bg: linear-gradient(180deg, #111827 0%, #0b1220 100%);
+  --app-header-border: rgba(255, 255, 255, 0.1);
+  --app-header-text: rgba(255, 255, 255, 0.92);
+  --app-header-text-weak: rgba(255, 255, 255, 0.85);
+}
 
 html,
 body,
@@ -32,9 +62,10 @@ body {
   justify-content: space-between;
   gap: 12px;
 
-  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  background: var(--app-header-bg);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--app-header-border);
+  color: var(--app-header-text); /* ✅ 让标题/按钮可用 inherit */
 }
 
 /* Header 左侧区域 */
@@ -52,20 +83,68 @@ body {
   gap: 10px;
 }
 
+/* =========================================================
+   顶部栏按钮交互：上浮 + 微放大 + 变亮（无背景）
+   ========================================================= */
+
 /* 菜单按钮 */
 .app-header__navbtn {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: var(--app-header-text-weak) !important;
   border-radius: 6px;
+
+  /* ✅ 让缩放更稳定（减少抖动/发虚） */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+  will-change: transform;
 }
 
-.app-header__navbtn:hover {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+/* 右侧用户按钮（AppLayout 里 className="app-header__userbtn"） */
+.app-header__userbtn {
+  color: var(--app-header-text) !important;
+  border-radius: 6px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+  will-change: transform;
+}
+
+/* hover：上浮 + 微放大 + 变亮（❌不要背景） */
+.app-header__navbtn:hover,
+.app-header__userbtn:hover {
+  transform: translateY(-2px) scale(1.05);
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+/* active：回弹一点点 */
+.app-header__navbtn:active,
+.app-header__userbtn:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* 键盘可达：focus 也给同样反馈 */
+.app-header__navbtn:focus-visible,
+.app-header__userbtn:focus-visible {
+  transform: translateY(-2px) scale(1.05);
+  color: rgba(255, 255, 255, 1) !important;
 }
 
 /* 标题 */
 .app-header__title {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: inherit !important; /* ✅ 继承 header 文字色 */
   margin: 0 !important;
   white-space: nowrap;
   overflow: hidden;
@@ -87,15 +166,15 @@ body {
 .app-sider {
   height: 100%;
   overflow: auto; /* ✅ 侧边栏内容过多时自己滚 */
-  border-right: 1px solid rgba(17, 24, 39, 0.06);
+  border-right: 1px solid var(--app-border);
 }
 
 /* 右侧内容区 */
 .app-content {
   flex: 1;
   height: 100%;
-  overflow: hidden; /* ✅ 真正滚动发生在这里 */
-  background: #f5f7fa;
+  overflow: auto; /* ✅ 内容区自己滚动 */
+  background: var(--app-bg-layout);
 }
 
 /* =========================================================
@@ -106,11 +185,16 @@ body {
   height: 48px;
   text-align: center;
   font-size: 12px;
-  color: rgba(17, 24, 39, 0.45);
+  color: var(--app-text-secondary);
   padding: 12px 16px;
-  border-top: 1px solid rgba(17, 24, 39, 0.06);
+  border-top: 1px solid var(--app-border);
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: saturate(180%) blur(6px);
+}
+
+/* 深色下 footer 玻璃层会发白，给一个更合适的背景（仍可按需调） */
+body[data-theme="dark"] .app-footer {
+  background: rgba(15, 23, 42, 0.55);
 }
 
 /* =========================================================

@@ -1,5 +1,5 @@
 // src/app/layout/AppLayout.tsx
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Layout,
   Typography,
@@ -16,6 +16,7 @@ import {
   MenuOutlined,
   UserOutlined,
   LogoutOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -29,6 +30,8 @@ import { useLayoutNav } from "../hooks/useLayoutNav";
 import { getMenuIcon } from "../menu/menuIconMap";
 import { useAsyncAction } from "../../shared/actions";
 import { confirmAsync } from "../../shared/ui/confirmAsync";
+
+import ThemeSettingsModal from "../theme/ThemeSettingsModal";
 
 import { verifyToken } from "../../features/auth/api";
 import { ApiError } from "../../shared/http/error";
@@ -64,6 +67,8 @@ export default function AppLayout() {
   const { user, menuTree, loading } = useAppBootstrap();
   const { logout } = useLogout();
 
+  const [themeOpen, setThemeOpen] = useState(false);
+
   const logoutAction = useAsyncAction({
     successMessage: "已退出登录",
     errorMessage: "退出失败",
@@ -98,10 +103,11 @@ export default function AppLayout() {
     afterNavigate();
   };
 
-  // ✅ 下拉菜单：加 icon + 收紧宽度（不要跟触发按钮一样宽）
+  // ✅ 下拉菜单：个人中心 / 系统样式 / 退出登录（按你要的顺序）
   const dropdownItems: MenuProps["items"] = useMemo(() => {
     return [
       { key: "profile", label: "个人中心", icon: <UserOutlined /> },
+      { key: "theme", label: "系统样式", icon: <SettingOutlined /> },
       { type: "divider" as const },
       {
         key: "logout",
@@ -117,6 +123,12 @@ export default function AppLayout() {
       navigate("/profile");
       return;
     }
+
+    if (key === "theme") {
+      setThemeOpen(true);
+      return;
+    }
+
     if (key === "logout") {
       const ok = await confirmAsync({
         title: "确认退出登录？",
@@ -239,10 +251,15 @@ export default function AppLayout() {
               style={{ color: "rgba(255,255,255,0.92)" }}
             >
               <Space size={6}>
-                <span style={{ color: "inherit" }}>{userLabel}</span>
+                <span style={{ color: "inherit" }}>{userLabel} | 退出</span>
               </Space>
             </Button>
           </Dropdown>
+
+          <ThemeSettingsModal
+            open={themeOpen}
+            onClose={() => setThemeOpen(false)}
+          />
         </div>
       </Header>
 
