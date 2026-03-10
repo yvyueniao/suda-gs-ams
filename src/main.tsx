@@ -1,7 +1,7 @@
 // src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { HashRouter } from "react-router-dom";
 import { ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 
@@ -39,9 +39,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       {/* ✅ locale 仍由 ConfigProvider 提供；主题由 ThemeProvider 接管 */}
       <ConfigProvider locale={zhCN}>
         <ThemeProvider>
-          <BrowserRouter basename={import.meta.env.BASE_URL}>
+          {/* ✅ 改为 HashRouter：子路径部署更省心，不再依赖 basename */}
+          <HashRouter>
             <App />
-          </BrowserRouter>
+          </HashRouter>
         </ThemeProvider>
       </ConfigProvider>
     </ErrorBoundary>
