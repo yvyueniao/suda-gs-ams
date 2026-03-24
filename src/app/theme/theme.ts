@@ -125,6 +125,7 @@ export const appTheme: ThemeConfig = {
       headerBg: "#e5e6ec",
       headerColor: "#1f1f1f",
       borderColor: "#E9EDF5",
+      headerBorderRadius: toGrid(10 * rs),
     },
 
     Modal: {
@@ -133,6 +134,40 @@ export const appTheme: ThemeConfig = {
 
     Drawer: {
       borderRadiusLG: toGrid(16 * rs),
+    },
+
+    Select: {
+      borderRadius: toGrid(10 * rs),
+    },
+
+    DatePicker: {
+      borderRadius: toGrid(10 * rs),
+      cellActiveWithRangeBg: "#e6f4ff",
+    },
+
+    InputNumber: {
+      borderRadius: toGrid(10 * rs),
+    },
+
+    Pagination: {
+      borderRadius: toGrid(10 * rs),
+    },
+
+    Dropdown: {
+      borderRadiusLG: toGrid(12 * rs),
+    },
+
+    Tabs: {
+      borderRadius: toGrid(10 * rs),
+    },
+
+    Menu: {
+      itemBorderRadius: toGrid(10 * rs),
+      subMenuItemBorderRadius: toGrid(10 * rs),
+    },
+
+    Tag: {
+      borderRadiusSM: toGrid(8 * rs),
     },
   },
 };

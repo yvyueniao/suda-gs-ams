@@ -295,7 +295,6 @@ export function TableToolbar(props: TableToolbarProps) {
       <Space wrap>
         {showSearch && (
           <Input
-            size="small"
             allowClear
             disabled={effectiveSearchDisabled}
             placeholder={searchPlaceholder}
@@ -317,11 +316,12 @@ export function TableToolbar(props: TableToolbarProps) {
             }}
             style={{ width: searchWidth }}
             suffix={
-              <Button
-                type="text"
-                icon={<SearchOutlined />}
+              <SearchOutlined
                 onClick={handleSubmit}
-                disabled={effectiveSearchDisabled}
+                style={{
+                  cursor: effectiveSearchDisabled ? "not-allowed" : "pointer",
+                  color: "var(--ant-color-text-description)",
+                }}
               />
             }
             {...inputProps}

@@ -32,7 +32,7 @@
 /* 内容块（跟随主题） */
 .activity-apply-panel {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
   padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
@@ -40,7 +40,7 @@
 /* 描述块（跟随主题） */
 .activity-apply-desc {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
   padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }

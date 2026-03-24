@@ -32,7 +32,7 @@
 .feedback-closed-hint {
   margin-top: var(--ds-space-3);
   padding: var(--ds-space-2) var(--ds-space-3);
-  border-radius: var(--ant-border-radius, 10px);
+  border-radius: var(--ds-radius-base);
 
   /* warning 浅底：跟随 antd warning 色系 */
   background: color-mix(
@@ -53,7 +53,7 @@
   overflow: auto;
 
   padding: var(--ds-space-3);
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
 
   /* 更像聊天背景：跟随主题的弱背景 + 边框 */
   background: color-mix(
@@ -91,7 +91,7 @@
   min-width: 180px;
 
   padding: var(--ds-space-3);
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
 
   background: var(--ant-color-bg-container, #fff);
   border: 1px solid var(--ant-color-border, rgba(17, 24, 39, 0.06));
@@ -147,7 +147,7 @@
   gap: var(--ds-space-3);
 
   padding: var(--ds-space-2) var(--ds-space-3);
-  border-radius: var(--ant-border-radius, 10px);
+  border-radius: var(--ds-radius-base);
 
   background: color-mix(
     in srgb,
@@ -160,7 +160,7 @@
 .chat-attach__icon {
   width: 28px;
   height: 28px;
-  border-radius: var(--ant-border-radius-sm, 8px);
+  border-radius: var(--ds-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -36,7 +36,7 @@
 /* 内容面板：把内容区域视觉“包一下”，更像管理后台（跟随主题） */
 .activity-admin-panel {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
   padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
@@ -44,7 +44,7 @@
 /* 描述内容块（跟随主题） */
 .activity-admin-desc {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
   padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
@@ -61,7 +61,7 @@
 
 /* 让 Descriptions 看起来更“轻”一点（圆角也跟随主题） */
 .activity-admin-page .ant-descriptions-bordered .ant-descriptions-view {
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
   overflow: hidden;
 }
 

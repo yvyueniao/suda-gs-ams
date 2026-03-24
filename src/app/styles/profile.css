@@ -17,7 +17,7 @@
    ========================================================= */
 
 .profile-user-card {
-  border-radius: var(--ant-border-radius-lg, 16px) !important;
+  border-radius: var(--ds-radius-lg) !important;
 }
 
 .profile-user-card .ant-card-body {
@@ -118,7 +118,7 @@
    ========================================================= */
 
 .profile-activities-card {
-  border-radius: var(--ant-border-radius-lg, 16px) !important;
+  border-radius: var(--ds-radius-lg) !important;
 }
 
 .profile-activities-card .ant-card-body {
@@ -130,11 +130,11 @@
    ========================================================= */
 
 .profile-activities-card .ant-input {
-  border-radius: var(--ant-border-radius-sm, 8px);
+  border-radius: var(--ds-radius-sm);
 }
 
 .profile-activities-card .ant-btn {
-  border-radius: var(--ant-border-radius-sm, 8px);
+  border-radius: var(--ds-radius-sm);
 }
 
 /* =========================================================
@@ -142,7 +142,7 @@
    ========================================================= */
 
 .profile-activities-card .ant-table {
-  border-radius: var(--ant-border-radius, 12px);
+  border-radius: var(--ds-radius-base);
   overflow: hidden;
 }
 
