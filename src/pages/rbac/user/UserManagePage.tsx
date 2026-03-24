@@ -270,7 +270,7 @@ export default function UserManagePage() {
 
               <Can roles={[0]}>
                 <Button onClick={importFlow.openPreview} disabled={busy}>
-                  批量导入
+                  批量导入用户
                 </Button>
               </Can>
 

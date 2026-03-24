@@ -514,7 +514,14 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       }
     } catch (err) {
       // ✅ 失败：优先 err.message（ApiError.message=后端 msg）
-      notify({ kind: "error", msg: errToMsg(err, "导入失败") });
+      const msg = errToMsg(err, "导入失败");
+      openResult({
+        code: 500,
+        msg,
+        data: `提交失败（尝试提交 ${payload.length} 行）`,
+        timestamp: Date.now(),
+      });
+      notify({ kind: "error", msg });
       throw err;
     } finally {
       submittingRef.current = false;
