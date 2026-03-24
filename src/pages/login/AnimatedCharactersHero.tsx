@@ -131,7 +131,10 @@ export default function AnimatedCharactersHero({
 
   return (
     <section className="auth-brand auth-brand-animated">
-      <div className="auth-hero-top">研究生会活动管理系统</div>
+      <div className="auth-brand-header">
+        <div className="auth-brand-badge">✦</div>
+        <div className="auth-hero-top">研究生会活动管理系统</div>
+      </div>
 
       <div className="auth-characters-wrap">
         <div
@@ -207,7 +210,11 @@ export default function AnimatedCharactersHero({
         </div>
       </div>
 
-      <div className="auth-brand-subtitle">灵动登录动效（参考 animated-characters-login-page）</div>
+      <div className="auth-brand-footer-links">
+        <span>隐私政策</span>
+        <span>服务条款</span>
+        <span>联系我们</span>
+      </div>
     </section>
   );
 }
