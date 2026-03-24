@@ -155,6 +155,8 @@ export default function ImportApplyScoreModal(props: Props) {
           placeholder="请输入活动名称并从下拉选择"
           notFoundContent={loadingActivities ? "活动加载中..." : "未匹配到活动"}
           disabled={disabled}
+          style={{ width: "100%" }}
+          popupMatchSelectWidth
           filterOption={(inputValue, option) =>
             String(option?.value ?? "")
               .toLowerCase()
