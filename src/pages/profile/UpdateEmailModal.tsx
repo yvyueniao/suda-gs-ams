@@ -96,7 +96,6 @@ export default function UpdateEmailModal({
           label="新邮箱"
           rules={[
             { required: true, message: "请输入邮箱" },
-            { type: "email", message: "邮箱格式不正确" },
           ]}
         >
           <Input placeholder="example@suda.edu.cn" />

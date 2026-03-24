@@ -9,6 +9,7 @@ import { ApiError } from "../../shared/http/error";
 import { clearUser, setUser } from "../../shared/session/session";
 
 type GuardState = "checking" | "ok" | "login" | "fatal";
+const INIT_EMAIL = "init@qq.com";
 
 export default function RequireAuth() {
   const location = useLocation();
@@ -42,13 +43,17 @@ export default function RequireAuth() {
         // ✅ 2) 拉取最新用户信息（可能刷新 token）
         const info = await getUserInfo();
 
-        setUser(info.user);
+        if (info.user?.email !== INIT_EMAIL) {
+          setUser(info.user);
+        } else {
+          clearUser();
+        }
         if (info.token) {
           setToken(info.token);
         }
 
         setState("ok");
-      } catch (e: any) {
+      } catch (e: unknown) {
         // ✅ token 失效 -> HTTP 401
         if (e instanceof ApiError) {
           if (e.code === "UNAUTHORIZED" || e.code === "FORBIDDEN") {

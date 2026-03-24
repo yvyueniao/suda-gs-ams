@@ -1,9 +1,11 @@
 import { login } from "../api";
 import { encryptPassword } from "../crypto";
 import { setToken } from "../../../shared/session/token";
-import { setUser } from "../../../shared/session/session";
+import { clearUser, setUser } from "../../../shared/session/session";
 import { track } from "../../../shared/telemetry/track";
 import { ApiError } from "../../../shared/http/error";
+
+const INIT_EMAIL = "init@qq.com";
 
 /**
  * useLogin
@@ -34,7 +36,11 @@ export function useLogin() {
       });
 
       setToken(resp.token);
-      setUser(resp.user);
+      if (resp.user?.email !== INIT_EMAIL) {
+        setUser(resp.user);
+      } else {
+        clearUser();
+      }
 
       // ✅ 业务级埋点：登录成功（不记录密码/token）
       track({
@@ -48,7 +54,7 @@ export function useLogin() {
       });
 
       return resp.user;
-    } catch (e: any) {
+    } catch (e: unknown) {
       const cost = Date.now() - startedAt;
 
       // ✅ 业务级埋点：登录失败

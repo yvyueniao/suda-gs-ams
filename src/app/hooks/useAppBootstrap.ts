@@ -4,10 +4,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getMenuList, getUserInfo } from "../../features/auth/api";
 import type { MenuNode, User } from "../../features/auth/types";
 import { ApiError } from "../../shared/http/error";
-import { getUser, setUser } from "../../shared/session/session";
+import { clearUser, getUser, setUser } from "../../shared/session/session";
 
 // 引入 Sentry 用户追踪 API
 import { setSentryUser } from "../telemetry/sentry";
+
+const INIT_EMAIL = "init@qq.com";
 
 export function useAppBootstrap() {
   const navigate = useNavigate();
@@ -38,7 +40,11 @@ export function useAppBootstrap() {
       if (!aliveRef.current) return;
 
       // ✅ 落库 user（token 刷新交给 shared/http 拦截器做；这里不动 shared）
-      setUser(info.user);
+      if (info.user?.email !== INIT_EMAIL) {
+        setUser(info.user);
+      } else {
+        clearUser();
+      }
       setUserState(info.user);
 
       // ✅ 调用 Sentry 设置用户信息
