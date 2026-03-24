@@ -193,7 +193,7 @@ export function mapMyActivityForExport(row: MyActivityItem) {
     checkIn: boolLabel(row.checkIn), // 转中文
     checkOut: boolLabel(row.checkOut), // 转中文（undefined => "-"）
     canScore: boolLabel(canGetScore(row)), // ✅ 新增：是否加分（派生）
-    getScore: boolLabel(row.getScore), // 转中文
+    getScore: boolLabel(row.getScore !== true), // 转中文
     score: row.score,
   };
 }
