@@ -60,6 +60,10 @@ type RequestConfig = AxiosRequestConfig & {
   meta?: RequestMeta;
 };
 
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[\r\n]+/g, "").trim();
+}
+
 function getServerMessage(data: unknown): string | undefined {
   if (!data || typeof data !== "object") return undefined;
   const maybeMsg = "msg" in data ? data.msg : undefined;
@@ -74,6 +78,12 @@ function ensureMutableHeaders(
 ): AxiosHeaders {
   if (headers instanceof AxiosHeaders) return headers;
   return new AxiosHeaders((headers ?? {}) as Record<string, string>);
+}
+
+function ensureJsonContentType(headers: AxiosHeaders): void {
+  if (!headers.get("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 }
 
 function doLogout(reason?: string) {
@@ -145,19 +155,19 @@ function createHttpClient(): AxiosInstance {
 
     const token = getToken();
     if (token) {
-      headers.Authorization = token; // ✅ 不加 Bearer
+      const safeToken = sanitizeHeaderValue(token);
+      if (safeToken) {
+        headers.set("Authorization", safeToken); // ✅ 不加 Bearer
+      }
     }
 
     if (isFormData(config.data)) {
-      delete headers["Content-Type"];
-      delete headers["content-type"];
+      headers.delete("Content-Type");
       config.headers = headers;
       return config;
     }
 
-    if (!headers["Content-Type"] && !headers["content-type"]) {
-      headers["Content-Type"] = "application/json";
-    }
+    ensureJsonContentType(headers);
     config.headers = headers;
 
     return config;
