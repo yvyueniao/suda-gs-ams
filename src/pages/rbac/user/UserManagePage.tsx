@@ -18,7 +18,7 @@ import { insertUser } from "../../../features/rbac/user/api";
 import type { UserCreatePayload } from "../../../features/rbac/user/types";
 
 import { useUserManagePage } from "../../../features/rbac/user/hooks/useUserManagePage";
-import { useUserSpecialScore } from "../../../features/rbac/user/hooks/useUserSpecialScore";
+import { useUserApplyScoreImportFlow } from "../../../features/rbac/user/hooks/useUserApplyScoreImportFlow";
 import { useUsersScoreByTimeExport } from "../../../features/rbac/user/hooks/useUsersScoreByTimeExport";
 
 // ✅ 新增：用户详情-报名记录表格 hook（触发 /activity/usernameApplications）
@@ -26,9 +26,9 @@ import { useUserApplicationsTable } from "../../../features/rbac/user/hooks/useU
 
 import CreateUserModal from "./CreateUserModal";
 import ImportUsersModal from "./ImportUsersModal";
+import ImportApplyScoreModal from "./ImportApplyScoreModal";
 import ImportResultModal from "./ImportResultModal";
 import UserDetailDrawer from "./UserDetailDrawer";
-import SpecialScoreModal from "./SpecialScoreModal";
 import ExportByTimeModal from "./ExportByTimeModal";
 
 const { Title } = Typography;
@@ -119,11 +119,8 @@ export default function UserManagePage() {
     importFlow,
   } = useUserManagePage({ onNotify: notify });
 
-  const specialScore = useUserSpecialScore({
+  const applyScoreImport = useUserApplyScoreImportFlow({
     onNotify: notify,
-    onAfterSubmit: () => {
-      table.reload();
-    },
   });
 
   const exportByTime = useUsersScoreByTimeExport({
@@ -215,7 +212,7 @@ export default function UserManagePage() {
     !!locking ||
     !!deleting ||
     !!importFlow.submitting ||
-    !!specialScore.submitting ||
+    !!applyScoreImport.submitting ||
     !!exportByTime.exporting;
 
   return (
@@ -261,8 +258,14 @@ export default function UserManagePage() {
           onClearSelection={() => setSelectedUsernames([])}
           right={
             <Space>
-              <Button onClick={specialScore.openModal} disabled={busy}>
-                录入加分
+              <Button
+                onClick={async () => {
+                  applyScoreImport.openPreview();
+                  await applyScoreImport.loadActivities();
+                }}
+                disabled={busy}
+              >
+                批量导入加分
               </Button>
 
               <Can roles={[0]}>
@@ -341,20 +344,32 @@ export default function UserManagePage() {
         onConfirm={exportByTime.exportByTime}
       />
 
-      <SpecialScoreModal
-        open={specialScore.open}
-        onClose={specialScore.closeModal}
-        submitting={specialScore.submitting}
-        searching={specialScore.searching}
-        value={specialScore.value}
-        options={specialScore.options}
-        onNameInput={specialScore.onNameInput}
-        onUsernameInput={specialScore.onUsernameInput}
-        onPickUser={specialScore.onPickUser}
-        clearPickedUser={specialScore.clearPickedUser}
-        onTypeChange={specialScore.onTypeChange}
-        onScoreChange={specialScore.onScoreChange}
-        onSubmit={specialScore.submit}
+      <ImportApplyScoreModal
+        open={applyScoreImport.preview.open}
+        onClose={applyScoreImport.closePreview}
+        parsing={applyScoreImport.parsing}
+        submitting={applyScoreImport.submitting}
+        loadingActivities={applyScoreImport.loadingActivities}
+        activityName={applyScoreImport.preview.activityName}
+        selectedActivityId={applyScoreImport.preview.selectedActivityId}
+        activityOptions={applyScoreImport.preview.activityOptions}
+        onActivityNameChange={applyScoreImport.setActivityName}
+        onSelectActivity={applyScoreImport.selectActivity}
+        previewStats={applyScoreImport.preview.stats}
+        issueRows={applyScoreImport.preview.rows
+          .filter((x) => x.errors.length > 0)
+          .slice(0, 20)
+          .map((x) => ({
+            rowNo: x.rowNo,
+            username: x.username,
+            scoreRaw: x.scoreRaw,
+            errors: x.errors,
+          }))}
+        onFileSelected={applyScoreImport.parseFile}
+        onConfirmImport={async () => {
+          await applyScoreImport.submitImport();
+          table.reload();
+        }}
       />
 
       <CreateUserModal
@@ -383,6 +398,12 @@ export default function UserManagePage() {
         onDownloadFailed={(url) => {
           notify({ kind: "info", msg: `失败名单下载：${url}` });
         }}
+      />
+
+      <ImportResultModal
+        open={applyScoreImport.result.open}
+        onClose={applyScoreImport.closeResult}
+        result={applyScoreImport.result.result}
       />
 
       <UserDetailDrawer
