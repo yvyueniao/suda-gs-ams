@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => {
         ? undefined
         : {
             "/api": {
-              target: "http://localhost:8288/",
+              target: "http://10.40.39.127:8288/",
               changeOrigin: true,
               secure: false,
               rewrite: (path) => path.replace(/^\/api/, ""),
