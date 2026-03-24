@@ -7,7 +7,10 @@
 .auth-page {
   min-height: 100vh;
   display: flex;
-  background: linear-gradient(135deg, #eef3ff 0%, #f6f8fc 100%);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(96, 165, 250, 0.22), transparent 45%),
+    radial-gradient(circle at 92% 12%, rgba(99, 102, 241, 0.18), transparent 40%),
+    linear-gradient(125deg, #f7f9ff 0%, #eef3ff 48%, #f7f9ff 100%);
   position: relative;
   overflow: hidden;
 }
@@ -16,16 +19,16 @@
 .auth-page::before {
   content: "";
   position: absolute;
-  width: 640px;
-  height: 640px;
+  width: 740px;
+  height: 740px;
   background: radial-gradient(
     circle at center,
-    rgba(91, 143, 249, 0.18),
-    rgba(91, 143, 249, 0.05) 60%,
+    rgba(91, 143, 249, 0.2),
+    rgba(91, 143, 249, 0.08) 60%,
     transparent 70%
   );
-  top: -220px;
-  right: -220px;
+  top: -280px;
+  right: -260px;
   border-radius: 50%;
   z-index: 0;
 }
@@ -34,16 +37,16 @@
 .auth-page::after {
   content: "";
   position: absolute;
-  width: 520px;
-  height: 520px;
+  width: 620px;
+  height: 620px;
   background: radial-gradient(
     circle at center,
-    rgba(91, 143, 249, 0.12),
-    rgba(91, 143, 249, 0.04) 55%,
+    rgba(91, 143, 249, 0.15),
+    rgba(91, 143, 249, 0.05) 55%,
     transparent 70%
   );
-  left: -200px;
-  bottom: -220px;
+  left: -240px;
+  bottom: -280px;
   border-radius: 50%;
   z-index: 0;
 }
@@ -59,7 +62,7 @@
   padding: var(--ds-space-8) var(--ds-space-6);
 
   /* ✅ 视觉更平衡：不要 gap 过大，否则两列“分离感”太强 */
-  gap: 48px;
+  gap: 56px;
 
   align-items: center;
 
@@ -91,25 +94,38 @@
   text-align: center;
 }
 
+.auth-brand-badge {
+  margin-bottom: var(--ds-space-4);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  border: 1px solid rgba(91, 143, 249, 0.28);
+  background: rgba(91, 143, 249, 0.1);
+  color: #2f54eb !important;
+}
+
 /* ✅ logo 居中（桌面端 & 移动端都稳） */
 .auth-brand-logo {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   display: block;
   margin: 0 auto 20px;
+  filter: drop-shadow(0 10px 20px rgba(59, 130, 246, 0.18));
 }
 
 .auth-brand-title {
-  font-size: var(--ds-font-24);
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 700;
   margin-bottom: var(--ds-space-3);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.6px;
 }
 
 .auth-brand-subtitle {
   font-size: var(--ds-font-16);
   color: #667085;
   margin-bottom: var(--ds-space-5);
+  max-width: 520px;
 }
 
 .auth-brand-features {
@@ -118,6 +134,12 @@
   margin: 0;
   color: #475467;
   line-height: 1.9;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(91, 143, 249, 0.14);
+  border-radius: 16px;
+  padding: 10px 16px;
+  backdrop-filter: blur(8px);
 }
 
 .auth-brand-features li {
@@ -125,9 +147,40 @@
 }
 
 .auth-brand-features li::before {
-  content: "✓";
+  content: "✦";
   color: #5b8ff9;
   margin-right: var(--ds-space-2);
+}
+
+.auth-brand-stats {
+  margin-top: var(--ds-space-5);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: var(--ds-space-3);
+  width: 100%;
+  max-width: 520px;
+}
+
+.auth-brand-stat-card {
+  border-radius: 14px;
+  border: 1px solid rgba(91, 143, 249, 0.16);
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 10px 24px rgba(91, 143, 249, 0.1);
+  backdrop-filter: blur(8px);
+  padding: var(--ds-space-3) var(--ds-space-2);
+}
+
+.auth-brand-stat-value {
+  color: #1d4ed8;
+  font-size: var(--ds-font-24);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.auth-brand-stat-label {
+  margin-top: 4px;
+  color: #667085;
+  font-size: var(--ds-font-12);
 }
 
 /* ===== 右侧登录卡片区域 ===== */
@@ -153,10 +206,13 @@
   width: 100%;
   max-width: 400px;
 
-  border-radius: var(--ds-radius-lg) !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(14px);
   box-shadow:
-    0 20px 40px rgba(17, 24, 39, 0.08),
-    0 8px 16px rgba(17, 24, 39, 0.06) !important;
+    0 24px 48px rgba(30, 41, 59, 0.12),
+    0 10px 20px rgba(51, 65, 85, 0.1) !important;
 }
 
 /**
@@ -164,7 +220,7 @@
  * antd Card 的 padding 在 .ant-card-body 上
  * 这里用更稳的选择器，只影响本登录卡，不影响全局 Card
  */
-.auth-card :global(.ant-card-body) {
+.auth-card .ant-card-body {
   padding: var(--ds-space-6) !important;
 }
 
@@ -180,13 +236,22 @@
 
 .auth-card-desc {
   font-size: var(--ds-font-12);
-  color: #98a2b3;
+  color: #64748b;
+}
+
+.auth-card .ant-input-affix-wrapper,
+.auth-card .ant-input {
+  border-radius: 12px !important;
 }
 
 /* 登录按钮增强 */
 .auth-login-btn {
   margin-top: 12px;
-  font-weight: 500;
+  height: 42px;
+  border-radius: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
 }
 
 /* 忘记密码区域 */
@@ -200,7 +265,7 @@
   text-align: center;
   margin-top: var(--ds-space-6);
   font-size: var(--ds-font-12);
-  color: #98a2b3;
+  color: #94a3b8;
 }
 
 /* ===== 响应式适配 ===== */
@@ -211,7 +276,7 @@
   }
 
   .auth-brand-title {
-    font-size: 24px;
+    font-size: 28px;
   }
 
   .auth-card {
@@ -246,5 +311,16 @@
   .auth-brand-features {
     text-align: left;
     display: inline-block;
+  }
+
+  .auth-brand-stats {
+    grid-template-columns: repeat(3, minmax(82px, 1fr));
+    width: min(100%, 420px);
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-brand-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

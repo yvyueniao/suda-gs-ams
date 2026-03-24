@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Form, Input, Typography } from "antd";
+import { Button, Card, Form, Input, Tag, Typography } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -75,11 +75,22 @@ export default function LoginPage() {
     [],
   );
 
+  const quickStats = useMemo(
+    () => [
+      { label: "流程覆盖", value: "6+" },
+      { label: "角色权限", value: "5 层" },
+      { label: "消息闭环", value: "100%" },
+    ],
+    [],
+  );
+
   return (
     <div className="auth-page">
       <div className="auth-container">
         {/* 左侧品牌区 */}
         <section className="auth-brand">
+          <Tag className="auth-brand-badge">SUDA GS AMS</Tag>
+
           <img
             className="auth-brand-logo"
             src="/logo.ico"
@@ -96,6 +107,15 @@ export default function LoginPage() {
               <li key={t}>{t}</li>
             ))}
           </ul>
+
+          <div className="auth-brand-stats">
+            {quickStats.map((item) => (
+              <div key={item.label} className="auth-brand-stat-card">
+                <div className="auth-brand-stat-value">{item.value}</div>
+                <div className="auth-brand-stat-label">{item.label}</div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* 右侧登录卡 */}
