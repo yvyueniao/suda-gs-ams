@@ -49,7 +49,7 @@ export type ImportUsersModalProps = {
  * - 模板文件建议放在：public/templates/user-import-template.xlsx
  * - Vite 会把 public 下的文件原样拷贝，访问路径以 / 开头
  */
-const TEMPLATE_URL = "/templates/activity-apply-score-template.xlsx";
+const TEMPLATE_URL = "/templates/user-import-template.xlsx";
 
 export default function ImportUsersModal(props: ImportUsersModalProps) {
   const {
@@ -108,6 +108,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
       onOk={() => void onConfirmImport()}
       destroyOnClose
       maskClosable={false}
+      width={760}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Alert
