@@ -26,7 +26,7 @@ export default function ForceUpdateEmailModal({
 
   return (
     <Modal
-      title="请先完善邮箱信息"
+      title="请先完善邮箱及密码信息"
       open={open}
       closable={false}
       keyboard={false}
@@ -57,7 +57,8 @@ export default function ForceUpdateEmailModal({
       }}
     >
       <Typography.Paragraph style={{ marginBottom: 12 }}>
-        检测到您当前邮箱为系统初始邮箱（{initialEmail}），请同时修改邮箱和密码后继续。提交成功后系统将自动退出登录。
+        检测到您当前邮箱为系统初始邮箱（{initialEmail}
+        ），请同时修改邮箱和密码后继续。提交成功后系统将自动退出登录。
       </Typography.Paragraph>
 
       <Form form={form} layout="vertical">

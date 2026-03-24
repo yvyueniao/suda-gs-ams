@@ -78,6 +78,7 @@ export default function AppLayout() {
     successMessage: "已退出登录",
     errorMessage: "退出失败",
   });
+
   const forceUpdateEmailAction = useAsyncAction<{
     emailMsg: string;
     passwordMsg: string;
@@ -255,7 +256,6 @@ export default function AppLayout() {
   const needForceUpdateEmail = user?.email === INIT_EMAIL;
 
   return (
-    // ✅ 关键：用 className 控制“页面不滚动，只滚内容区”
     <Layout className="app-root">
       <Header className="app-header">
         <div className="app-header__left">
@@ -285,7 +285,6 @@ export default function AppLayout() {
               style: { minWidth: 160 },
             }}
           >
-            {/* ✅ 关键：直接内联强制白色，避免被全局样式覆盖 */}
             <Button
               type="text"
               className="app-header__userbtn"
@@ -304,7 +303,6 @@ export default function AppLayout() {
         </div>
       </Header>
 
-      {/* ✅ 关键：中间区域固定高度；侧边栏不随内容滚动 */}
       <Layout className="app-body">
         <AppNav
           isMobile={isMobile}
@@ -318,7 +316,6 @@ export default function AppLayout() {
           drawerWidth={260}
         />
 
-        {/* ✅ 关键：Content 自己滚动（不要再套一层 div.app-content） */}
         <Content
           className="app-content"
           style={{ padding: isMobile ? 12 : 16 }}
@@ -344,6 +341,7 @@ export default function AppLayout() {
               newPassword1: payload.newPassword1,
               newPassword2: payload.newPassword2,
             });
+
             return {
               emailMsg: String(emailMsg ?? "").trim() || "邮箱修改成功",
               passwordMsg: String(passwordMsg ?? "").trim() || "密码修改成功",
