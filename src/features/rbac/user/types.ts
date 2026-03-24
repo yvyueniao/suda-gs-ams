@@ -180,28 +180,22 @@ export interface UserImportPreviewRow {
 
 /**
  * ======================================
- * ✅ 录入加分（/activity/special）
+ * 活动批量导入报名加分
+ * POST /activity/batchInsertApply
  * ======================================
- * 后端接口文档：
- * url：/activity/special
- * body：{ username, type, score }
- * type：0:加社会服务分 / 1:加讲座次数
  */
-export type SpecialScoreType = 0 | 1;
-
-export const SPECIAL_SCORE_TYPE_LABEL: Record<SpecialScoreType, string> = {
-  0: "社会服务分",
-  1: "讲座次数",
-};
-
-export interface SpecialScorePayload {
+export interface BatchInsertApplyScoreItem {
   username: string;
-  type: SpecialScoreType;
   score: number;
 }
 
-/** 返回壳（data 多半是字符串提示） */
-export type SpecialScoreResult = string;
+export interface BatchInsertApplyScorePayload {
+  activityId: number;
+  scoreList: BatchInsertApplyScoreItem[];
+}
+
+/** request 解壳后 data（通常是字符串提示） */
+export type BatchInsertApplyScoreResult = string;
 
 /**
  * ======================================
