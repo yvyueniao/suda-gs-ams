@@ -260,7 +260,7 @@ export default function ProfilePage() {
                 bizKey={t.bizKey}
                 enableColumnResize
                 sticky
-                scroll={{ y: "calc(52.5vh - 56px - 48px - 24px - 120px)" }}
+                scroll={{ y: "calc(52.5vh - 25px)" }}
                 columns={t.columns}
                 dataSource={t.list}
                 rowKey="id"
