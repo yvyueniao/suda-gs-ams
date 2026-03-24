@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => {
         ? undefined
         : {
             "/api": {
-              target: "http://suda_union.zhongyaohui.club/",
+              target: "http://localhost:8288/",
               changeOrigin: true,
               secure: false,
               rewrite: (path) => path.replace(/^\/api/, ""),
