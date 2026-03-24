@@ -61,8 +61,9 @@ export function useAppBootstrap() {
         state: { from: location.pathname + location.search },
       });
     } finally {
-      if (!aliveRef.current) return;
-      setLoading(false);
+      if (aliveRef.current) {
+        setLoading(false);
+      }
     }
   }, [navigate, location.pathname, location.search]);
 
