@@ -6,6 +6,13 @@ import * as XLSX from "xlsx";
 import type { Notify } from "../../../../shared/ui";
 import type { UserCreatePayload, UserImportPreviewRow } from "../types";
 import { batchInsertUser } from "../api";
+import {
+  INIT_EMAIL,
+  getStrongPasswordError,
+  hasDigitInName,
+  isValidEmail,
+  isValidUsername11Digits,
+} from "../../../../shared/utils/accountValidation";
 
 /** ✅ 稳定 noop，避免 callback 抖动 */
 const noopNotify: Notify = () => {
@@ -17,8 +24,11 @@ type ImportPreviewStats = {
   importableCount: number;
   emptyRequiredCount: number;
   duplicateUsernameCount: number;
-
-  /** ✅ 新增：年级格式不合格行数（例如：2024-硕 / 2024-博） */
+  invalidUsernameCount: number;
+  invalidEmailCount: number;
+  invalidNameCount: number;
+  invalidPasswordCount: number;
+  initEmailCount: number;
   invalidGradeCount: number;
 };
 
@@ -30,8 +40,7 @@ type ImportPreviewState = {
   /** 可选：把“有问题的行”给 UI 标红 */
   invalidRowIndexes: number[];
 
-  /** ✅ 新增：用于提醒的示例（最多前几条） */
-  invalidGradeExamples: string[];
+  issueExamples: string[];
 };
 
 const INITIAL_PREVIEW_STATE: ImportPreviewState = {
@@ -42,10 +51,15 @@ const INITIAL_PREVIEW_STATE: ImportPreviewState = {
     importableCount: 0,
     emptyRequiredCount: 0,
     duplicateUsernameCount: 0,
+    invalidUsernameCount: 0,
+    invalidEmailCount: 0,
+    invalidNameCount: 0,
+    invalidPasswordCount: 0,
+    initEmailCount: 0,
     invalidGradeCount: 0,
   },
   invalidRowIndexes: [],
-  invalidGradeExamples: [],
+  issueExamples: [],
 };
 
 /**
@@ -72,8 +86,10 @@ function normalizeText(v: unknown): string {
 
 /** ✅ 提示信息优先用后端 msg：ApiError.message / Error.message */
 function errToMsg(err: unknown, fallback: string) {
-  const anyErr = err as any;
-  const msg = typeof anyErr?.message === "string" ? anyErr.message.trim() : "";
+  const msg =
+    err instanceof Error && typeof err.message === "string"
+      ? err.message.trim()
+      : "";
   return msg || fallback;
 }
 
@@ -114,6 +130,43 @@ function validateGrade(v: unknown): { ok: boolean; msg?: string } {
   return { ok: true };
 }
 
+function getRowIssues(row: UserImportPreviewRow): string[] {
+  const issues: string[] = [];
+  const username = normalizeText(row.username);
+  const password = normalizeText(row.password);
+  const name = normalizeText(row.name);
+  const email = normalizeText(row.email);
+  const major = normalizeText(row.major);
+  const grade = normalizeText(row.grade);
+
+  if (!username || !password || !name || !email || !major || !grade) {
+    issues.push("必填项缺失");
+  }
+  if (username && !isValidUsername11Digits(username)) {
+    issues.push("学号必须为 11 位数字");
+  }
+  if (name && hasDigitInName(name)) {
+    issues.push("姓名不能包含数字字符");
+  }
+  if (email && !isValidEmail(email)) {
+    issues.push("邮箱格式不正确");
+  }
+
+  const pwdError = getStrongPasswordError(password);
+  if (password && pwdError) {
+    issues.push(pwdError);
+  }
+
+  if (grade) {
+    const gradeValidation = validateGrade(grade);
+    if (!gradeValidation.ok && gradeValidation.msg) {
+      issues.push(gradeValidation.msg);
+    }
+  }
+
+  return issues;
+}
+
 /**
  * ✅ 解析规则（按你说的“模板固定中文表头”）
  * - username: 学号
@@ -126,7 +179,7 @@ function validateGrade(v: unknown): { ok: boolean; msg?: string } {
  * 兼容：若有人把表头稍微写成“邮箱地址/学号/姓名”等，也能尽量识别
  */
 function mapSheetRowsToPreview(
-  jsonRows: Record<string, any>[],
+  jsonRows: Record<string, unknown>[],
 ): UserImportPreviewRow[] {
   if (!Array.isArray(jsonRows) || jsonRows.length === 0) return [];
 
@@ -168,10 +221,10 @@ function mapSheetRowsToPreview(
 function buildStats(rows: UserImportPreviewRow[]): {
   stats: ImportPreviewStats;
   invalidRowIndexes: number[];
-  invalidGradeExamples: string[];
+  issueExamples: string[];
 } {
   const invalidRowIndexes: number[] = [];
-  const invalidGradeExamples: string[] = [];
+  const issueExamples: string[] = [];
 
   // 必填：你后端创建用户需要这 6 个
   const requiredKeys: (keyof UserImportPreviewRow)[] = [
@@ -185,6 +238,11 @@ function buildStats(rows: UserImportPreviewRow[]): {
 
   let emptyRequiredCount = 0;
   let invalidGradeCount = 0;
+  let invalidUsernameCount = 0;
+  let invalidEmailCount = 0;
+  let invalidNameCount = 0;
+  let invalidPasswordCount = 0;
+  let initEmailCount = 0;
 
   rows.forEach((r, idx) => {
     const hasEmpty = requiredKeys.some((k) => !normalizeText(r[k]));
@@ -193,24 +251,32 @@ function buildStats(rows: UserImportPreviewRow[]): {
       invalidRowIndexes.push(idx);
     }
 
-    // ✅ 年级格式校验（仅当 grade 非空时校验；空会被 required 统计到）
-    const grade = normalizeText(r.grade);
-    if (grade) {
-      const vg = validateGrade(grade);
-      if (!vg.ok) {
-        invalidGradeCount += 1;
-        if (!invalidRowIndexes.includes(idx)) invalidRowIndexes.push(idx);
+    const username = normalizeText(r.username);
+    const email = normalizeText(r.email);
+    const name = normalizeText(r.name);
+    const password = normalizeText(r.password);
 
-        // 示例：最多收集前 5 条，避免提示过长
-        if (invalidGradeExamples.length < 5) {
-          // Excel 行号：第 1 行为表头，所以数据第 idx 对应 idx+2
-          const excelRowNo = idx + 2;
-          const u = normalizeText(r.username) || "-";
-          invalidGradeExamples.push(
-            `第${excelRowNo}行（学号：${u}）年级="${grade}"`,
-          );
-        }
+    if (email === INIT_EMAIL) {
+      initEmailCount += 1;
+    }
+    if (username && !isValidUsername11Digits(username)) invalidUsernameCount += 1;
+    if (email && !isValidEmail(email)) invalidEmailCount += 1;
+    if (name && hasDigitInName(name)) invalidNameCount += 1;
+    if (password && getStrongPasswordError(password)) invalidPasswordCount += 1;
+
+    const issues = getRowIssues(r);
+    if (issues.length > 0) {
+      if (!invalidRowIndexes.includes(idx)) invalidRowIndexes.push(idx);
+      if (issueExamples.length < 10) {
+        const excelRowNo = idx + 2;
+        const u = username || "-";
+        issueExamples.push(`第${excelRowNo}行（学号：${u}）：${issues.join("；")}`);
       }
+    }
+
+    const vg = validateGrade(r.grade);
+    if (!vg.ok) {
+      invalidGradeCount += 1;
     }
   });
 
@@ -241,10 +307,15 @@ function buildStats(rows: UserImportPreviewRow[]): {
       importableCount: pickImportableRows(rows).length,
       emptyRequiredCount,
       duplicateUsernameCount,
+      invalidUsernameCount,
+      invalidEmailCount,
+      invalidNameCount,
+      invalidPasswordCount,
+      initEmailCount,
       invalidGradeCount,
     },
     invalidRowIndexes: invalidRowIndexes.sort((a, b) => a - b),
-    invalidGradeExamples,
+    issueExamples,
   };
 }
 
@@ -260,19 +331,8 @@ function previewToPayload(rows: UserImportPreviewRow[]): UserCreatePayload[] {
 }
 
 function isRowImportable(row: UserImportPreviewRow): boolean {
-  const requiredKeys: (keyof UserImportPreviewRow)[] = [
-    "username",
-    "password",
-    "name",
-    "email",
-    "major",
-    "grade",
-  ];
-  const hasEmpty = requiredKeys.some((k) => !normalizeText(row[k]));
-  if (hasEmpty) return false;
-
-  const gradeCheck = validateGrade(row.grade);
-  return gradeCheck.ok;
+  const issues = getRowIssues(row);
+  return issues.length === 0;
 }
 
 function pickImportableRows(
@@ -297,17 +357,19 @@ function toShellResult(x: unknown): ApiShellResult {
   // ✅ request() 里通常已经“解壳”了 data，但你们批量导入接口很可能返回的是统一壳
   // 所以这里做一个兼容：如果长得像壳就原样用，否则包成 { code: 200, data: x }
   if (x && typeof x === "object") {
-    const anyX = x as any;
-    const hasCode = "code" in anyX;
-    const hasMsg = "msg" in anyX;
-    const hasData = "data" in anyX;
+    const maybeShell = x as Record<string, unknown>;
+    const hasCode = "code" in maybeShell;
+    const hasMsg = "msg" in maybeShell;
+    const hasData = "data" in maybeShell;
     if (hasCode || hasMsg || hasData) {
       return {
-        code: typeof anyX.code === "number" ? anyX.code : undefined,
-        msg: typeof anyX.msg === "string" ? anyX.msg : undefined,
-        data: anyX.data,
+        code: typeof maybeShell.code === "number" ? maybeShell.code : undefined,
+        msg: typeof maybeShell.msg === "string" ? maybeShell.msg : undefined,
+        data: maybeShell.data,
         timestamp:
-          typeof anyX.timestamp === "number" ? anyX.timestamp : undefined,
+          typeof maybeShell.timestamp === "number"
+            ? maybeShell.timestamp
+            : undefined,
       };
     }
   }
@@ -388,13 +450,12 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
         }
 
         const ws = wb.Sheets[firstSheetName];
-        const json = XLSX.utils.sheet_to_json<Record<string, any>>(ws, {
+        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
           defval: "",
         });
 
         const rows = mapSheetRowsToPreview(json);
-        const { stats, invalidRowIndexes, invalidGradeExamples } =
-          buildStats(rows);
+        const { stats, invalidRowIndexes, issueExamples } = buildStats(rows);
 
         setPreview({
           open: true,
@@ -402,21 +463,23 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
           rows,
           stats,
           invalidRowIndexes,
-          invalidGradeExamples,
+          issueExamples,
         });
 
         if (rows.length === 0) {
           notify({ kind: "info", msg: "未解析到有效数据（可能是空表）" });
         } else {
-          // ✅ 新增：年级不合格提醒（解析阶段就提示）
-          if (stats.invalidGradeCount > 0) {
-            const exampleText =
-              invalidGradeExamples.length > 0
-                ? `；示例：${invalidGradeExamples.join("，")}`
-                : "";
+          if (stats.initEmailCount > 0) {
             notify({
               kind: "info",
-              msg: `⚠️ 存在 ${stats.invalidGradeCount} 行年级格式不合法（应为：YYYY-硕 / YYYY-博）${exampleText}`,
+              msg: `检测到 ${stats.initEmailCount} 条初始邮箱（${INIT_EMAIL}）记录`,
+            });
+          }
+
+          if (issueExamples.length > 0) {
+            notify({
+              kind: "info",
+              msg: `发现 ${invalidRowIndexes.length} 行数据不合规，预览里可查看明细（示例：${issueExamples[0]}）`,
             });
           }
         }
@@ -464,15 +527,10 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       });
     }
 
-    // ✅ 新增：年级格式不合格提醒（提交前再次提醒）
-    if (preview.stats.invalidGradeCount > 0) {
-      const exampleText =
-        preview.invalidGradeExamples?.length > 0
-          ? `；示例：${preview.invalidGradeExamples.join("，")}`
-          : "";
+    if (preview.stats.initEmailCount > 0) {
       notify({
         kind: "info",
-        msg: `存在 ${preview.stats.invalidGradeCount} 行年级格式不合法（应为：YYYY-硕 / YYYY-博）${exampleText}`,
+        msg: `本次包含 ${preview.stats.initEmailCount} 条初始邮箱记录（${INIT_EMAIL}）`,
       });
     }
 
@@ -535,7 +593,6 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
     closePreview,
     notify,
     openResult,
-    preview.invalidGradeExamples,
     preview.rows,
     preview.stats,
   ]);

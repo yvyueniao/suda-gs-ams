@@ -2,6 +2,10 @@ import { useEffect } from "react";
 import { Button, Form, Input, Modal, Typography } from "antd";
 
 import { useForgotPassword } from "../../features/auth/hooks/useForgotPassword";
+import {
+  getStrongPasswordError,
+  isValidUsername11Digits,
+} from "../../shared/utils/accountValidation";
 
 type Props = {
   open: boolean;
@@ -45,9 +49,20 @@ export default function ForgotPasswordModal({
         <Form.Item
           name="username"
           label="账号"
-          rules={[{ required: true, message: "请输入账号" }]}
+          rules={[
+            { required: true, message: "请输入账号" },
+            {
+              validator: async (_, value) => {
+                const v = String(value ?? "").trim();
+                if (!v) return;
+                if (!isValidUsername11Digits(v)) {
+                  throw new Error("账号必须是 11 位数字学号");
+                }
+              },
+            },
+          ]}
         >
-          <Input placeholder="请输入账号" maxLength={15} />
+          <Input placeholder="请输入 11 位数字学号" maxLength={11} />
         </Form.Item>
 
         <Form.Item
@@ -78,7 +93,15 @@ export default function ForgotPasswordModal({
         <Form.Item
           name="newPassword"
           label="新密码"
-          rules={[{ required: true, message: "请输入新密码" }]}
+          rules={[
+            { required: true, message: "请输入新密码" },
+            {
+              validator: async (_, value) => {
+                const msg = getStrongPasswordError(String(value ?? ""));
+                if (msg) throw new Error(msg);
+              },
+            },
+          ]}
         >
           <Input.Password placeholder="请输入新密码" />
         </Form.Item>

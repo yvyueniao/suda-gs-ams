@@ -209,17 +209,15 @@ export function useUserApplyScoreImportFlow(options?: { onNotify?: Notify }) {
   const parsingRef = useRef(false);
 
   const [loadingActivities, setLoadingActivities] = useState(false);
+  const loadedActivitiesRef = useRef(false);
 
   const [result, setResult] = useState<ResultState>({ open: false });
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
-  const openPreview = useCallback(() => {
-    setPreview({ ...EMPTY_PREVIEW, open: true });
-  }, []);
-
   const closePreview = useCallback(() => {
     setPreview(EMPTY_PREVIEW);
+    loadedActivitiesRef.current = false;
   }, []);
 
   const closeResult = useCallback(() => {
@@ -248,7 +246,10 @@ export function useUserApplyScoreImportFlow(options?: { onNotify?: Notify }) {
     });
   }, []);
 
-  const loadActivities = useCallback(async () => {
+  const loadActivities = useCallback(async (force = false) => {
+    if (loadingActivities) return;
+    if (!force && loadedActivitiesRef.current) return;
+
     setLoadingActivities(true);
     try {
       const rows = await searchAllActivities();
@@ -262,6 +263,7 @@ export function useUserApplyScoreImportFlow(options?: { onNotify?: Notify }) {
         ...s,
         activityOptions: options,
       }));
+      loadedActivitiesRef.current = true;
     } catch (err) {
       notify({
         kind: "error",
@@ -270,7 +272,12 @@ export function useUserApplyScoreImportFlow(options?: { onNotify?: Notify }) {
     } finally {
       setLoadingActivities(false);
     }
-  }, [notify]);
+  }, [loadingActivities, notify]);
+
+  const openPreview = useCallback(() => {
+    setPreview({ ...EMPTY_PREVIEW, open: true });
+    void loadActivities();
+  }, [loadActivities]);
 
   const parseFile = useCallback(
     async (file: File) => {

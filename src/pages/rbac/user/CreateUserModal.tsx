@@ -13,6 +13,12 @@ import { useEffect } from "react";
 import { Modal, Form, Input } from "antd";
 
 import type { UserCreatePayload } from "../../../features/rbac/user/types";
+import {
+  getStrongPasswordError,
+  hasDigitInName,
+  isValidEmail,
+  isValidUsername11Digits,
+} from "../../../shared/utils/accountValidation";
 
 export type CreateUserModalProps = {
   open: boolean;
@@ -62,9 +68,18 @@ export default function CreateUserModal(props: CreateUserModalProps) {
           rules={[
             { required: true, message: "请输入学号" },
             { whitespace: true, message: "学号不能为空" },
+            {
+              validator: async (_, value) => {
+                const v = String(value ?? "").trim();
+                if (!v) return;
+                if (!isValidUsername11Digits(v)) {
+                  throw new Error("学号必须是 11 位数字");
+                }
+              },
+            },
           ]}
         >
-          <Input placeholder="请输入学号" maxLength={32} />
+          <Input placeholder="请输入 11 位数字学号" maxLength={11} />
         </Form.Item>
 
         <Form.Item
@@ -73,6 +88,12 @@ export default function CreateUserModal(props: CreateUserModalProps) {
           rules={[
             { required: true, message: "请输入密码" },
             { whitespace: true, message: "密码不能为空" },
+            {
+              validator: async (_, value) => {
+                const msg = getStrongPasswordError(String(value ?? ""));
+                if (msg) throw new Error(msg);
+              },
+            },
           ]}
         >
           <Input.Password placeholder="请输入密码" maxLength={64} />
@@ -84,6 +105,15 @@ export default function CreateUserModal(props: CreateUserModalProps) {
           rules={[
             { required: true, message: "请输入姓名" },
             { whitespace: true, message: "姓名不能为空" },
+            {
+              validator: async (_, value) => {
+                const v = String(value ?? "").trim();
+                if (!v) return;
+                if (hasDigitInName(v)) {
+                  throw new Error("姓名不能包含数字字符");
+                }
+              },
+            },
           ]}
         >
           <Input placeholder="请输入姓名" maxLength={32} />
@@ -94,7 +124,15 @@ export default function CreateUserModal(props: CreateUserModalProps) {
           name="email"
           rules={[
             { required: true, message: "请输入邮箱" },
-            { type: "email", message: "邮箱格式不正确" },
+            {
+              validator: async (_, value) => {
+                const v = String(value ?? "").trim();
+                if (!v) return;
+                if (!isValidEmail(v)) {
+                  throw new Error("邮箱格式不正确");
+                }
+              },
+            },
           ]}
         >
           <Input placeholder="例如：xxx@suda.edu.cn" maxLength={64} />

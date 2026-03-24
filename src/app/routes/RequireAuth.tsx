@@ -7,6 +7,7 @@ import { getToken, clearToken, setToken } from "../../shared/session/token";
 import { verifyToken, getUserInfo } from "../../features/auth/api";
 import { ApiError } from "../../shared/http/error";
 import { clearUser, setUser } from "../../shared/session/session";
+import { INIT_EMAIL } from "../../shared/utils/accountValidation";
 
 type GuardState = "checking" | "ok" | "login" | "fatal";
 
@@ -42,13 +43,17 @@ export default function RequireAuth() {
         // ✅ 2) 拉取最新用户信息（可能刷新 token）
         const info = await getUserInfo();
 
-        setUser(info.user);
+        if (info.user?.email !== INIT_EMAIL) {
+          setUser(info.user);
+        } else {
+          clearUser();
+        }
         if (info.token) {
           setToken(info.token);
         }
 
         setState("ok");
-      } catch (e: any) {
+      } catch (e: unknown) {
         // ✅ token 失效 -> HTTP 401
         if (e instanceof ApiError) {
           if (e.code === "UNAUTHORIZED" || e.code === "FORBIDDEN") {

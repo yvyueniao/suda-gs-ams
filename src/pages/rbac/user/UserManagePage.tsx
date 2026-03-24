@@ -344,6 +344,7 @@ export default function UserManagePage() {
         parsing={!!importFlow.parsing}
         submitting={!!importFlow.submitting}
         previewStats={previewStats}
+        issueExamples={importFlow.preview.issueExamples}
         onFileSelected={importFlow.parseFile}
         onConfirmImport={async () => {
           await importFlow.submitImportAndReload();

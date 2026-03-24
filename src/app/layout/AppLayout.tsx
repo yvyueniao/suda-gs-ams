@@ -37,8 +37,13 @@ import { verifyToken } from "../../features/auth/api";
 import { ApiError } from "../../shared/http/error";
 import { clearToken } from "../../shared/session/token";
 import { clearUser } from "../../shared/session/session";
+import { updateEmail } from "../../features/profile/api";
+import ForceUpdateEmailModal from "./ForceUpdateEmailModal";
+import { INIT_EMAIL } from "../../shared/utils/accountValidation";
 
 const { Header, Content, Footer } = Layout;
+const TOKEN_KEY = "suda-gs-ams:token";
+const USER_KEY = "suda-gs-ams:user";
 
 function roleLabel(role: number) {
   const map: Record<number, string> = {
@@ -72,6 +77,19 @@ export default function AppLayout() {
   const logoutAction = useAsyncAction({
     successMessage: "已退出登录",
     errorMessage: "退出失败",
+  });
+  const forceUpdateEmailAction = useAsyncAction({
+    successMessage: undefined,
+    errorMessage: "邮箱修改失败，请重试",
+    onSuccess: async (backendMsg) => {
+      const msgText = String(backendMsg ?? "").trim();
+      if (msgText) {
+        message.success(msgText);
+      }
+      message.info("邮箱已设置成功，请重新登录");
+      await logout();
+      return false;
+    },
   });
 
   const {
@@ -180,7 +198,7 @@ export default function AppLayout() {
       try {
         await verifyToken();
         lastCheckAtRef.current = Date.now();
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (e instanceof ApiError) {
           if (e.code === "UNAUTHORIZED" || e.code === "FORBIDDEN") {
             clearToken();
@@ -199,6 +217,19 @@ export default function AppLayout() {
     };
   }, [location.pathname, location.search, navigate, loading, user]);
 
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== TOKEN_KEY && event.key !== USER_KEY) return;
+      if (event.newValue) return;
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [navigate]);
+
   if (loading) return <Spin fullscreen />;
 
   const navBtnIcon = isMobile ? (
@@ -212,6 +243,7 @@ export default function AppLayout() {
   const userLabel = `${user?.name ?? "未登录"}（${
     user ? roleLabel(user.role) : "-"
   }）`;
+  const needForceUpdateEmail = user?.email === INIT_EMAIL;
 
   return (
     // ✅ 关键：用 className 控制“页面不滚动，只滚内容区”
@@ -290,6 +322,18 @@ export default function AppLayout() {
         © {new Date().getFullYear()} 苏州大学计算机科学与技术学院 ·
         研究生会活动管理系统
       </Footer>
+
+      <ForceUpdateEmailModal
+        open={needForceUpdateEmail}
+        loading={forceUpdateEmailAction.loading}
+        initialEmail={INIT_EMAIL}
+        onSubmit={(payload) =>
+          forceUpdateEmailAction.run(async () => {
+            const msg = await updateEmail(payload);
+            return String(msg ?? "").trim() || "邮箱修改成功";
+          })
+        }
+      />
     </Layout>
   );
 }
