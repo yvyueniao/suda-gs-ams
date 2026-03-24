@@ -37,7 +37,7 @@ import { verifyToken } from "../../features/auth/api";
 import { ApiError } from "../../shared/http/error";
 import { clearToken } from "../../shared/session/token";
 import { clearUser } from "../../shared/session/session";
-import { updateEmail } from "../../features/profile/api";
+import { modifyPassword, updateEmail } from "../../features/profile/api";
 import ForceUpdateEmailModal from "./ForceUpdateEmailModal";
 import { INIT_EMAIL } from "../../shared/utils/accountValidation";
 
@@ -78,15 +78,24 @@ export default function AppLayout() {
     successMessage: "已退出登录",
     errorMessage: "退出失败",
   });
-  const forceUpdateEmailAction = useAsyncAction({
+  const forceUpdateEmailAction = useAsyncAction<{
+    emailMsg: string;
+    passwordMsg: string;
+  }>({
     successMessage: undefined,
-    errorMessage: "邮箱修改失败，请重试",
+    errorMessage: "邮箱或密码修改失败，请重试",
     onSuccess: async (backendMsg) => {
-      const msgText = String(backendMsg ?? "").trim();
-      if (msgText) {
-        message.success(msgText);
+      const emailMsg = String(backendMsg?.emailMsg ?? "").trim();
+      const passwordMsg = String(backendMsg?.passwordMsg ?? "").trim();
+
+      if (emailMsg) {
+        message.success(`邮箱：${emailMsg}`);
       }
-      message.info("邮箱已设置成功，请重新登录");
+      if (passwordMsg) {
+        message.success(`密码：${passwordMsg}`);
+      }
+
+      message.info("邮箱和密码已设置成功，请重新登录");
       await logout();
       return false;
     },
@@ -329,8 +338,16 @@ export default function AppLayout() {
         initialEmail={INIT_EMAIL}
         onSubmit={(payload) =>
           forceUpdateEmailAction.run(async () => {
-            const msg = await updateEmail(payload);
-            return String(msg ?? "").trim() || "邮箱修改成功";
+            const emailMsg = await updateEmail({ email: payload.email });
+            const passwordMsg = await modifyPassword({
+              oldPassword: payload.oldPassword,
+              newPassword1: payload.newPassword1,
+              newPassword2: payload.newPassword2,
+            });
+            return {
+              emailMsg: String(emailMsg ?? "").trim() || "邮箱修改成功",
+              passwordMsg: String(passwordMsg ?? "").trim() || "密码修改成功",
+            };
           })
         }
       />
