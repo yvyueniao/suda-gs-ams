@@ -21,8 +21,8 @@ import type {
   BatchLockUserPayload,
   UnlockUserPayload,
   UserInfo,
-  SpecialScorePayload,
-  SpecialScoreResult,
+  BatchInsertApplyScorePayload,
+  BatchInsertApplyScoreResult,
 
   // ✅ 新增类型
   UsernameApplicationItem,
@@ -149,17 +149,15 @@ export async function getUserInfo(username: string): Promise<UserInfo> {
 
 /**
  * ======================================
- * 8) ✅ 录入加分
- * POST /activity/special
- *
- * ✅ request 解壳 => 返回 data（通常是 string）
+ * 8) 活动批量导入报名加分
+ * POST /activity/batchInsertApply
  * ======================================
  */
-export async function specialAddScore(
-  payload: SpecialScorePayload,
-): Promise<SpecialScoreResult> {
-  return request<SpecialScoreResult>({
-    url: "/activity/special",
+export async function batchInsertApplyScore(
+  payload: BatchInsertApplyScorePayload,
+): Promise<BatchInsertApplyScoreResult> {
+  return request<BatchInsertApplyScoreResult>({
+    url: "/activity/batchInsertApply",
     method: "POST",
     data: payload,
   });

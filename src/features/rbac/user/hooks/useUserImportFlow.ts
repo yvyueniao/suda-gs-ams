@@ -14,6 +14,7 @@ const noopNotify: Notify = () => {
 
 type ImportPreviewStats = {
   total: number;
+  importableCount: number;
   emptyRequiredCount: number;
   duplicateUsernameCount: number;
 
@@ -31,6 +32,20 @@ type ImportPreviewState = {
 
   /** ✅ 新增：用于提醒的示例（最多前几条） */
   invalidGradeExamples: string[];
+};
+
+const INITIAL_PREVIEW_STATE: ImportPreviewState = {
+  open: false,
+  rows: [],
+  stats: {
+    total: 0,
+    importableCount: 0,
+    emptyRequiredCount: 0,
+    duplicateUsernameCount: 0,
+    invalidGradeCount: 0,
+  },
+  invalidRowIndexes: [],
+  invalidGradeExamples: [],
 };
 
 /**
@@ -223,6 +238,7 @@ function buildStats(rows: UserImportPreviewRow[]): {
   return {
     stats: {
       total: rows.length,
+      importableCount: pickImportableRows(rows).length,
       emptyRequiredCount,
       duplicateUsernameCount,
       invalidGradeCount,
@@ -241,6 +257,38 @@ function previewToPayload(rows: UserImportPreviewRow[]): UserCreatePayload[] {
     major: normalizeText(r.major),
     grade: normalizeText(r.grade),
   }));
+}
+
+function isRowImportable(row: UserImportPreviewRow): boolean {
+  const requiredKeys: (keyof UserImportPreviewRow)[] = [
+    "username",
+    "password",
+    "name",
+    "email",
+    "major",
+    "grade",
+  ];
+  const hasEmpty = requiredKeys.some((k) => !normalizeText(row[k]));
+  if (hasEmpty) return false;
+
+  const gradeCheck = validateGrade(row.grade);
+  return gradeCheck.ok;
+}
+
+function pickImportableRows(rows: UserImportPreviewRow[]): UserImportPreviewRow[] {
+  const seen = new Set<string>();
+  const importable: UserImportPreviewRow[] = [];
+
+  for (const row of rows) {
+    if (!isRowImportable(row)) continue;
+    const username = normalizeText(row.username);
+    if (!username) continue;
+    if (seen.has(username)) continue;
+    seen.add(username);
+    importable.push(row);
+  }
+
+  return importable;
 }
 
 function toShellResult(x: unknown): ApiShellResult {
@@ -273,43 +321,21 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
   // =========================
   // 1) 预览弹窗状态
   // =========================
-  const [preview, setPreview] = useState<ImportPreviewState>({
-    open: false,
-    rows: [],
-    stats: {
-      total: 0,
-      emptyRequiredCount: 0,
-      duplicateUsernameCount: 0,
-      invalidGradeCount: 0,
-    },
-    invalidRowIndexes: [],
-    invalidGradeExamples: [],
-  });
+  const [preview, setPreview] = useState<ImportPreviewState>(INITIAL_PREVIEW_STATE);
 
   const [parsing, setParsing] = useState(false);
   const parsingRef = useRef(false);
 
   const openPreview = useCallback(() => {
-    setPreview((s) => ({ ...s, open: true }));
+    setPreview({ ...INITIAL_PREVIEW_STATE, open: true });
   }, []);
 
   const closePreview = useCallback(() => {
-    setPreview((s) => ({ ...s, open: false }));
+    setPreview(INITIAL_PREVIEW_STATE);
   }, []);
 
   const resetPreview = useCallback(() => {
-    setPreview({
-      open: false,
-      rows: [],
-      stats: {
-        total: 0,
-        emptyRequiredCount: 0,
-        duplicateUsernameCount: 0,
-        invalidGradeCount: 0,
-      },
-      invalidRowIndexes: [],
-      invalidGradeExamples: [],
-    });
+    setPreview(INITIAL_PREVIEW_STATE);
   }, []);
 
   // =========================
@@ -325,7 +351,7 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
   }, []);
 
   const closeResult = useCallback(() => {
-    setResult((s) => ({ ...s, open: false }));
+    setResult({ open: false, result: undefined });
   }, []);
 
   // =========================
@@ -446,7 +472,23 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       });
     }
 
-    const payload = previewToPayload(rows);
+    const importableRows = pickImportableRows(rows);
+    const payload = previewToPayload(importableRows);
+    const skippedCount = rows.length - importableRows.length;
+    if (skippedCount > 0) {
+      notify({
+        kind: "info",
+        msg: `本次将跳过 ${skippedCount} 行问题/重复数据，仅提交 ${importableRows.length} 行`,
+      });
+    }
+
+    if (payload.length === 0) {
+      notify({
+        kind: "error",
+        msg: "没有可提交的有效数据，请修正后再导入",
+      });
+      return;
+    }
 
     submittingRef.current = true;
     setSubmitting(true);
@@ -472,7 +514,14 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
       }
     } catch (err) {
       // ✅ 失败：优先 err.message（ApiError.message=后端 msg）
-      notify({ kind: "error", msg: errToMsg(err, "导入失败") });
+      const msg = errToMsg(err, "导入失败");
+      openResult({
+        code: 500,
+        msg,
+        data: `提交失败（尝试提交 ${payload.length} 行）`,
+        timestamp: Date.now(),
+      });
+      notify({ kind: "error", msg });
       throw err;
     } finally {
       submittingRef.current = false;

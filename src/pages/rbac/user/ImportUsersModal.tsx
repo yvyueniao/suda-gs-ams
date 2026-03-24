@@ -19,6 +19,7 @@ const { Text, Link } = Typography;
 
 export type ImportPreviewStats = {
   total: number;
+  importableCount: number;
   emptyRequiredCount: number;
   duplicateUsernameCount: number;
 
@@ -64,6 +65,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
   const stats = useMemo(() => {
     return {
       total: previewStats?.total ?? 0,
+      importableCount: previewStats?.importableCount ?? 0,
       emptyRequiredCount: previewStats?.emptyRequiredCount ?? 0,
       duplicateUsernameCount: previewStats?.duplicateUsernameCount ?? 0,
       invalidGradeCount: previewStats?.invalidGradeCount ?? 0,
@@ -71,7 +73,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
   }, [previewStats]);
 
   const hasParsedRows = stats.total > 0;
-  const importableCount = Math.max(0, stats.total - stats.emptyRequiredCount);
+  const importableCount = Math.max(0, stats.importableCount);
 
   const uploadProps: UploadProps = {
     multiple: false,
@@ -106,6 +108,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
       onOk={() => void onConfirmImport()}
       destroyOnClose
       maskClosable={false}
+      width={760}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Alert
@@ -159,7 +162,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
         <Card size="small" title="解析统计（预览校验）">
           <Descriptions
             size="small"
-            column={1}
+            column={2}
             items={[
               {
                 key: "total",

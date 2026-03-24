@@ -1,10 +1,11 @@
 //src\shared\session\session.ts
 import type { User } from "../../features/auth/types";
+import { safeStorageGet, safeStorageRemove, safeStorageSet } from "./storage";
 
 const USER_KEY = "suda-gs-ams:user";
 
 export function getUser(): User | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = safeStorageGet(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as User;
@@ -14,9 +15,9 @@ export function getUser(): User | null {
 }
 
 export function setUser(user: User): void {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  safeStorageSet(USER_KEY, JSON.stringify(user));
 }
 
 export function clearUser(): void {
-  localStorage.removeItem(USER_KEY);
+  safeStorageRemove(USER_KEY);
 }

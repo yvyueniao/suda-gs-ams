@@ -8,6 +8,11 @@ type SafeLinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
   fallbackText?: string;
 };
 
+type FallbackSpanProps = Omit<
+  React.HTMLAttributes<HTMLSpanElement>,
+  "children" | "href" | "target" | "rel"
+>;
+
 export function SafeLink(props: SafeLinkProps) {
   const {
     href,
@@ -19,10 +24,11 @@ export function SafeLink(props: SafeLinkProps) {
   } = props;
 
   const safeHref = useMemo(() => toSafeHttpUrl(href ?? ""), [href]);
+  const spanProps = rest as FallbackSpanProps;
 
   // 不安全：直接不渲染为可点击链接（避免用户点到奇怪 scheme）
   if (!safeHref) {
-    return <span {...(rest as any)}>{children ?? fallbackText}</span>;
+    return <span {...spanProps}>{children ?? fallbackText}</span>;
   }
 
   return (

@@ -202,12 +202,7 @@ export default function FeedbackDetailPage() {
 
   return (
     <div className="feedback-page">
-      <div
-        style={{
-          height: "calc(113vh - 56px - 48px - 24px - 120px)",
-          overflow: "auto",
-        }}
-      >
+      <div className="feedback-scroll-area">
         <div className="feedback-container">
           <Card
             title={
@@ -232,11 +227,11 @@ export default function FeedbackDetailPage() {
             {/* 内容区 */}
             <div className="chat-panel">
               {loading ? (
-                <div style={{ padding: 24, textAlign: "center" }}>
+                <div className="feedback-loading-state">
                   <Spin />
                 </div>
               ) : error ? (
-                <div style={{ padding: 24 }}>
+                <div className="feedback-error-state">
                   <Text type="danger">加载失败</Text>
                   <Divider />
                   <Button onClick={reload}>重试</Button>
@@ -294,7 +289,7 @@ export default function FeedbackDetailPage() {
               )}
             </div>
 
-            <Divider style={{ margin: "16px 0" }} />
+            <Divider className="feedback-composer-divider" />
 
             {/* 发送区 */}
             <div className={`chat-composer ${isClosed ? "chat-disabled" : ""}`}>

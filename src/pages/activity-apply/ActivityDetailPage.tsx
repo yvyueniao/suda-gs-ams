@@ -166,12 +166,7 @@ export default function ActivityDetailPage() {
   return (
     <div className="activity-apply-page">
       <div className="activity-apply-container">
-        <div
-          style={{
-            height: "calc(113vh - 56px - 48px - 24px - 120px)",
-            overflow: "auto",
-          }}
-        >
+        <div className="activity-apply-scroll-area">
           <Card>
             {/* Header */}
             <div className="activity-apply-header">

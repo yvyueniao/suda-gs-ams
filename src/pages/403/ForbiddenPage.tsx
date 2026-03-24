@@ -27,15 +27,7 @@ export default function ForbiddenPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
-        background: "#fafafa",
-      }}
-    >
+    <div className="app-status-page">
       <Result
         status="403"
         title="403"

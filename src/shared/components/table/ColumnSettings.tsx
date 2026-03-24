@@ -233,7 +233,7 @@ export function ColumnSettings<T extends object = any>(
           <Divider style={{ margin: "8px 0" }} />
 
           {/* ✅ 列列表：支持显示开关 + 上移/下移 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {draftOrderKeys.map((k, idx) => {
               const title = titleMap.get(k) ?? k;
               const checked = draftVisibleKeys.includes(k);
@@ -246,8 +246,8 @@ export function ColumnSettings<T extends object = any>(
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: 12,
-                    padding: "6px 8px",
-                    borderRadius: 6,
+                    padding: "8px",
+                    borderRadius: "var(--ds-radius-sm)",
                     border: "1px solid rgba(0,0,0,0.06)",
                   }}
                 >

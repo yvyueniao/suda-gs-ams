@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Form, Input, Typography } from "antd";
+import { Button, Card, Form, Input, Tag, Typography } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -80,6 +80,8 @@ export default function LoginPage() {
       <div className="auth-container">
         {/* 左侧品牌区 */}
         <section className="auth-brand">
+          <Tag className="auth-brand-badge">SUDA GS AMS</Tag>
+
           <img
             className="auth-brand-logo"
             src="/logo.ico"
@@ -89,6 +91,15 @@ export default function LoginPage() {
           <div className="auth-brand-title">研究生会活动管理系统</div>
           <div className="auth-brand-subtitle">
             苏州大学计算机学院研究生会 · 活动管理平台
+          </div>
+
+          <div className="auth-hero-visual" aria-hidden>
+            <div className="auth-hero-orb auth-hero-orb--purple" />
+            <div className="auth-hero-orb auth-hero-orb--blue" />
+            <div className="auth-hero-orb auth-hero-orb--orange" />
+            <div className="auth-hero-note">
+              更简洁的流程入口，覆盖报名、审核、反馈闭环
+            </div>
           </div>
 
           <ul className="auth-brand-features">
