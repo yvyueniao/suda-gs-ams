@@ -4,8 +4,7 @@ import { setToken } from "../../../shared/session/token";
 import { clearUser, setUser } from "../../../shared/session/session";
 import { track } from "../../../shared/telemetry/track";
 import { ApiError } from "../../../shared/http/error";
-
-const INIT_EMAIL = "init@qq.com";
+import { INIT_EMAIL } from "../../../shared/utils/accountValidation";
 
 /**
  * useLogin

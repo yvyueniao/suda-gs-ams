@@ -22,8 +22,11 @@ export type ImportPreviewStats = {
   importableCount: number;
   emptyRequiredCount: number;
   duplicateUsernameCount: number;
-
-  /** ✅ 新增：年级格式不合格 */
+  invalidUsernameCount: number;
+  invalidEmailCount: number;
+  invalidNameCount: number;
+  invalidPasswordCount: number;
+  initEmailCount: number;
   invalidGradeCount: number;
 };
 
@@ -36,6 +39,7 @@ export type ImportUsersModalProps = {
 
   /** ✅ 来自 useUserImportFlow.preview.stats */
   previewStats: ImportPreviewStats | null;
+  issueExamples?: string[];
 
   /** 选择文件后回调（父层解析） */
   onFileSelected: (file: File) => void | Promise<unknown>;
@@ -58,6 +62,7 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
     parsing,
     submitting,
     previewStats,
+    issueExamples,
     onFileSelected,
     onConfirmImport,
   } = props;
@@ -68,6 +73,11 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
       importableCount: previewStats?.importableCount ?? 0,
       emptyRequiredCount: previewStats?.emptyRequiredCount ?? 0,
       duplicateUsernameCount: previewStats?.duplicateUsernameCount ?? 0,
+      invalidUsernameCount: previewStats?.invalidUsernameCount ?? 0,
+      invalidEmailCount: previewStats?.invalidEmailCount ?? 0,
+      invalidNameCount: previewStats?.invalidNameCount ?? 0,
+      invalidPasswordCount: previewStats?.invalidPasswordCount ?? 0,
+      initEmailCount: previewStats?.initEmailCount ?? 0,
       invalidGradeCount: previewStats?.invalidGradeCount ?? 0,
     };
   }, [previewStats]);
@@ -92,6 +102,10 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
   const hasAnyIssue =
     stats.emptyRequiredCount > 0 ||
     stats.duplicateUsernameCount > 0 ||
+    stats.invalidUsernameCount > 0 ||
+    stats.invalidEmailCount > 0 ||
+    stats.invalidNameCount > 0 ||
+    stats.invalidPasswordCount > 0 ||
     stats.invalidGradeCount > 0;
 
   return (
@@ -189,8 +203,47 @@ export default function ImportUsersModal(props: ImportUsersModalProps) {
                 label: "年级格式不合格",
                 children: <Text strong>{stats.invalidGradeCount}</Text>,
               },
+              {
+                key: "usernameInvalid",
+                label: "学号格式不合格",
+                children: <Text strong>{stats.invalidUsernameCount}</Text>,
+              },
+              {
+                key: "emailInvalid",
+                label: "邮箱格式不合格",
+                children: <Text strong>{stats.invalidEmailCount}</Text>,
+              },
+              {
+                key: "nameInvalid",
+                label: "姓名包含数字",
+                children: <Text strong>{stats.invalidNameCount}</Text>,
+              },
+              {
+                key: "passwordInvalid",
+                label: "密码不合规",
+                children: <Text strong>{stats.invalidPasswordCount}</Text>,
+              },
+              {
+                key: "initEmailCount",
+                label: "初始邮箱数量",
+                children: <Text strong>{stats.initEmailCount}</Text>,
+              },
             ]}
           />
+
+          {!!issueExamples?.length && (
+            <Alert
+              style={{ marginTop: 12 }}
+              type="warning"
+              showIcon
+              message="非法行错误明细（最多展示 10 条）"
+              description={
+                <div style={{ whiteSpace: "pre-wrap" }}>
+                  {issueExamples.map((item) => `- ${item}`).join("\n")}
+                </div>
+              }
+            />
+          )}
 
           {hasParsedRows ? (
             <Alert

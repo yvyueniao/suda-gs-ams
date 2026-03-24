@@ -39,9 +39,9 @@ import { clearToken } from "../../shared/session/token";
 import { clearUser } from "../../shared/session/session";
 import { updateEmail } from "../../features/profile/api";
 import ForceUpdateEmailModal from "./ForceUpdateEmailModal";
+import { INIT_EMAIL } from "../../shared/utils/accountValidation";
 
 const { Header, Content, Footer } = Layout;
-const INIT_EMAIL = "init@qq.com";
 const TOKEN_KEY = "suda-gs-ams:token";
 const USER_KEY = "suda-gs-ams:user";
 
@@ -79,11 +79,16 @@ export default function AppLayout() {
     errorMessage: "退出失败",
   });
   const forceUpdateEmailAction = useAsyncAction({
-    successMessage: (msg) =>
-      String(msg ?? "").trim() || "邮箱修改成功，请重新登录",
+    successMessage: undefined,
     errorMessage: "邮箱修改失败，请重试",
-    onSuccess: async () => {
+    onSuccess: async (backendMsg) => {
+      const msgText = String(backendMsg ?? "").trim();
+      if (msgText) {
+        message.success(msgText);
+      }
+      message.info("邮箱已设置成功，请重新登录");
       await logout();
+      return false;
     },
   });
 

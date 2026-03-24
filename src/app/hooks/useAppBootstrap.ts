@@ -8,8 +8,7 @@ import { clearUser, getUser, setUser } from "../../shared/session/session";
 
 // 引入 Sentry 用户追踪 API
 import { setSentryUser } from "../telemetry/sentry";
-
-const INIT_EMAIL = "init@qq.com";
+import { INIT_EMAIL } from "../../shared/utils/accountValidation";
 
 export function useAppBootstrap() {
   const navigate = useNavigate();

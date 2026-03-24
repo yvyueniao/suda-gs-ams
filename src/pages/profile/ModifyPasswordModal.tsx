@@ -26,6 +26,7 @@ import type { FormInstance } from "antd/es/form";
 import type { MutableRefObject } from "react";
 
 import type { ModifyPasswordPayload } from "../../features/profile/types";
+import { getStrongPasswordError } from "../../shared/utils/accountValidation";
 
 type Props = {
   open: boolean;
@@ -103,7 +104,15 @@ export default function ModifyPasswordModal({
         <Form.Item
           name="newPassword1"
           label="新密码"
-          rules={[{ required: true, message: "请输入新密码" }]}
+          rules={[
+            { required: true, message: "请输入新密码" },
+            {
+              validator: async (_, value) => {
+                const msg = getStrongPasswordError(String(value ?? ""));
+                if (msg) throw new Error(msg);
+              },
+            },
+          ]}
         >
           <Input.Password />
         </Form.Item>

@@ -7,9 +7,9 @@ import { getToken, clearToken, setToken } from "../../shared/session/token";
 import { verifyToken, getUserInfo } from "../../features/auth/api";
 import { ApiError } from "../../shared/http/error";
 import { clearUser, setUser } from "../../shared/session/session";
+import { INIT_EMAIL } from "../../shared/utils/accountValidation";
 
 type GuardState = "checking" | "ok" | "login" | "fatal";
-const INIT_EMAIL = "init@qq.com";
 
 export default function RequireAuth() {
   const location = useLocation();
