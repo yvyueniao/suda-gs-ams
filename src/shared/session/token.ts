@@ -1,14 +1,16 @@
 //src\shared\session\token.ts
+import { safeStorageGet, safeStorageRemove, safeStorageSet } from "./storage";
+
 const TOKEN_KEY = "suda-gs-ams:token";
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return safeStorageGet(TOKEN_KEY);
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+  safeStorageSet(TOKEN_KEY, token);
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+  safeStorageRemove(TOKEN_KEY);
 }

@@ -1,5 +1,6 @@
 // src/shared/http/client.ts
-import axios, { AxiosError, AxiosInstance } from "axios";
+import axios, { AxiosError, AxiosHeaders, AxiosInstance } from "axios";
+import type { AxiosRequestConfig } from "axios";
 import type { ApiResponse } from "./types";
 import { ApiError } from "./error";
 import { getToken, clearToken } from "../session/token";
@@ -27,18 +28,20 @@ export function setOnHttpError(handler: (err: ApiError) => void) {
   onHttpError = handler;
 }
 
-function isApiEnvelope(x: any): x is ApiResponse<any> {
+function isApiEnvelope<T>(x: unknown): x is ApiResponse<T> {
   return (
-    x &&
+    !!x &&
     typeof x === "object" &&
+    "code" in x &&
     typeof x.code === "number" &&
+    "msg" in x &&
     typeof x.msg === "string" &&
     "data" in x
   );
 }
 
 /** ✅ 判断 FormData：用于上传文件 */
-function isFormData(val: any): val is FormData {
+function isFormData(val: unknown): val is FormData {
   return typeof FormData !== "undefined" && val instanceof FormData;
 }
 
@@ -53,9 +56,35 @@ type RequestMeta = {
   authFail?: AuthFailPolicy;
 };
 
-type RequestConfig = Parameters<AxiosInstance["request"]>[0] & {
+type RequestConfig = AxiosRequestConfig & {
   meta?: RequestMeta;
 };
+
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[\r\n]+/g, "").trim();
+}
+
+function getServerMessage(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const maybeMsg = "msg" in data ? data.msg : undefined;
+  if (typeof maybeMsg === "string" && maybeMsg.trim()) return maybeMsg;
+  const maybeMessage = "message" in data ? data.message : undefined;
+  if (typeof maybeMessage === "string" && maybeMessage.trim()) return maybeMessage;
+  return undefined;
+}
+
+function ensureMutableHeaders(
+  headers: RequestConfig["headers"],
+): AxiosHeaders {
+  if (headers instanceof AxiosHeaders) return headers;
+  return new AxiosHeaders((headers ?? {}) as Record<string, string>);
+}
+
+function ensureJsonContentType(headers: AxiosHeaders): void {
+  if (!headers.get("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+}
 
 function doLogout(reason?: string) {
   clearToken();
@@ -79,12 +108,7 @@ function toApiErrorFromAxios(error: AxiosError): ApiError {
   }
 
   const status = error.response.status;
-  const data: any = error.response.data;
-
-  const msgFromServer =
-    (typeof data?.msg === "string" && data.msg) ||
-    (typeof data?.message === "string" && data.message) ||
-    undefined;
+  const msgFromServer = getServerMessage(error.response.data);
 
   // 3) HTTP 401：token 无效/过期（这类一定要登出）
   if (status === 401) {
@@ -127,28 +151,24 @@ function createHttpClient(): AxiosInstance {
   });
 
   instance.interceptors.request.use((config) => {
+    const headers = ensureMutableHeaders(config.headers);
+
     const token = getToken();
     if (token) {
-      config.headers = config.headers ?? {};
-      (config.headers as any).Authorization = token; // ✅ 不加 Bearer
+      const safeToken = sanitizeHeaderValue(token);
+      if (safeToken) {
+        headers.set("Authorization", safeToken); // ✅ 不加 Bearer
+      }
     }
 
     if (isFormData(config.data)) {
-      if (config.headers) {
-        delete (config.headers as any)["Content-Type"];
-        delete (config.headers as any)["content-type"];
-      }
+      headers.delete("Content-Type");
+      config.headers = headers;
       return config;
     }
 
-    config.headers = config.headers ?? {};
-    if (
-      !(config.headers as any)["Content-Type"] &&
-      !(config.headers as any)["content-type"]
-    ) {
-      (config.headers as any)["Content-Type"] = "application/json";
-    }
-    
+    ensureJsonContentType(headers);
+    config.headers = headers;
 
     return config;
   });

@@ -33,6 +33,19 @@ type ImportPreviewState = {
   invalidGradeExamples: string[];
 };
 
+const INITIAL_PREVIEW_STATE: ImportPreviewState = {
+  open: false,
+  rows: [],
+  stats: {
+    total: 0,
+    emptyRequiredCount: 0,
+    duplicateUsernameCount: 0,
+    invalidGradeCount: 0,
+  },
+  invalidRowIndexes: [],
+  invalidGradeExamples: [],
+};
+
 /**
  * ✅ 后端统一返回壳（你们接口文档口径）
  * { code, msg, data, timestamp }
@@ -273,43 +286,21 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
   // =========================
   // 1) 预览弹窗状态
   // =========================
-  const [preview, setPreview] = useState<ImportPreviewState>({
-    open: false,
-    rows: [],
-    stats: {
-      total: 0,
-      emptyRequiredCount: 0,
-      duplicateUsernameCount: 0,
-      invalidGradeCount: 0,
-    },
-    invalidRowIndexes: [],
-    invalidGradeExamples: [],
-  });
+  const [preview, setPreview] = useState<ImportPreviewState>(INITIAL_PREVIEW_STATE);
 
   const [parsing, setParsing] = useState(false);
   const parsingRef = useRef(false);
 
   const openPreview = useCallback(() => {
-    setPreview((s) => ({ ...s, open: true }));
+    setPreview({ ...INITIAL_PREVIEW_STATE, open: true });
   }, []);
 
   const closePreview = useCallback(() => {
-    setPreview((s) => ({ ...s, open: false }));
+    setPreview(INITIAL_PREVIEW_STATE);
   }, []);
 
   const resetPreview = useCallback(() => {
-    setPreview({
-      open: false,
-      rows: [],
-      stats: {
-        total: 0,
-        emptyRequiredCount: 0,
-        duplicateUsernameCount: 0,
-        invalidGradeCount: 0,
-      },
-      invalidRowIndexes: [],
-      invalidGradeExamples: [],
-    });
+    setPreview(INITIAL_PREVIEW_STATE);
   }, []);
 
   // =========================
@@ -325,7 +316,7 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
   }, []);
 
   const closeResult = useCallback(() => {
-    setResult((s) => ({ ...s, open: false }));
+    setResult({ open: false, result: undefined });
   }, []);
 
   // =========================
