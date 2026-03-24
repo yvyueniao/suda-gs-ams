@@ -51,7 +51,7 @@ type Props = {
   onConfirmImport: () => void | Promise<unknown>;
 };
 
-const TEMPLATE_URL = "/templates/activity-apply-score-template.xlsx";
+const TEMPLATE_URL = "/dist/templates/activity-apply-score-template.xlsx";
 
 export default function ImportApplyScoreModal(props: Props) {
   const {
