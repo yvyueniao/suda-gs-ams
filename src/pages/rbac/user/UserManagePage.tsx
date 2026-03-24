@@ -11,7 +11,6 @@ import {
 } from "../../../shared/components/table";
 
 import { confirmAsync, createAntdNotify } from "../../../shared/ui";
-
 import { Can } from "../../../shared/components/guard/Can";
 
 import { insertUser } from "../../../features/rbac/user/api";
@@ -133,13 +132,8 @@ export default function UserManagePage() {
   const apps = useUserApplicationsTable({
     username: detail.open ? detail.data?.username : null,
     onAfterMutate: async () => {
-      // 1) 关闭 Drawer 时需要刷新列表（避免“关闭后列表不变”）
       markDetailDirty();
-
-      // 2) 立即刷新 Drawer 上半部分（serviceScore/lectureNum 等字段变化）
       await refreshDetail();
-
-      // 3) 如列表也展示分数/次数等字段，可同步刷新用户列表（不等关闭）
       table.reload();
     },
   });
@@ -258,13 +252,7 @@ export default function UserManagePage() {
           onClearSelection={() => setSelectedUsernames([])}
           right={
             <Space>
-              <Button
-                onClick={async () => {
-                  applyScoreImport.openPreview();
-                  await applyScoreImport.loadActivities();
-                }}
-                disabled={busy}
-              >
+              <Button onClick={applyScoreImport.openPreview} disabled={busy}>
                 批量导入加分
               </Button>
 
@@ -334,7 +322,6 @@ export default function UserManagePage() {
         />
       </Card>
 
-      {/* ✅ 按时间段导出弹窗（你说现在不需要列设置：所以不传 presets/visibleKeys/...） */}
       <ExportByTimeModal
         open={exportByTime.open}
         onClose={exportByTime.closeModal}
@@ -342,34 +329,6 @@ export default function UserManagePage() {
         value={exportByTime.range}
         onChangeRange={exportByTime.setTimeRange}
         onConfirm={exportByTime.exportByTime}
-      />
-
-      <ImportApplyScoreModal
-        open={applyScoreImport.preview.open}
-        onClose={applyScoreImport.closePreview}
-        parsing={applyScoreImport.parsing}
-        submitting={applyScoreImport.submitting}
-        loadingActivities={applyScoreImport.loadingActivities}
-        activityName={applyScoreImport.preview.activityName}
-        selectedActivityId={applyScoreImport.preview.selectedActivityId}
-        activityOptions={applyScoreImport.preview.activityOptions}
-        onActivityNameChange={applyScoreImport.setActivityName}
-        onSelectActivity={applyScoreImport.selectActivity}
-        previewStats={applyScoreImport.preview.stats}
-        issueRows={applyScoreImport.preview.rows
-          .filter((x) => x.errors.length > 0)
-          .slice(0, 20)
-          .map((x) => ({
-            rowNo: x.rowNo,
-            username: x.username,
-            scoreRaw: x.scoreRaw,
-            errors: x.errors,
-          }))}
-        onFileSelected={applyScoreImport.parseFile}
-        onConfirmImport={async () => {
-          await applyScoreImport.submitImport();
-          table.reload();
-        }}
       />
 
       <CreateUserModal
@@ -389,6 +348,34 @@ export default function UserManagePage() {
         onConfirmImport={async () => {
           await importFlow.submitImportAndReload();
         }}
+      />
+
+      <ImportApplyScoreModal
+        open={applyScoreImport.preview.open}
+        onClose={applyScoreImport.closePreview}
+        parsing={!!applyScoreImport.parsing}
+        submitting={!!applyScoreImport.submitting}
+        loadingActivities={!!applyScoreImport.loadingActivities}
+        activityName={applyScoreImport.preview.activityName}
+        selectedActivityId={applyScoreImport.preview.selectedActivityId}
+        activityOptions={applyScoreImport.preview.activityOptions}
+        onActivityNameChange={applyScoreImport.setActivityName}
+        onSelectActivity={applyScoreImport.selectActivity}
+        previewStats={applyScoreImport.preview.stats}
+        issueRows={applyScoreImport.preview.rows
+          .filter((row) => row.errors.length > 0)
+          .slice(0, 20)
+          .map((row) => ({
+            rowNo: row.rowNo,
+            username: row.username,
+            scoreRaw: row.scoreRaw,
+            errors: row.errors,
+          }))}
+        onFileSelected={async (file) => {
+          await applyScoreImport.loadActivities();
+          await applyScoreImport.parseFile(file);
+        }}
+        onConfirmImport={applyScoreImport.submitImport}
       />
 
       <ImportResultModal

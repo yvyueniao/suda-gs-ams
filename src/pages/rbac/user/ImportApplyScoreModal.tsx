@@ -182,14 +182,46 @@ export default function ImportApplyScoreModal(props: Props) {
             size="small"
             column={2}
             items={[
-              { key: "total", label: "总行数", children: <Text strong>{stats.total}</Text> },
-              { key: "valid", label: "校验通过", children: <Text strong>{stats.validCount}</Text> },
-              { key: "submit", label: "可提交（已跳过重复）", children: <Text strong>{stats.submitCount}</Text> },
-              { key: "invalid", label: "问题行数", children: <Text strong>{stats.invalidCount}</Text> },
-              { key: "empty", label: "空值问题", children: <Text>{stats.emptyCount}</Text> },
-              { key: "dup", label: "重复学号", children: <Text>{stats.duplicateCount}</Text> },
-              { key: "username", label: "学号格式问题", children: <Text>{stats.invalidUsernameCount}</Text> },
-              { key: "score", label: "分数格式问题", children: <Text>{stats.invalidScoreCount}</Text> },
+              {
+                key: "total",
+                label: "总行数",
+                children: <Text strong>{stats.total}</Text>,
+              },
+              {
+                key: "valid",
+                label: "校验通过",
+                children: <Text strong>{stats.validCount}</Text>,
+              },
+              {
+                key: "submit",
+                label: "可提交（已跳过重复）",
+                children: <Text strong>{stats.submitCount}</Text>,
+              },
+              {
+                key: "invalid",
+                label: "问题行数",
+                children: <Text strong>{stats.invalidCount}</Text>,
+              },
+              {
+                key: "empty",
+                label: "空值问题",
+                children: <Text>{stats.emptyCount}</Text>,
+              },
+              {
+                key: "dup",
+                label: "重复学号",
+                children: <Text>{stats.duplicateCount}</Text>,
+              },
+              {
+                key: "username",
+                label: "学号格式问题",
+                children: <Text>{stats.invalidUsernameCount}</Text>,
+              },
+              {
+                key: "score",
+                label: "分数格式问题",
+                children: <Text>{stats.invalidScoreCount}</Text>,
+              },
             ]}
           />
           {hasParsedRows ? (
@@ -222,12 +254,18 @@ export default function ImportApplyScoreModal(props: Props) {
         </Card>
 
         {issueRows.length > 0 && (
-          <Card size="small" title={`问题明细（最多展示20条，当前${issueRows.length}条）`}>
+          <Card
+            size="small"
+            title={`问题明细（最多展示20条，当前${issueRows.length}条）`}
+          >
             <Space direction="vertical" size={6} style={{ width: "100%" }}>
               {issueRows.map((row) => (
-                <Text key={`${row.rowNo}-${row.username}-${row.scoreRaw}`} type="warning">
-                  第{row.rowNo}行 / username={row.username || "-"} / score={row.scoreRaw || "-"}
-                  ：{row.errors.join("；")}
+                <Text
+                  key={`${row.rowNo}-${row.username}-${row.scoreRaw}`}
+                  type="warning"
+                >
+                  第{row.rowNo}行 / username={row.username || "-"} / score=
+                  {row.scoreRaw || "-"}：{row.errors.join("；")}
                 </Text>
               ))}
             </Space>

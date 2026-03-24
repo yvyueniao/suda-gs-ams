@@ -275,7 +275,9 @@ function isRowImportable(row: UserImportPreviewRow): boolean {
   return gradeCheck.ok;
 }
 
-function pickImportableRows(rows: UserImportPreviewRow[]): UserImportPreviewRow[] {
+function pickImportableRows(
+  rows: UserImportPreviewRow[],
+): UserImportPreviewRow[] {
   const seen = new Set<string>();
   const importable: UserImportPreviewRow[] = [];
 
@@ -321,7 +323,9 @@ export function useUserImportFlow(options?: { onNotify?: Notify }) {
   // =========================
   // 1) 预览弹窗状态
   // =========================
-  const [preview, setPreview] = useState<ImportPreviewState>(INITIAL_PREVIEW_STATE);
+  const [preview, setPreview] = useState<ImportPreviewState>(
+    INITIAL_PREVIEW_STATE,
+  );
 
   const [parsing, setParsing] = useState(false);
   const parsingRef = useRef(false);
