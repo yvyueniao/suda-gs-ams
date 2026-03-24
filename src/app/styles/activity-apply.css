@@ -9,6 +9,11 @@
   margin: 0 auto;
 }
 
+.activity-apply-scroll-area {
+  height: 100%;
+  overflow: auto;
+}
+
 /* Header */
 .activity-apply-header {
   display: flex;

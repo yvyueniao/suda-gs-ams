@@ -177,6 +177,27 @@ body {
   background: var(--app-bg-layout);
 }
 
+/* 页面内部统一滚动容器（替代各页面硬编码 calc 高度） */
+.app-page-scroll {
+  height: 100%;
+  overflow: auto;
+}
+
+/* 错误页/无权限页统一样式 */
+.app-status-page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--ds-space-6);
+  background: var(--ant-color-bg-layout, #fafafa);
+}
+
+.app-status-page__subtitle {
+  display: grid;
+  gap: var(--ds-space-2);
+  max-width: 560px;
+}
+
 /* =========================================================
    Footer
    ========================================================= */

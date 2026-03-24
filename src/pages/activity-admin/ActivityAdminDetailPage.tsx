@@ -80,12 +80,7 @@ export default function ActivityAdminDetailPage() {
   return (
     <div className="activity-admin-page">
       <div className="activity-admin-container">
-        <div
-          style={{
-            height: "calc(113vh - 56px - 48px - 24px - 120px)",
-            overflow: "auto",
-          }}
-        >
+        <div className="activity-admin-scroll-area">
           <Card>
             <Space direction="vertical" size={12} style={{ width: "100%" }}>
               {/* Header */}

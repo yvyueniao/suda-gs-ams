@@ -142,12 +142,7 @@ export default function ProfilePage() {
   return (
     <div className="profile-page">
       <div className="profile-container">
-        <div
-          style={{
-            height: "calc(113vh - 56px - 48px - 24px - 120px)",
-            overflow: "auto",
-          }}
-        >
+        <div className="profile-scroll-area">
           <Space direction="vertical" style={{ width: "100%" }} size={16}>
             <Card
               className="profile-user-card"

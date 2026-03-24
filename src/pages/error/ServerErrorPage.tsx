@@ -26,20 +26,12 @@ export default function ServerErrorPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
-        background: "#fafafa",
-      }}
-    >
+    <div className="app-status-page">
       <Result
         status="500"
         title="服务暂时不可用"
         subTitle={
-          <div style={{ display: "grid", gap: 8, maxWidth: 560 }}>
+          <div className="app-status-page__subtitle">
             <Text type="secondary">可能是网络异常或服务器开小差了。</Text>
             <Text type="secondary">
               建议：点击“重试”重新触发页面请求，或稍后再试。

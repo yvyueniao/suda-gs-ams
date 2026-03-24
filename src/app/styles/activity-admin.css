@@ -11,6 +11,11 @@
   margin: 0 auto;
 }
 
+.activity-admin-scroll-area {
+  height: 100%;
+  overflow: auto;
+}
+
 /* 顶部标题栏（左：标题+副标题；右：按钮组） */
 .activity-admin-detail-header {
   display: flex;

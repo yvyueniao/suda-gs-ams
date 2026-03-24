@@ -11,6 +11,11 @@
   margin: 0 auto;
 }
 
+.feedback-scroll-area {
+  height: 100%;
+  overflow: auto;
+}
+
 /* ===== Card 标题区（不贴边、更有呼吸感） ===== */
 .feedback-header {
   padding: var(--ds-space-2) 0;
@@ -62,6 +67,15 @@
     var(--ant-color-text, #000) 2%
   );
   border: 1px solid var(--ant-color-border, rgba(17, 24, 39, 0.06));
+}
+
+.feedback-loading-state {
+  padding: var(--ds-space-6);
+  text-align: center;
+}
+
+.feedback-error-state {
+  padding: var(--ds-space-6);
 }
 
 /* 消息列表整体间距 */
@@ -231,4 +245,8 @@
 /* 结束后置灰（页面层给容器加这个 class 即可） */
 .chat-disabled {
   opacity: 0.75;
+}
+
+.feedback-composer-divider {
+  margin: var(--ds-space-4) 0 !important;
 }
