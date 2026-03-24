@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { Button, Card, Form, Input, Typography } from "antd";
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
+import { EyeInvisibleOutlined, EyeTwoTone, UserOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLogin } from "../../features/auth/hooks/useLogin";
 import { useAsyncAction } from "../../shared/actions";
 import ForgotPasswordModal from "./ForgotPasswordModal";
+import AnimatedCharactersHero from "./AnimatedCharactersHero";
 import { track } from "../../shared/telemetry/track";
 
 type LoginFormValues = {
@@ -26,6 +27,9 @@ export default function LoginPage() {
 
   // ===== 忘记密码弹窗 =====
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
 
   const openForgot = () => {
     track({ event: "login_open_forgot_password" });
@@ -66,44 +70,23 @@ export default function LoginPage() {
     form.getFieldValue("username") ?? "",
   ).trim();
 
-  const featureList = useMemo(
-    () => [
-      "活动/讲座报名与候补全流程",
-      "管理员端活动管理与审核闭环",
-      "反馈中心：对话 + 附件 + 结束反馈",
-    ],
-    [],
-  );
+  const pageTitle = useMemo(() => "登录", []);
 
   return (
     <div className="auth-page">
       <div className="auth-container">
-        {/* 左侧品牌区 */}
-        <section className="auth-brand">
-          <img
-            className="auth-brand-logo"
-            src="/logo.ico"
-            alt="苏州大学计算机学院"
-          />
-
-          <div className="auth-brand-title">研究生会活动管理系统</div>
-          <div className="auth-brand-subtitle">
-            苏州大学计算机学院研究生会 · 活动管理平台
-          </div>
-
-          <ul className="auth-brand-features">
-            {featureList.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-        </section>
+        <AnimatedCharactersHero
+          isTyping={isTyping}
+          showPassword={showPassword}
+          hasPassword={passwordValue.length > 0}
+        />
 
         {/* 右侧登录卡 */}
         <section className="auth-card-wrapper">
           <Card className="auth-card" bordered={false}>
             <div className="auth-card-title">
               <Typography.Title level={4} style={{ margin: 0 }}>
-                登录
+                {pageTitle}
               </Typography.Title>
               <div className="auth-card-desc">
                 账号为学号；如无法登录请联系管理员
@@ -127,6 +110,8 @@ export default function LoginPage() {
                   maxLength={15}
                   inputMode="numeric"
                   autoComplete="username"
+                  onFocus={() => setIsTyping(true)}
+                  onBlur={() => setIsTyping(false)}
                 />
               </Form.Item>
 
@@ -136,10 +121,20 @@ export default function LoginPage() {
                 rules={[{ required: true, message: "请输入密码" }]}
               >
                 <Input.Password
-                  prefix={<LockOutlined />}
                   placeholder="请输入密码"
                   autoComplete="current-password"
                   onPressEnter={handleSubmit}
+                  value={passwordValue}
+                  onChange={(e) => setPasswordValue(e.target.value)}
+                  onFocus={() => setIsTyping(true)}
+                  onBlur={() => setIsTyping(false)}
+                  visibilityToggle={{
+                    visible: showPassword,
+                    onVisibleChange: setShowPassword,
+                  }}
+                  iconRender={(visible) =>
+                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                  }
                 />
               </Form.Item>
 

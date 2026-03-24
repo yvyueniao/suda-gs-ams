@@ -248,3 +248,139 @@
     display: inline-block;
   }
 }
+
+/* ===== Animated Characters Hero ===== */
+.auth-brand-animated {
+  min-width: 440px;
+  align-items: stretch;
+  text-align: left;
+  gap: 16px;
+}
+
+.auth-hero-top {
+  font-size: var(--ds-font-24);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.auth-characters-wrap {
+  position: relative;
+  width: 550px;
+  height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 20%, #242f4f 0%, #101318 62%, #0a0c10 100%);
+}
+
+.auth-char {
+  position: absolute;
+  bottom: 0;
+  transition: transform 0.6s ease;
+  transform-origin: bottom center;
+}
+
+.auth-char-purple {
+  left: 70px;
+  width: 180px;
+  height: 400px;
+  border-radius: 10px 10px 0 0;
+  background: #6c3ff5;
+  z-index: 1;
+}
+
+.auth-char-black {
+  left: 240px;
+  width: 120px;
+  height: 310px;
+  border-radius: 8px 8px 0 0;
+  background: #2d2d2d;
+  z-index: 2;
+}
+
+.auth-char-orange {
+  left: 0;
+  width: 240px;
+  height: 200px;
+  border-radius: 120px 120px 0 0;
+  background: #ff9b6b;
+  z-index: 3;
+}
+
+.auth-char-yellow {
+  left: 310px;
+  width: 140px;
+  height: 230px;
+  border-radius: 70px 70px 0 0;
+  background: #e8d754;
+  z-index: 4;
+}
+
+.auth-char-eyes {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+
+.auth-char-eyes-sm {
+  gap: 8px;
+}
+
+.auth-eye {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: height 0.15s ease;
+}
+
+.auth-eye-pupil {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2d2d2d;
+  transition: transform 0.1s ease;
+}
+
+.auth-dots {
+  position: absolute;
+  display: flex;
+  gap: 16px;
+}
+
+.auth-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2d2d2d;
+}
+
+.auth-mouth {
+  position: absolute;
+  width: 60px;
+  height: 4px;
+  border-radius: 4px;
+  background: #2d2d2d;
+}
+
+@media (max-width: 1200px) {
+  .auth-brand-animated {
+    min-width: 0;
+  }
+
+  .auth-characters-wrap {
+    width: 460px;
+    transform: scale(0.9);
+    transform-origin: left center;
+  }
+}
+
+@media (max-width: 992px) {
+  .auth-brand-animated {
+    display: none;
+  }
+}
