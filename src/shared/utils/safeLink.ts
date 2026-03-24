@@ -11,14 +11,27 @@ function normalizeHost(host: string): string {
  * 可选：允许的外链域名白名单（上线时强烈建议配置）
  * - 开发期你也可以先留空数组：表示“只校验协议，不校验域名”
  */
-const ALLOW_HOSTS: string[] = [
+const DEFAULT_ALLOW_HOSTS: string[] = [
   // 例如：
   // "localhost",
   // "127.0.0.1",
   // "your-api-domain.com",
 ];
 
-const allowHostSet = new Set(ALLOW_HOSTS.map(normalizeHost).filter(Boolean));
+function parseAllowHostsFromEnv(): string[] {
+  const fromEnv = import.meta.env.VITE_SAFE_LINK_HOSTS;
+  if (typeof fromEnv !== "string") return [];
+  return fromEnv
+    .split(",")
+    .map(normalizeHost)
+    .filter(Boolean);
+}
+
+const allowHostSet = new Set(
+  [...DEFAULT_ALLOW_HOSTS.map(normalizeHost), ...parseAllowHostsFromEnv()].filter(
+    Boolean,
+  ),
+);
 
 /** 判断 host 是否在白名单（空白名单 => 不校验 host） */
 function isAllowedHost(host: string) {
