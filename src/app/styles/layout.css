@@ -80,7 +80,7 @@ body {
 .app-header__right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--ds-space-2);
 }
 
 /* =========================================================
@@ -90,7 +90,7 @@ body {
 /* 菜单按钮 */
 .app-header__navbtn {
   color: var(--app-header-text-weak) !important;
-  border-radius: 6px;
+  border-radius: var(--ds-radius-sm);
 
   /* ✅ 让缩放更稳定（减少抖动/发虚） */
   display: inline-flex;
@@ -108,7 +108,7 @@ body {
 /* 右侧用户按钮（AppLayout 里 className="app-header__userbtn"） */
 .app-header__userbtn {
   color: var(--app-header-text) !important;
-  border-radius: 6px;
+  border-radius: var(--ds-radius-sm);
 
   display: inline-flex;
   align-items: center;
@@ -184,7 +184,7 @@ body {
 .app-footer {
   height: 48px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--ds-font-12);
   color: var(--app-text-secondary);
   padding: 12px 16px;
   border-top: 1px solid var(--app-border);

@@ -8,7 +8,7 @@
    ========================================================= */
 
 .profile-container {
-  max-width: 1800px;
+  max-width: var(--ds-layout-max-width);
   margin: 0 auto;
 }
 
@@ -21,7 +21,7 @@
 }
 
 .profile-user-card .ant-card-body {
-  padding: 24px !important;
+  padding: var(--ds-space-5) !important;
 }
 
 /* =========================================================
@@ -31,7 +31,7 @@
 .profile-user-info {
   display: flex;
   align-items: flex-start;
-  gap: 24px;
+  gap: var(--ds-space-5);
   flex-wrap: wrap;
 }
 
@@ -63,11 +63,11 @@
 }
 
 .profile-user-name {
-  margin-bottom: 6px !important;
+  margin-bottom: var(--ds-space-2) !important;
 }
 
 .profile-user-role {
-  font-size: 14px;
+  font-size: var(--ds-font-14);
 }
 
 /* =========================================================
@@ -76,8 +76,8 @@
 
 .profile-user-stats {
   display: flex;
-  gap: 32px;
-  margin-top: 12px;
+  gap: var(--ds-space-6);
+  margin-top: var(--ds-space-3);
   flex-wrap: wrap;
 }
 
@@ -87,13 +87,13 @@
 }
 
 .profile-stat-value {
-  font-size: 22px;
+  font-size: var(--ds-font-24);
   font-weight: 600;
   color: var(--ant-color-text, #262626);
 }
 
 .profile-stat-label {
-  font-size: 14px;
+  font-size: var(--ds-font-14);
   color: var(--ant-color-text-secondary, #8c8c8c);
 }
 
@@ -102,7 +102,7 @@
    ========================================================= */
 
 .profile-user-meta .ant-descriptions {
-  margin-top: 12px;
+  margin-top: var(--ds-space-3);
 }
 
 .profile-user-meta .ant-descriptions-item-label {

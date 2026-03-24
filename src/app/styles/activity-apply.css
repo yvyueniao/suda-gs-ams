@@ -5,7 +5,7 @@
    ========================================================= */
 
 .activity-apply-container {
-  max-width: 1900px;
+  max-width: var(--ds-layout-max-width);
   margin: 0 auto;
 }
 
@@ -14,26 +14,26 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--ds-space-3);
 }
 
 /* 分区 */
 .activity-apply-section {
-  margin-top: 12px;
+  margin-top: var(--ds-space-3);
 }
 
 .activity-apply-section-title {
-  font-size: 16px;
+  font-size: var(--ds-font-16);
   font-weight: 600;
   color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
-  margin-bottom: 10px;
+  margin-bottom: var(--ds-space-3);
 }
 
 /* 内容块（跟随主题） */
 .activity-apply-panel {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
   border-radius: var(--ant-border-radius, 12px);
-  padding: 12px;
+  padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
 
@@ -41,7 +41,7 @@
 .activity-apply-desc {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
   border-radius: var(--ant-border-radius, 12px);
-  padding: 12px;
+  padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
 
@@ -52,5 +52,5 @@
 
 /* 收紧 Divider */
 .activity-apply-page .ant-divider-horizontal {
-  margin: 12px 0;
+  margin: var(--ds-space-3) 0;
 }

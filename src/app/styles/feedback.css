@@ -7,13 +7,13 @@
 
 /* 居中容器（可选但强烈推荐：避免内容贴边/过宽） */
 .feedback-container {
-  max-width: 1600px;
+  max-width: var(--ds-layout-max-width);
   margin: 0 auto;
 }
 
 /* ===== Card 标题区（不贴边、更有呼吸感） ===== */
 .feedback-header {
-  padding: 8px 0;
+  padding: var(--ds-space-2) 0;
 }
 
 .feedback-title {
@@ -23,15 +23,15 @@
 
 .feedback-subtitle {
   display: block;
-  margin-top: 6px;
-  font-size: 12px;
+  margin-top: var(--ds-space-2);
+  font-size: var(--ds-font-12);
   color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
 }
 
 /* 已结束提示 */
 .feedback-closed-hint {
-  margin-top: 10px;
-  padding: 8px 12px;
+  margin-top: var(--ds-space-3);
+  padding: var(--ds-space-2) var(--ds-space-3);
   border-radius: var(--ant-border-radius, 10px);
 
   /* warning 浅底：跟随 antd warning 色系 */
@@ -44,7 +44,7 @@
     color-mix(in srgb, var(--ant-color-warning, #faad14) 25%, transparent);
   color: var(--ant-color-text, rgba(0, 0, 0, 0.78));
 
-  font-size: 13px;
+  font-size: var(--ds-font-12);
 }
 
 /* ===== 聊天内容区容器 ===== */
@@ -52,7 +52,7 @@
   height: 60vh;
   overflow: auto;
 
-  padding: 12px;
+  padding: var(--ds-space-3);
   border-radius: var(--ant-border-radius, 12px);
 
   /* 更像聊天背景：跟随主题的弱背景 + 边框 */
@@ -68,7 +68,7 @@
 .chat-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--ds-space-3);
 }
 
 /* 每条消息一行：左/右对齐 */
@@ -90,7 +90,7 @@
   max-width: 78%;
   min-width: 180px;
 
-  padding: 12px;
+  padding: var(--ds-space-3);
   border-radius: var(--ant-border-radius, 12px);
 
   background: var(--ant-color-bg-container, #fff);
@@ -117,7 +117,7 @@
   width: 100%;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--ds-space-3);
 }
 
 .chat-bubble__name {
@@ -126,27 +126,27 @@
 }
 
 .chat-bubble__time {
-  font-size: 12px;
+  font-size: var(--ds-font-12);
   color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
   flex: 0 0 auto;
 }
 
 /* 内容 */
 .chat-bubble__content {
-  margin-top: 6px;
+  margin-top: var(--ds-space-2);
   white-space: pre-wrap;
   color: var(--ant-color-text, rgba(0, 0, 0, 0.86));
 }
 
 /* ===== 附件块（比纯链接更像“文件消息”） ===== */
 .chat-attach {
-  margin-top: 10px;
+  margin-top: var(--ds-space-3);
 
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--ds-space-3);
 
-  padding: 8px 10px;
+  padding: var(--ds-space-2) var(--ds-space-3);
   border-radius: var(--ant-border-radius, 10px);
 
   background: color-mix(
@@ -172,7 +172,7 @@
   );
   color: color-mix(in srgb, var(--ant-color-error, #ff4d4f) 92%, transparent);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--ds-font-12);
 }
 
 .chat-attach__name {
@@ -204,7 +204,7 @@
 .chat-composer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--ds-space-3);
 }
 
 /* 底部按钮行：左右分布 */
@@ -212,7 +212,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--ds-space-3);
   flex-wrap: wrap;
 }
 

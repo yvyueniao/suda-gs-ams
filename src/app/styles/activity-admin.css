@@ -7,7 +7,7 @@
 
 /* 页面最大宽度（可选） */
 .activity-admin-container {
-  max-width: 1900px;
+  max-width: var(--ds-layout-max-width);
   margin: 0 auto;
 }
 
@@ -16,28 +16,28 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--ds-space-3);
 }
 
 /* ✅ 关键：去掉“标题区 -> 基本信息”之间过大的空白
    统一把分区间距收紧，避免出现大段空白区域 */
 .activity-admin-section {
-  margin-top: 6px;
+  margin-top: var(--ds-space-2);
 }
 
 /* ✅ 分区标题：更大一点 + 加粗（颜色跟随主题） */
 .activity-admin-section-title {
-  font-size: 16px;
+  font-size: var(--ds-font-16);
   font-weight: 600;
   color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
-  margin: 0 0 10px;
+  margin: 0 0 var(--ds-space-3);
 }
 
 /* 内容面板：把内容区域视觉“包一下”，更像管理后台（跟随主题） */
 .activity-admin-panel {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
   border-radius: var(--ant-border-radius, 12px);
-  padding: 12px;
+  padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
 
@@ -45,7 +45,7 @@
 .activity-admin-desc {
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.06));
   border-radius: var(--ant-border-radius, 12px);
-  padding: 12px;
+  padding: var(--ds-space-3);
   background: var(--ant-color-bg-container, #fff);
 }
 
@@ -56,7 +56,7 @@
 
 /* Divider 间距收紧（避免出现你说的“空一大片”） */
 .activity-admin-page .ant-divider-horizontal {
-  margin: 6px 0;
+  margin: var(--ds-space-2) 0;
 }
 
 /* 让 Descriptions 看起来更“轻”一点（圆角也跟随主题） */

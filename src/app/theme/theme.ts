@@ -1,6 +1,25 @@
 // src/app/theme/theme.ts
 import type { ThemeConfig } from "antd";
 
+const BRAND_PRIMARY = import.meta.env.VITE_BRAND_PRIMARY || "#5B8FF9";
+const FONT_SCALE = Number(import.meta.env.VITE_FONT_SCALE ?? 1);
+const RADIUS_SCALE = Number(import.meta.env.VITE_RADIUS_SCALE ?? 1);
+const CONTROL_SCALE = Number(import.meta.env.VITE_CONTROL_SCALE ?? 1);
+
+function clampScale(n: number): number {
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(1.4, Math.max(0.8, n));
+}
+
+function toGrid(value: number): number {
+  // 锁定为 4 的倍数
+  return Math.max(4, Math.round(value / 4) * 4);
+}
+
+const fs = clampScale(FONT_SCALE);
+const rs = clampScale(RADIUS_SCALE);
+const cs = clampScale(CONTROL_SCALE);
+
 /**
  * suda-gs-ams 统一主题配置（A：清爽轻后台）
  *
@@ -19,7 +38,7 @@ export const appTheme: ThemeConfig = {
     /**
      * ========= 基础色彩（清爽浅色系）=========
      */
-    colorPrimary: "#5B8FF9", // 清爽浅蓝（后台常用、观感高级）
+    colorPrimary: BRAND_PRIMARY, // 支持配置品牌主色
     colorSuccess: "#52c41a",
     colorWarning: "#faad14",
     colorError: "#ff4d4f",
@@ -34,16 +53,16 @@ export const appTheme: ThemeConfig = {
     /**
      * ========= 圆角体系 =========
      */
-    borderRadius: 12, // 全局主圆角（Card/Modal/Input）
-    borderRadiusLG: 16,
-    borderRadiusSM: 8,
+    borderRadius: toGrid(10 * rs),
+    borderRadiusLG: toGrid(16 * rs),
+    borderRadiusSM: toGrid(8 * rs),
 
     /**
      * ========= 字体体系 =========
      */
-    fontSize: 14,
-    fontSizeLG: 16,
-    fontSizeSM: 12,
+    fontSize: toGrid(14 * fs),
+    fontSizeLG: toGrid(16 * fs),
+    fontSizeSM: toGrid(12 * fs),
     lineHeight: 1.6,
 
     /**
@@ -51,9 +70,9 @@ export const appTheme: ThemeConfig = {
      * antd 默认控件高度较接近 32
      * 这里给一个“略舒适但不臃肿”的档位
      */
-    controlHeight: 34,
-    controlHeightLG: 38,
-    controlHeightSM: 28,
+    controlHeight: toGrid(40 * cs),
+    controlHeightLG: toGrid(44 * cs),
+    controlHeightSM: toGrid(32 * cs),
 
     /**
      * ========= 阴影体系（轻质感，不压）=========
@@ -71,8 +90,8 @@ export const appTheme: ThemeConfig = {
      * Card：保持质感但更轻，不要太“胖”
      */
     Card: {
-      borderRadiusLG: 16,
-      paddingLG: 20, // 由 24 下调，避免页面整体显得臃肿
+      borderRadiusLG: toGrid(16 * rs),
+      paddingLG: toGrid(24 * fs),
       boxShadow: `
         0 10px 28px rgba(17, 24, 39, 0.08),
         0 4px 10px rgba(17, 24, 39, 0.06)
@@ -83,20 +102,20 @@ export const appTheme: ThemeConfig = {
      * Button：保持好看，别太大
      */
     Button: {
-      borderRadius: 10,
-      controlHeight: 34,
-      controlHeightLG: 38,
-      controlHeightSM: 28,
+      borderRadius: toGrid(10 * rs),
+      controlHeight: toGrid(40 * cs),
+      controlHeightLG: toGrid(44 * cs),
+      controlHeightSM: toGrid(32 * cs),
     },
 
     /**
      * Input：圆角统一，大小跟随 token.controlHeight
      */
     Input: {
-      borderRadius: 10,
-      controlHeight: 34,
-      controlHeightLG: 38,
-      controlHeightSM: 28,
+      borderRadius: toGrid(10 * rs),
+      controlHeight: toGrid(40 * cs),
+      controlHeightLG: toGrid(44 * cs),
+      controlHeightSM: toGrid(32 * cs),
     },
 
     /**
@@ -109,11 +128,11 @@ export const appTheme: ThemeConfig = {
     },
 
     Modal: {
-      borderRadiusLG: 16,
+      borderRadiusLG: toGrid(16 * rs),
     },
 
     Drawer: {
-      borderRadiusLG: 16,
+      borderRadiusLG: toGrid(16 * rs),
     },
   },
 };

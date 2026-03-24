@@ -20,6 +20,7 @@ import { initSentry } from "./app/telemetry/sentry";
 import { ErrorBoundary } from "./app/telemetry/ErrorBoundary";
 
 import "antd/dist/reset.css";
+import "./app/styles/design-tokens.css";
 import "./app/styles/auth.css";
 import "./app/styles/layout.css";
 import "./app/styles/feedback.css";
