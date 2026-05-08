@@ -22,10 +22,15 @@ export function hasDigitInName(name: string): boolean {
 
 export function getStrongPasswordError(password: string): string | null {
   const value = String(password ?? "");
-  if (value.length < 10) return "密码长度至少 10 位";
-  if (!UPPER_REGEX.test(value)) return "密码必须包含至少 1 个大写字母";
-  if (!LOWER_REGEX.test(value)) return "密码必须包含至少 1 个小写字母";
-  if (!NUMBER_REGEX.test(value)) return "密码必须包含至少 1 个数字";
-  if (!SPECIAL_REGEX.test(value)) return "密码必须包含至少 1 个特殊字符";
+  if (value.length < 8)
+    return "密码长度至少 8 位，必须包含至少 1 个大写字母，1 个小写字母， 1 个数字， 1 个特殊字符";
+  if (!UPPER_REGEX.test(value))
+    return "密码长度至少 8 位，必须包含至少 1 个大写字母，1 个小写字母， 1 个数字， 1 个特殊字符";
+  if (!LOWER_REGEX.test(value))
+    return "密码长度至少 8 位，必须包含至少 1 个大写字母，1 个小写字母， 1 个数字， 1 个特殊字符";
+  if (!NUMBER_REGEX.test(value))
+    return "密码长度至少 8 位，必须包含至少 1 个大写字母，1 个小写字母， 1 个数字， 1 个特殊字符";
+  if (!SPECIAL_REGEX.test(value))
+    return "密码长度至少 8 位，必须包含至少 1 个大写字母，1 个小写字母， 1 个数字， 1 个特殊字符";
   return null;
 }
