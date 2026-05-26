@@ -26,8 +26,14 @@ import {
 
 import { notify } from "../../shared/ui";
 
-import type { FeedbackSessionItem } from "../../features/feedback/types";
-import { createFeedback as createFeedbackApi } from "../../features/feedback/api";
+import type {
+  CreateFeedbackDraftPayload,
+  FeedbackSessionItem,
+} from "../../features/feedback/types";
+import {
+  createFeedback as createFeedbackApi,
+  sendFeedbackMessage,
+} from "../../features/feedback/api";
 import { useFeedbackListPage } from "../../features/feedback/hooks/useFeedbackListPage";
 
 import CreateFeedbackModal from "../feedback/CreateFeedbackModal";
@@ -72,18 +78,23 @@ export default function FeedbackCenterPage() {
   const closeCreate = useCallback(() => setCreateOpen(false), []);
 
   const submitCreate = useCallback(
-    async (payload: { title: string }) => {
+    async (payload: CreateFeedbackDraftPayload) => {
       try {
         setCreating(true);
-        await createFeedbackApi(payload);
-        notify({ kind: "success", msg: "创建成功" });
+        const sessionId = await createFeedbackApi({ title: payload.title });
+        await sendFeedbackMessage({
+          sessionId,
+          content: payload.content,
+          file: payload.file,
+        });
+        notify({ kind: "success", msg: "创建成功，正文已发送" });
         closeCreate();
         await list.reload();
         return true;
       } catch (e) {
         notify({
           kind: "error",
-          msg: e instanceof Error ? e.message : "创建失败",
+          msg: e instanceof Error ? e.message : "创建失败，请稍后重试",
         });
         return false;
       } finally {
