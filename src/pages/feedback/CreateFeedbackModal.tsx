@@ -71,6 +71,19 @@ export default function CreateFeedbackModal(props: CreateFeedbackModalProps) {
     beforeUpload: () => false,
   };
 
+  const normalizeFileList = (e: unknown): UploadFile[] => {
+    if (Array.isArray(e)) return e;
+    if (
+      e &&
+      typeof e === "object" &&
+      "fileList" in e &&
+      Array.isArray((e as { fileList?: unknown }).fileList)
+    ) {
+      return (e as { fileList: UploadFile[] }).fileList;
+    }
+    return [];
+  };
+
   return (
     <Modal
       title="创建反馈"
@@ -115,7 +128,12 @@ export default function CreateFeedbackModal(props: CreateFeedbackModalProps) {
           />
         </Form.Item>
 
-        <Form.Item label="上传附件（可选）" name="fileList" valuePropName="fileList">
+        <Form.Item
+          label="上传附件（可选）"
+          name="fileList"
+          valuePropName="fileList"
+          getValueFromEvent={normalizeFileList}
+        >
           <Upload {...uploadProps}>
             <Button>选择附件</Button>
           </Upload>
