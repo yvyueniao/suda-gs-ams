@@ -29,6 +29,7 @@ import {
   Space,
   Typography,
   Descriptions,
+  Grid,
 } from "antd";
 
 import type {
@@ -44,6 +45,7 @@ import {
 } from "../../features/profile/table/helpers";
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 /** ✅ 是否加分：只有签到 && 签退 都为 true 才可加分 */
 function canGetScore(row: Pick<MyActivityItem, "checkIn" | "checkOut">) {
@@ -53,11 +55,11 @@ function canGetScore(row: Pick<MyActivityItem, "checkIn" | "checkOut">) {
 /**
  * 渲染活动本体详情
  */
-function renderActivityDetail(detail: ActivityDetail) {
+function renderActivityDetail(detail: ActivityDetail, column: 1 | 2) {
   return (
     <Descriptions
       size="small"
-      column={2}
+      column={column}
       labelStyle={{ width: 108 }}
       items={[
         { key: "name", label: "名称", children: detail.name },
@@ -141,6 +143,9 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   currentRow,
   onCancel,
 }) => {
+  const screens = useBreakpoint();
+  const detailColumns: 1 | 2 = screens.xs ? 1 : 2;
+
   return (
     <Modal
       title="活动详情"
@@ -158,7 +163,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
         <Empty description="未找到活动详情" />
       ) : (
         <>
-          {renderActivityDetail(detail)}
+          {renderActivityDetail(detail, detailColumns)}
 
           <Divider />
 

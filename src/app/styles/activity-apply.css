@@ -59,3 +59,21 @@
 .activity-apply-page .ant-divider-horizontal {
   margin: var(--ds-space-3) 0;
 }
+
+@media (max-width: 768px) {
+  .activity-apply-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .activity-apply-header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-2);
+  }
+
+  .activity-apply-header-actions .ant-btn {
+    width: 100%;
+  }
+}

@@ -13,6 +13,7 @@ import {
   message,
   Divider,
   Modal,
+  Grid,
 } from "antd";
 
 import { ArrowLeftOutlined, ReloadOutlined } from "@ant-design/icons";
@@ -43,6 +44,7 @@ import { useApplyFlow } from "../../features/activity-apply/hooks/useApplyFlow";
 import ApplyResultModal from "./ApplyResultModal";
 
 const { Title, Text, Paragraph } = Typography;
+const { useBreakpoint } = Grid;
 
 /* 类型Tag */
 function renderTypeTag(type: 0 | 1) {
@@ -72,6 +74,7 @@ function renderStateTag(state: number) {
 }
 
 export default function ActivityDetailPage() {
+  const screens = useBreakpoint();
   const nav = useNavigate();
   const params = useParams<{ id: string }>();
 
@@ -141,6 +144,7 @@ export default function ActivityDetailPage() {
   const signOk = detail ? inSignWindow(detail, nowMs) : false;
   const disabledReason = detail ? getSignWindowReason(detail, nowMs) : "加载中";
   const primaryDisabled = !detail || !signOk;
+  const detailColumns: 1 | 2 = screens.xs ? 1 : 2;
 
   const handlePrimaryClick = useCallback(async () => {
     if (!detail) return;
@@ -178,7 +182,7 @@ export default function ActivityDetailPage() {
                 <Text type="secondary">{headerSubtitle}</Text>
               </div>
 
-              <Space>
+              <Space className="activity-apply-header-actions">
                 <Button icon={<ArrowLeftOutlined />} onClick={() => nav(-1)}>
                   返回
                 </Button>
@@ -219,7 +223,7 @@ export default function ActivityDetailPage() {
                     <div className="activity-apply-panel">
                       <Descriptions
                         bordered
-                        column={2}
+                        column={detailColumns}
                         items={[
                           { label: "名称", children: detail.name },
                           {
