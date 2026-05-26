@@ -63,17 +63,14 @@
 @media (max-width: 768px) {
   .activity-apply-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
   }
 
   .activity-apply-header-actions {
-    width: 100%;
+    width: auto;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: var(--ds-space-2);
-  }
-
-  .activity-apply-header-actions .ant-btn {
-    width: 100%;
   }
 }
