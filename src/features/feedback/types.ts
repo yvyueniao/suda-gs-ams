@@ -106,6 +106,12 @@ export interface CreateFeedbackPayload {
   title: string;
 }
 
+/** 创建反馈弹窗表单（前端两步提交流程） */
+export interface CreateFeedbackDraftPayload extends CreateFeedbackPayload {
+  content: string;
+  file?: File;
+}
+
 /** 关闭反馈（管理员）：POST /session/close */
 export interface CloseFeedbackPayload {
   sessionId: string;

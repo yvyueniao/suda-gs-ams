@@ -15,9 +15,10 @@
 // - ✅ 提交成功后由父组件决定是否关闭
 
 import { useEffect } from "react";
-import { Form, Input, Modal } from "antd";
+import { Button, Form, Input, Modal, Upload } from "antd";
+import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 
-import type { CreateFeedbackPayload } from "../../features/feedback/types";
+import type { CreateFeedbackDraftPayload } from "../../features/feedback/types";
 
 const { TextArea } = Input;
 
@@ -31,13 +32,13 @@ export type CreateFeedbackModalProps = {
    * 返回 true 才会自动关闭
    * 返回 false 或抛错：不关闭（交给页面层提示）
    */
-  onSubmit: (payload: CreateFeedbackPayload) => Promise<boolean> | boolean;
+  onSubmit: (payload: CreateFeedbackDraftPayload) => Promise<boolean> | boolean;
 };
 
 export default function CreateFeedbackModal(props: CreateFeedbackModalProps) {
   const { open, loading = false, onCancel, onSubmit } = props;
 
-  const [form] = Form.useForm<CreateFeedbackPayload>();
+  const [form] = Form.useForm<CreateFeedbackDraftPayload & { fileList?: UploadFile[] }>();
 
   // 打开时重置表单
   useEffect(() => {
@@ -50,13 +51,37 @@ export default function CreateFeedbackModal(props: CreateFeedbackModalProps) {
     try {
       const values = await form.validateFields();
 
-      const ok = await onSubmit(values);
+      const file = values.fileList?.[0]?.originFileObj;
+      const ok = await onSubmit({
+        title: values.title,
+        content: values.content,
+        file,
+      });
       if (ok) {
         form.resetFields();
       }
     } catch {
       // 校验失败不处理（antd 自动提示）
     }
+  };
+
+  const uploadProps: UploadProps = {
+    accept: ".pdf,.doc,.docx,.png,.jpg,.jpeg",
+    maxCount: 1,
+    beforeUpload: () => false,
+  };
+
+  const normalizeFileList = (e: unknown): UploadFile[] => {
+    if (Array.isArray(e)) return e;
+    if (
+      e &&
+      typeof e === "object" &&
+      "fileList" in e &&
+      Array.isArray((e as { fileList?: unknown }).fileList)
+    ) {
+      return (e as { fileList: UploadFile[] }).fileList;
+    }
+    return [];
   };
 
   return (
@@ -85,6 +110,33 @@ export default function CreateFeedbackModal(props: CreateFeedbackModalProps) {
             maxLength={100}
             showCount
           />
+        </Form.Item>
+
+        <Form.Item
+          label="反馈正文"
+          name="content"
+          rules={[
+            { required: true, message: "请输入反馈正文" },
+            { max: 2000, message: "正文不能超过 2000 个字符" },
+          ]}
+        >
+          <TextArea
+            placeholder="请详细描述你遇到的问题、期望结果和复现步骤"
+            autoSize={{ minRows: 4, maxRows: 8 }}
+            maxLength={2000}
+            showCount
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="上传附件（可选）"
+          name="fileList"
+          valuePropName="fileList"
+          getValueFromEvent={normalizeFileList}
+        >
+          <Upload {...uploadProps}>
+            <Button>选择附件</Button>
+          </Upload>
         </Form.Item>
       </Form>
     </Modal>
